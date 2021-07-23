@@ -27,7 +27,7 @@ punktf deploy windows --single 'init.vim.win'
 
 ```json5
 {
-	// Either read from ENVIRONMENT (std::env::var) or from here
+	// OPT: Either read from ENVIRONMENT (std::env::var) or from here
 	"env": [
 		{
 			"key": "RUSTC_PATH",
@@ -35,26 +35,39 @@ punktf deploy windows --single 'init.vim.win'
 		}
 		//, ...
 	],
+
 	// Target path of config dir; used when no specific deploy_location was given
 	"target": "/home/demo/.config",
-	// Files to be deployed
-	"files": [
+
+	// OPT: Hook which is executed once before the deployment.
+	"pre_hook": "echo \"Foo\"",
+
+	// OPT: Hook which is executed once after the deployment.
+	"pre_hook": "echo \"Bar\"",
+
+	// Items to be deployed
+	"items": [
 		{
 			// Relative path in `files/`
-			"file": "init.vim.win",
-			// OPT: Alternative deploy location (PATH: used instead of `root` + `file`, ALIAS: `root` + alias instead of `file`)
-			"deploy_location": {
+			"path": "init.vim.win",
+
+			// OPT: Alternative deploy target (PATH: used instead of `root` + `file`, ALIAS: `root` + (alias instead of `file`))
+			"target": {
 				"kind": "alias",
 				"value": "init.vim",
 			},
+
 			// OPT: Custom env for the specific file (same as above)
 			"env": [
 				...
 			],
+
 			// OPT: Merge operation/kind (like: overwrite_all, ask, keep, overwrite_deployed)
 			"merge": "overwrite",
+
 			// OPT: Wether this file is a template or not (skips template actions (replace, ..) if not)
 			"template": false,
+
 			// OPT: Higher priority overwrites files from lower files
 			"priority": 2,
 		}
