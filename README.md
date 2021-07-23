@@ -57,9 +57,6 @@ punktf deploy windows --single 'init.vim.win'
 			"template": false,
 			// OPT: Higher priority overwrites files from lower files
 			"priority": 2,
-			// MAYBE:
-			//	- File permissions (unix, windows??)
-			//  - transformer
 		}
 		//, ...
 	]
@@ -72,19 +69,29 @@ punktf deploy windows --single 'init.vim.win'
 
 Prefix (can be combined: e.g. {{#$RUSTC_PATH}}):
 
-- None: First ENVIRONMENT then env then file.env
-- $: Only ENVIRONMENT
-- #: Only env
-- &: Only file.env
+- None: First profile.env then profile.file.env
+- `$`: Only ENVIRONMENT
+- `#`: Only env
+- `&`: Only file.env
 
 ```python
 rustc = {{RUSTC_PATH}}
 ```
 
-### Conditionals
+### Conditionals (TODO: think about structure)
 
-## Features
+```python
+{{@if {{}} == "windows"}}
+print("running on windows")
+{{@else}}
+print("NOT running on windows")
+{{@if}}
+```
 
+## Future
+
+- File permissions/mode
+- Content transformer: take file as input change it and return it (e.g. replace CRLF => LF)
 - Remember last deployed files and only overwrite them if they are the same as they were
 	- sqlite or json with previous deployments
 - Generate profile from directory structure
