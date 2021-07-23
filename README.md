@@ -25,15 +25,15 @@ punktf deploy windows --single 'init.vim.win'
 
 ## PFP Format (PunktF profile)
 
-```json
+```json5
 {
 	// Either read from ENVIRONMENT (std::env::var) or from here
 	"env": [
 		{
 			"key": "RUSTC_PATH",
 			"value": "/usr/bin/rustc",
-		},
-		...
+		}
+		//, ...
 	],
 	// Target path of config dir; used when no specific deploy_location was given
 	"target": "/home/demo/.config",
@@ -60,8 +60,8 @@ punktf deploy windows --single 'init.vim.win'
 			// MAYBE:
 			//	- File permissions (unix, windows??)
 			//  - transformer
-		},
-		...
+		}
+		//, ...
 	]
 }
 ```
@@ -71,10 +71,11 @@ punktf deploy windows --single 'init.vim.win'
 ### Replacement
 
 Prefix (can be combined: e.g. {{#$RUSTC_PATH}}):
-	- None: First ENVIRONMENT then env then file.env
-	- $: Only ENVIRONMENT
-	- #: Only env
-	- &: Only file.env
+
+- None: First ENVIRONMENT then env then file.env
+- $: Only ENVIRONMENT
+- #: Only env
+- &: Only file.env
 
 ```python
 rustc = {{RUSTC_PATH}}
