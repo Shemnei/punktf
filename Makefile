@@ -1,4 +1,4 @@
-.PHONY: default buildd buildr build check test clippy checkfmt lint clean
+.PHONY: default buildd buildr build check test clippy checkfmt lint run clean
 .PHONY: install cic
 
 # Is set to the directory which contains the Makefile regardless from where
@@ -8,32 +8,36 @@ ROOT_DIR := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))
 default: check
 
 buildd:
-	cargo +nightly build --debug
+	cargo build --debug
 
 buildr:
-	cargo +nightly build --release
+	cargo build --release
 
 build: buildr
 
 check:
-	cargo +nightly check --all
+	cargo check --all
 
 test:
-	cargo +nightly test --all
+	cargo test --all
 
 clippy:
-	cargo +nightly clippy --all -- -Dwarnings
+	cargo clippy --all -- -Dwarnings
 
 checkfmt:
-	cargo +nightly fmt --all -- --check
+	cargo fmt --all -- --check
 
 lint: checkfmt clippy
 
+run:
+	cargo run
+
 clean:
-	cargo +nightly clean
+	cargo clean
 
 install:
-	cargo +nightly install --path $(ROOT_DIR)
+	cargo install --path $(ROOT_DIR)
 
 # utility
+# can i commit
 cic: test lint
