@@ -10,7 +10,10 @@ struct HomePath(PathBuf);
 
 impl Default for HomePath {
 	fn default() -> Self {
-		Self(std::env::current_dir().unwrap())
+		Self(std::env::current_dir().expect(
+			"Failed to get `current_dir`. Please either use the `-h/--home` arguemnt or the \
+			 environment variable `PUNKTF_HOME` to set the home directory.",
+		))
 	}
 }
 

@@ -6,10 +6,10 @@
 # deploy (dry-run)
 punktf deploy windows --dry-run
 
-# deploy (custom source/home folder)
+# deploy (custom home folder)
 punktf --home /home/demo deploy windows
 
-# deploy (custom source/home folder)
+# deploy (custom home folder)
 PUNKTF_HOME=/home/demo punktf deploy windows
 ```
 
@@ -24,7 +24,7 @@ PunktF searches for the home path in the following order:
 ```
 + profiles\
 	+ windows.pfp
-+ files\
++ item\
 	+ init.vim.win
 ```
 
@@ -53,7 +53,7 @@ PunktF searches for the home path in the following order:
 	// Items to be deployed
 	"items": [
 		{
-			// Relative path in `files/`
+			// Relative path in `items/`
 			"path": "init.vim.win",
 
 			// OPT: Alternative deploy target (PATH: used instead of `root` + `file`, ALIAS: `root` + (alias instead of `file`))
@@ -73,7 +73,7 @@ PunktF searches for the home path in the following order:
 			// OPT: Wether this file is a template or not (skips template actions (replace, ..) if not)
 			"template": false,
 
-			// OPT: Higher priority overwrites files from lower files
+			// OPT: Higher priority item is allowed to overwrite lower priority ones
 			"priority": 2,
 		}
 		//, ...
@@ -99,10 +99,10 @@ rustc = {{RUSTC_PATH}}
 ### Conditionals (TODO: think about structure)
 
 ```python
-{{@if {{}} == "windows"}}
-print("running on windows")
+{{@if {{OS}} == "windows"}}
+	print("running on windows")
 {{@else}}
-print("NOT running on windows")
+	print("NOT running on windows")
 {{@if}}
 ```
 
@@ -113,5 +113,4 @@ print("NOT running on windows")
 - Remember last deployed files and only overwrite them if they are the same as they were
 	- sqlite or json with previous deployments
 - Generate profile from directory structure
-- Source (profile/file) via argument or ENVIRONMENT
-- have other templates as base for others
+- Have templates as base for others

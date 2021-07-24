@@ -8,7 +8,7 @@ ROOT_DIR := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))
 default: check
 
 buildd:
-	cargo build --debug
+	cargo build
 
 buildr:
 	cargo build --release
