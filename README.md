@@ -1,5 +1,12 @@
 # PunktF - A cross-platform multi-target dotfiles manager
 
+## DISCLAIMER
+
+**CURRENTLY THIS CRATE ONLY PARSES COMMAND LINE ARGUMENTS, NOTHING MORE.**
+
+This crate is sill under development and not all features are currently implemented.
+Layouts and formats can and will change will in development.
+
 ## Yet another dotfile manager?!
 
 Well yes, but hear me out. This project was driven by the personal need of having to manage several dotfiles for different machines/targets. You want the same experience everywhere: On your work Windows machine along with an Ubuntu WSL instance, your Debian server and your private Arch installation. This tool fixes that problem while beeing cross-platform and blazingly fast.
