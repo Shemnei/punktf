@@ -6,21 +6,21 @@ use clap::Clap;
 
 // Used so that it defaults to current_dir if no value is given.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct SourcePath(PathBuf);
+struct HomePath(PathBuf);
 
-impl Default for SourcePath {
+impl Default for HomePath {
 	fn default() -> Self {
 		Self(std::env::current_dir().unwrap())
 	}
 }
 
-impl fmt::Display for SourcePath {
+impl fmt::Display for HomePath {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		fmt::Display::fmt(&self.0.display(), f)
 	}
 }
 
-impl FromStr for SourcePath {
+impl FromStr for HomePath {
 	type Err = std::convert::Infallible;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -40,7 +40,7 @@ struct Opts {
 #[derive(Debug, Clap)]
 struct Shared {
 	#[clap(short, long, env = "PUNKTF_HOME", default_value)]
-	source: SourcePath,
+	home: HomePath,
 }
 
 #[derive(Debug, Clap)]
@@ -59,5 +59,5 @@ struct Deploy {
 fn main() {
 	let opts: Opts = Opts::parse();
 
-	println!("{:?}", opts.shared.source);
+	println!("{:?}", opts.shared.home);
 }

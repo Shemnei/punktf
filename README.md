@@ -1,20 +1,25 @@
+# PunktF - A cross-platform multi-target dotfiles manager 
+
 ## Commands
 
 ```shell
-# update
-punktf update
-
 # deploy (dry-run)
 punktf deploy windows --dry-run
 
-# deploy filtered???
-punktf deploy windows --filter "file LIKE '%.win'"
+# deploy (custom source/home folder)
+punktf --home /home/demo deploy windows
 
-# deploy single
-punktf deploy windows --single 'init.vim.win'
+# deploy (custom source/home folder)
+PUNKTF_HOME=/home/demo punktf deploy windows
 ```
 
-## Layout
+## PunktF Home
+
+PunktF searches for the home path in the following order:
+
+1) CLI argument given with `-h/--home`
+2) Environment variable `PUNKTF_HOME`
+3) Current working directory of the shell
 
 ```
 + profiles\
