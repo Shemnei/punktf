@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
+use std::ops::Deref;
 use std::path::PathBuf;
 
 use chrono::{DateTime, Duration, Utc};
@@ -64,6 +65,20 @@ where
 pub struct DeployedItem {
 	status: ItemStatus,
 	item: Item,
+}
+
+impl AsRef<Item> for DeployedItem {
+	fn as_ref(&self) -> &Item {
+		&self.item
+	}
+}
+
+impl Deref for DeployedItem {
+	type Target = Item;
+
+	fn deref(&self) -> &Self::Target {
+		&self.item
+	}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
