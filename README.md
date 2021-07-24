@@ -24,7 +24,7 @@ PunktF searches for the home path in the following order:
 ```
 + profiles\
 	+ windows.pfp
-+ item\
++ items\
 	+ init.vim.win
 ```
 
@@ -114,3 +114,4 @@ rustc = {{RUSTC_PATH}}
 	- sqlite or json with previous deployments
 - Generate profile from directory structure
 - Have templates as base for others
+- Save version of the profile for compatability checking

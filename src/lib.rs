@@ -1,4 +1,7 @@
 #![feature(exit_status_error)]
+#![allow(dead_code)]
+
+mod deploy;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
