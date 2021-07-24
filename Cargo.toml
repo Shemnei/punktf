@@ -9,7 +9,7 @@ homepage = "https://github.com/Shemnei/punktf"
 repository = "https://github.com/Shemnei/punktf"
 license= "MIT"
 keywords = ["dotfiles", "cli", "dotfile", "dotfiles-manager"]
-categories = ["command-line-utilities", "configuration"]
+categories = ["command-line-utilities", "config"]
 
 [[bin]]
 path = "src/main.rs"
