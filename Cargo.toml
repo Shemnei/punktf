@@ -3,6 +3,17 @@ name = "punktf"
 version = "0.1.0"
 authors = ["Michael Lohr <michael@lohr.dev>", "Shemnei"]
 edition = "2018"
+description = "A cross-platform multi-target dotfiles manager"
+documentation = "https://github.com/Shemnei/punktf"
+homepage = "https://github.com/Shemnei/punktf"
+repository = "https://github.com/Shemnei/punktf"
+license= "MIT"
+keywords = ["dotfiles", "cli", "dotfile", "dotfiles-manager"]
+categories = ["command-line-utilities", "configuration"]
+
+[[bin]]
+path = "src/main.rs"
+name = "punktf"
 
 [dependencies]
 chrono = { version = "0.4.19", features = ["serde"] }
