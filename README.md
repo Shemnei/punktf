@@ -5,12 +5,12 @@
 Well yes, but hear me out. This project was driven by the personal need of having to manage several dotfiles for different machines/targets. You want the same experience everywhere: On your work Windows machine along with an Ubuntu WSL instance, your Debian server and your private Arch installation. This tool fixes that problem while beeing cross-platform and blazingly fast.
 
 Features:
-- [] Merge mutliple layers of dotfiles
-- [] Create profiles for different targets
-- [] Use instructions to compile your dotfiles/templates conditionally
-- [] Use hadlebar-like instructions to insert variables and more
-- [] Define pre- and post-hooks to customize the behaviour with custom commands
-- [] Handles file permissions and line endings (CRLF vs LF)
+- [ ] Merge mutliple layers of dotfiles
+- [ ] Create profiles for different targets
+- [ ] Use instructions to compile your dotfiles/templates conditionally
+- [ ] Use hadlebar-like instructions to insert variables and more
+- [ ] Define pre- and post-hooks to customize the behaviour with custom commands
+- [ ] Handles file permissions and line endings (CRLF vs LF)
 
 ## Commands
 
