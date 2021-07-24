@@ -14,7 +14,7 @@ jobs:
         with:
           profile: minimal
           toolchain: nightly
-          overwrite: true
+          override: true
       - name: Run cargo check
         uses: actions-rs/cargo@v1
         with:
@@ -31,7 +31,7 @@ jobs:
         with:
           profile: minimal
           toolchain: nightly
-          overwrite: true
+          override: true
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
@@ -48,7 +48,7 @@ jobs:
         with:
           profile: minimal
           toolchain: nightly
-          overwrite: true
+          override: true
           components: rustfmt, clippy
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
