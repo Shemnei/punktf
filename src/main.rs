@@ -1,12 +1,11 @@
 use core::fmt;
-use std::fs::File;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use clap::Clap;
 use punktf::deploy::{Deployer, DeployerOptions};
-use punktf::Profile;
+use punktf::{resolve_profile, Profile};
 
 // Used so that it defaults to current_dir if no value is given.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -71,7 +70,11 @@ struct Deploy {
 	dry_run: bool,
 }
 
+// TODO: extend profiles
+
 // TODO: check/remove unwrap's
+// TODO: function to read profile with right serde impl
+// TODO: save deployment in binary blob to check if file changed since then
 
 fn main() {
 	env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).init();
@@ -82,16 +85,12 @@ fn main() {
 
 	match opts.command {
 		Command::Deploy(cmd) => {
-			let profile_path = opts
-				.shared
-				.home
-				.join("profiles")
-				.join(format!("{}.pfp", cmd.profile));
+			let profile_path = opts.shared.home.join("profiles");
 
-			let file = File::open(profile_path).unwrap();
-			let profile: Profile = serde_json::from_reader(file).unwrap();
+			let profile: Profile = resolve_profile(&profile_path, &cmd.profile);
 
 			println!("{:#?}", profile);
+			//println!("{}", serde_yaml::to_string(&profile).unwrap());
 
 			let options = DeployerOptions {
 				dry_run: cmd.dry_run,

@@ -51,8 +51,11 @@ PunktF searches for the home path in the following order:
 
 ```json5
 {
-	// OPT: Either read from ENVIRONMENT (std::env::var) or from here
-	"env": [
+	// OPT: Other profile which will be used as base for this one
+	"extends": "base_profile_name",
+
+	// OPT: Variables for all items
+	"vars": [
 		{
 			"key": "RUSTC_PATH",
 			"value": "/usr/bin/rustc",
@@ -81,8 +84,8 @@ PunktF searches for the home path in the following order:
 				"value": "init.vim",
 			},
 
-			// OPT: Custom env for the specific file (same as above)
-			"env": [
+			// OPT: Custom variables for the specific file (same as above)
+			"vars": [
 				...
 			],
 
