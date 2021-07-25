@@ -1,5 +1,4 @@
 #![feature(exit_status_error)]
-#![feature(array_windows)]
 #![allow(dead_code)]
 
 pub mod deploy;
@@ -173,6 +172,8 @@ impl Hook {
 			parts.push_back(&self.0[split_idx..]);
 		}
 
+		log::debug!("Hook parts: {:?}", parts);
+
 		let mut cmd = Command::new(parts.pop_front().unwrap());
 		cmd.args(parts);
 		cmd
@@ -191,11 +192,11 @@ pub struct Profile {
 
 	/// Hook will be executed once before the deployment begins. If the hook fails
 	/// the deployment will not be continued.
-	#[serde(skip_serializing_if = "Vec::is_empty")]
+	#[serde(skip_serializing_if = "Vec::is_empty", default)]
 	pre_hooks: Vec<Hook>,
 
 	/// Hook will be executed once after the deployment begins.
-	#[serde(skip_serializing_if = "Vec::is_empty")]
+	#[serde(skip_serializing_if = "Vec::is_empty", default)]
 	post_hooks: Vec<Hook>,
 
 	/// Items which will be deployed.

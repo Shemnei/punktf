@@ -300,8 +300,8 @@ where
 	) -> Result<Deployment, DeployerError> {
 		// TODO: decide when deployment failed
 		// TODO: check if it handles relative paths
-		// TODO: enusure directories exits before deploing item
 		// TODO: merge code from deploy_file/deploy_child
+		// TODO: function to resolve path (e.g. `~`, ...) OR function to resolve templated paths
 
 		// FLOW:
 		//	- get deployment path
@@ -425,6 +425,21 @@ where
 		directory_deploy_path: PathBuf,
 	) -> Result<(), DeployerError> {
 		let mut backlog: VecDeque<ReadDir> = VecDeque::new();
+
+		match std::fs::create_dir_all(&directory_deploy_path) {
+			Ok(_) => {}
+			Err(err) => {
+				log::warn!(
+					"[{}] Failed to create directories (`{}`)",
+					directory.path.display(),
+					err
+				);
+
+				builder.add_item(directory_deploy_path, directory, err.into());
+
+				return Ok(());
+			}
+		}
 
 		let dents = match directory_source_path.read_dir() {
 			Ok(read_dir) => read_dir,
@@ -565,7 +580,7 @@ where
 		// Check if there is an already deployed item at `deploy_path`.
 		if let Some(other_priority) = builder.get_priority(&child_deploy_path) {
 			// Previously deployed item has higher priority; Skip current item.
-			if other_priority >= directory.priority {
+			if other_priority > directory.priority {
 				log::info!(
 					"[{}] Item with higher priority is already deployed",
 					child_path.display()
@@ -579,7 +594,9 @@ where
 
 				return Ok(());
 			}
-		} else if child_deploy_path.exists() {
+		}
+
+		if child_deploy_path.exists() {
 			// No previously deployed item at `deploy_path`. Check for merge.
 
 			log::debug!(
@@ -624,6 +641,27 @@ where
 			}
 		}
 
+		if let Some(parent) = child_deploy_path.parent() {
+			match std::fs::create_dir_all(parent) {
+				Ok(_) => {}
+				Err(err) => {
+					log::warn!(
+						"[{}] Failed to create directories (`{}`)",
+						child_path.display(),
+						err
+					);
+
+					builder.add_child(
+						child_deploy_path,
+						directory_deploy_path.to_path_buf(),
+						err.into(),
+					);
+
+					return Ok(());
+				}
+			}
+		}
+
 		if directory.template_or_default() {
 			if !self.options.dry_run {
 				let content = match std::fs::read(&child_source_path) {
@@ -650,15 +688,9 @@ where
 					return Ok(());
 				}
 			}
-
-			builder.add_child(
-				child_deploy_path,
-				directory_deploy_path.to_path_buf(),
-				ItemStatus::Success,
-			);
-
-			log::info!("[{}] Item successfully deployed", child_path.display());
 		} else {
+			// Allowed for readability
+			#[allow(clippy::collapsible_else_if)]
 			if !self.options.dry_run {
 				if let Err(err) = std::fs::copy(&child_source_path, &child_deploy_path) {
 					log::info!("[{}] Failed to copy item", child_path.display());
@@ -670,15 +702,15 @@ where
 					return Ok(());
 				}
 			}
-
-			builder.add_child(
-				child_deploy_path,
-				directory_deploy_path.to_path_buf(),
-				ItemStatus::Success,
-			);
-
-			log::info!("[{}] Item successfully deployed", child_path.display());
 		}
+
+		builder.add_child(
+			child_deploy_path,
+			directory_deploy_path.to_path_buf(),
+			ItemStatus::Success,
+		);
+
+		log::info!("[{}] Item successfully deployed", child_path.display());
 
 		Ok(())
 	}
@@ -695,7 +727,7 @@ where
 		// Check if there is an already deployed item at `deploy_path`.
 		if let Some(other_priority) = builder.get_priority(&file_deploy_path) {
 			// Previously deployed item has higher priority; Skip current item.
-			if other_priority >= file.priority {
+			if other_priority > file.priority {
 				log::info!(
 					"[{}] Item with higher priority is already deployed",
 					file.path.display()
@@ -709,7 +741,9 @@ where
 
 				return Ok(());
 			}
-		} else if file_deploy_path.exists() {
+		}
+
+		if file_deploy_path.exists() {
 			// No previously deployed item at `deploy_path`. Check for merge.
 
 			log::debug!(
@@ -750,6 +784,23 @@ where
 
 						return Ok(());
 					}
+				}
+			}
+		}
+
+		if let Some(parent) = file_deploy_path.parent() {
+			match std::fs::create_dir_all(parent) {
+				Ok(_) => {}
+				Err(err) => {
+					log::warn!(
+						"[{}] Failed to create directories (`{}`)",
+						file.path.display(),
+						err
+					);
+
+					builder.add_item(file_deploy_path, file, err.into());
+
+					return Ok(());
 				}
 			}
 		}

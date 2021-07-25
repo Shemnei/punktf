@@ -78,7 +78,7 @@ fn main() {
 
 	let opts: Opts = Opts::parse();
 
-	println!("{:?}", opts);
+	println!("{:#?}", opts);
 
 	match opts.command {
 		Command::Deploy(cmd) => {
@@ -90,6 +90,8 @@ fn main() {
 
 			let file = File::open(profile_path).unwrap();
 			let profile: Profile = serde_json::from_reader(file).unwrap();
+
+			println!("{:#?}", profile);
 
 			let options = DeployerOptions {
 				dry_run: cmd.dry_run,
