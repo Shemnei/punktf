@@ -1,5 +1,7 @@
 # PunktF - A cross-platform multi-target dotfiles manager
 
+[![MIT License](https://img.shields.io/crates/l/punktf)](https://choosealicense.com/licenses/mit/) [![Continuous integration](https://github.com/Shemnei/punktf/workflows/Continuous%20Integration/badge.svg)](https://github.com/Shemnei/punktf/actions) [![Crates.io](https://img.shields.io/crates/v/punktf)](https://crates.io/crates/punktf)
+
 ## DISCLAIMER
 
 **CURRENTLY THIS CRATE ONLY PARSES COMMAND LINE ARGUMENTS, NOTHING MORE.**
@@ -127,13 +129,3 @@ rustc = {{RUSTC_PATH}}
 	print("NOT running on windows")
 {{@if}}
 ```
-
-## Future
-
-- File permissions/mode
-- Content transformer: take file as input change it and return it (e.g. replace CRLF => LF)
-- Remember last deployed files and only overwrite them if they are the same as they were
-	- sqlite or json with previous deployments
-- Generate profile from directory structure
-- Have templates as base for others
-- Save version of the profile for compatability checking
