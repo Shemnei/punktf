@@ -27,19 +27,19 @@ Features:
 # deploy (dry-run)
 punktf deploy windows --dry-run
 
-# deploy (custom home folder)
-punktf --home /home/demo deploy windows
+# deploy (custom source folder)
+punktf --source /home/demo deploy windows
 
 # deploy (custom home folder)
-PUNKTF_HOME=/home/demo punktf deploy windows
+PUNKTF_SOURCE=/home/demo punktf deploy windows
 ```
 
-## PunktF Home
+## PunktF Source
 
-PunktF searches for the home path in the following order:
+PunktF searches for the source path in the following order:
 
-1) CLI argument given with `-h/--home`
-2) Environment variable `PUNKTF_HOME`
+1) CLI argument given with `-s/--source`
+2) Environment variable `PUNKTF_SOURCE`
 3) Current working directory of the shell
 
 ```
@@ -125,7 +125,9 @@ rustc = {{RUSTC_PATH}}
 ```python
 {{@if {{OS}} == "windows"}}
 	print("running on windows")
+{{@elif {{OS}} == "linux"}}
+	print("running on linux")
 {{@else}}
-	print("NOT running on windows")
-{{@if}}
+	print("NOT running on windows/linux")
+{{@fi}}
 ```

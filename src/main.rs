@@ -9,24 +9,24 @@ use punktf::{resolve_profile, Profile};
 
 // Used so that it defaults to current_dir if no value is given.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct HomePath(PathBuf);
+struct SourcePath(PathBuf);
 
-impl Default for HomePath {
+impl Default for SourcePath {
 	fn default() -> Self {
 		Self(std::env::current_dir().expect(
-			"Failed to get `current_dir`. Please either use the `-h/--home` arguemnt or the \
-			 environment variable `PUNKTF_HOME` to set the home directory.",
+			"Failed to get `current_dir`. Please either use the `-s/--source` argument or the \
+			 environment variable `PUNKTF_SOURCE` to set the source directory.",
 		))
 	}
 }
 
-impl fmt::Display for HomePath {
+impl fmt::Display for SourcePath {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		fmt::Display::fmt(&self.0.display(), f)
 	}
 }
 
-impl Deref for HomePath {
+impl Deref for SourcePath {
 	type Target = PathBuf;
 
 	fn deref(&self) -> &Self::Target {
@@ -34,7 +34,7 @@ impl Deref for HomePath {
 	}
 }
 
-impl FromStr for HomePath {
+impl FromStr for SourcePath {
 	type Err = std::convert::Infallible;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -53,8 +53,8 @@ struct Opts {
 
 #[derive(Debug, Clap)]
 struct Shared {
-	#[clap(short, long, env = "PUNKTF_HOME", default_value)]
-	home: HomePath,
+	#[clap(short, long, env = "PUNKTF_SOURCE", default_value)]
+	source: SourcePath,
 }
 
 #[derive(Debug, Clap)]
@@ -70,13 +70,7 @@ struct Deploy {
 	dry_run: bool,
 }
 
-// TODO: extend profiles
-
 // TODO: check/remove unwrap's
-// TODO: function to read profile with right serde impl
-// TODO: save deployment in binary blob to check if file changed since then
-// TODO: rename home to source
-// TODO: make profile names match case idependent
 // TODO: target path as cli arg
 
 fn main() {
@@ -88,7 +82,7 @@ fn main() {
 
 	match opts.command {
 		Command::Deploy(cmd) => {
-			let profile_path = opts.shared.home.join("profiles");
+			let profile_path = opts.shared.source.join("profiles");
 
 			let profile: Profile = resolve_profile(&profile_path, &cmd.profile);
 
@@ -102,7 +96,7 @@ fn main() {
 			let deployer = Executor::new(options, ask_user_merge);
 
 			let deployment = deployer
-				.deploy(opts.shared.home.0.join("items"), profile)
+				.deploy(opts.shared.source.join("items"), profile)
 				.unwrap();
 
 			println!("{:#?}", deployment);
