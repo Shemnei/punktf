@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use clap::Clap;
-use punktf::deploy::{Deployer, DeployerOptions};
+use punktf::deploy::executor::{Executor, ExecutorOptions};
 use punktf::Profile;
 
 // Used so that it defaults to current_dir if no value is given.
@@ -93,11 +93,11 @@ fn main() {
 
 			println!("{:#?}", profile);
 
-			let options = DeployerOptions {
+			let options = ExecutorOptions {
 				dry_run: cmd.dry_run,
 			};
 
-			let deployer = Deployer::new(options, ask_user_merge);
+			let deployer = Executor::new(options, ask_user_merge);
 
 			let deployment = deployer
 				.deploy(opts.shared.home.0.join("items"), profile)
