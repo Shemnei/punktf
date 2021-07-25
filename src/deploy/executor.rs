@@ -97,7 +97,14 @@ where
 		profile: &Profile,
 		item: Item,
 	) -> Result<(), ExecutorError> {
-		let item_deploy_path = resolve_deployment_path(&profile.target, &item);
+		// TODO: cleanup
+		let item_deploy_path = resolve_deployment_path(
+			&profile
+				.target
+				.clone()
+				.unwrap_or_else(crate::get_target_path),
+			&item,
+		);
 		let item_source_path = resolve_source_path(source_path, &item);
 
 		log::debug!(

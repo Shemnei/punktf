@@ -5,7 +5,9 @@ pub mod deploy;
 pub mod hook;
 pub mod variables;
 
-use std::path::PathBuf;
+use std::collections::HashSet;
+use std::fs::File;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use variables::UserVars;
@@ -39,13 +41,18 @@ impl RangeMap {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Profile {
-	/// Environment of the profile. Each item will have this environment.
+	/// Defines the base profile. All settings from the base are merged with the
+	/// current profile. The settings from the current profile take precendence.
+	/// Items are merged on the item level (not specific item settings level).
+	extends: Option<String>,
+
+	/// Variables of the profile. Each item will have this environment.
 	#[serde(skip_serializing_if = "Option::is_none")]
 	variables: Option<UserVars>,
 
 	/// Target root path of the deployment. Will be used as file stem for the items
 	/// when not overwritten by [Item::target].
-	target: PathBuf,
+	target: Option<PathBuf>,
 
 	/// Hook will be executed once before the deployment begins. If the hook fails
 	/// the deployment will not be continued.
@@ -57,7 +64,72 @@ pub struct Profile {
 	post_hooks: Vec<Hook>,
 
 	/// Items which will be deployed.
+	#[serde(skip_serializing_if = "Vec::is_empty", default)]
 	items: Vec<Item>,
+}
+
+impl Profile {
+	pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, std::io::Error> {
+		// TODO: cleanup
+
+		let path = path.as_ref();
+		let file = File::open(path)?;
+
+		let extension = path.extension().ok_or_else(|| {
+			std::io::Error::new(
+				std::io::ErrorKind::NotFound,
+				"Failed to get file extension for profile",
+			)
+		})?;
+
+		match extension.to_string_lossy().as_ref() {
+			"json" => serde_json::from_reader(file).map_err(|err| err.to_string()),
+			"yaml" => serde_yaml::from_reader(file).map_err(|err| err.to_string()),
+			&_ => Err(String::from("Invalid file extension for profile")),
+		}
+		.map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))
+	}
+
+	/// Merges everything from `other` into `self`.
+	/// Fields from `self` have precendence over `other`.
+	pub fn merge(&mut self, other: Profile) {
+		let Profile {
+			extends,
+			target,
+			pre_hooks,
+			post_hooks,
+			items,
+			variables,
+		} = other;
+
+		self.extends = extends;
+
+		match (&mut self.variables, variables) {
+			(Some(self_vars), Some(other_vars)) => self_vars.merge(other_vars),
+			(Some(_), None) => {}
+			(None, Some(other_vars)) => self.variables = Some(other_vars),
+			(None, None) => {}
+		};
+
+		if self.target.is_none() {
+			self.target = target;
+		}
+
+		// TODO: elimiate same hooks???
+		self.pre_hooks.extend(pre_hooks.into_iter());
+		self.post_hooks.extend(post_hooks.into_iter());
+
+		let self_item_paths = self
+			.items
+			.iter()
+			.map(|item| &item.path)
+			.collect::<HashSet<_>>();
+		let items = items
+			.into_iter()
+			.filter(|item| !self_item_paths.contains(&item.path))
+			.collect::<Vec<_>>();
+		self.items.extend(items);
+	}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -70,7 +142,7 @@ pub struct Item {
 	#[serde(skip_serializing_if = "Option::is_none")]
 	priority: Option<Priority>,
 
-	/// Environment for the item. If a key is not found here, [Profile::env]
+	/// Variables for the item. If a key is not found here, [Profile::env]
 	/// will be searched.
 	#[serde(skip_serializing_if = "Option::is_none")]
 	variables: Option<UserVars>,
@@ -99,6 +171,7 @@ impl Item {
 pub enum DeployTarget {
 	/// Target will be deployed under [Profile::target] + Alias.
 	Alias(PathBuf),
+
 	/// Target will be deployed under the given path.
 	Path(PathBuf),
 }
@@ -132,6 +205,66 @@ impl Priority {
 	}
 }
 
+fn get_target_path() -> PathBuf {
+	std::env::var_os("PUNKTF_TARGET")
+		.expect(
+			"No environment variable `PUNKTF_TARGET` set. Either set this variable or use the \
+			 profile variable `target`.",
+		)
+		.into()
+}
+
+fn find_profile_path(profile_path: &Path, name: &str) -> Option<PathBuf> {
+	// TODO: cleanup
+	Some(
+		profile_path
+			.read_dir()
+			.unwrap()
+			.find(|dent| {
+				dent.as_ref()
+					.map(|dent| {
+						let file_path = dent.path();
+						let file_name = file_path.file_name().unwrap().to_str().unwrap();
+						name == &file_name[..file_name.rfind('.').unwrap()]
+					})
+					.unwrap_or(false)
+			})?
+			.unwrap()
+			.path(),
+	)
+}
+
+pub fn resolve_profile(profile_path: &Path, name: &str) -> Profile {
+	// TODO: unwraps
+
+	let mut profiles = HashSet::new();
+
+	let mut root = Profile::from_file(find_profile_path(profile_path, name).unwrap()).unwrap();
+	profiles.insert(name.to_string());
+
+	while let Some(base_name) = root.extends.clone() {
+		log::info!("Resolving dependency `{}`", base_name);
+
+		if profiles.contains(&base_name) {
+			log::warn!("Circular dependency on `{}` detect", base_name);
+			break;
+		}
+
+		let path = find_profile_path(profile_path, &base_name).unwrap();
+		println!("[{}] {}", base_name, path.display());
+
+		let profile = Profile::from_file(path).unwrap();
+
+		println!("{:#?}", profile);
+
+		root.merge(profile);
+
+		profiles.insert(base_name);
+	}
+
+	root
+}
+
 #[cfg(test)]
 mod tests {
 	use std::collections::HashMap;
@@ -148,17 +281,20 @@ mod tests {
 
 	#[test]
 	fn profile_serde() {
-		let mut profile_env = HashMap::new();
-		profile_env.insert(String::from("RUSTC_VERSION"), String::from("XX.YY"));
-		profile_env.insert(String::from("RUSTC_PATH"), String::from("/usr/bin/rustc"));
+		let mut profile_vars = HashMap::new();
+		profile_vars.insert(String::from("RUSTC_VERSION"), String::from("XX.YY"));
+		profile_vars.insert(String::from("RUSTC_PATH"), String::from("/usr/bin/rustc"));
 
-		let mut item_env = HashMap::new();
-		item_env.insert(String::from("RUSTC_VERSION"), String::from("55.22"));
-		item_env.insert(String::from("USERNAME"), String::from("demo"));
+		let mut item_vars = HashMap::new();
+		item_vars.insert(String::from("RUSTC_VERSION"), String::from("55.22"));
+		item_vars.insert(String::from("USERNAME"), String::from("demo"));
 
 		let profile = Profile {
-			variables: Some(UserVars { inner: profile_env }),
-			target: PathBuf::from("/home/demo/.config"),
+			extends: None,
+			variables: Some(UserVars {
+				inner: profile_vars,
+			}),
+			target: Some(PathBuf::from("/home/demo/.config")),
 			pre_hooks: vec![Hook::new("echo \"Foo\"")],
 			post_hooks: vec![Hook::new("profiles/test.sh")],
 			items: vec![
@@ -173,7 +309,7 @@ mod tests {
 				Item {
 					path: PathBuf::from(".bashrc"),
 					priority: None,
-					variables: Some(UserVars { inner: item_env }),
+					variables: Some(UserVars { inner: item_vars }),
 					target: Some(DeployTarget::Path(PathBuf::from("/home/demo/.bashrc"))),
 					merge: Some(MergeMode::Overwrite),
 					template: Some(false),
