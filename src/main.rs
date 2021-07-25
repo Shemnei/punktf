@@ -1,8 +1,12 @@
 use core::fmt;
-use std::path::PathBuf;
+use std::fs::File;
+use std::ops::Deref;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use clap::Clap;
+use punktf::deploy::{Deployer, DeployerOptions};
+use punktf::Profile;
 
 // Used so that it defaults to current_dir if no value is given.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -20,6 +24,14 @@ impl Default for HomePath {
 impl fmt::Display for HomePath {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		fmt::Display::fmt(&self.0.display(), f)
+	}
+}
+
+impl Deref for HomePath {
+	type Target = PathBuf;
+
+	fn deref(&self) -> &Self::Target {
+		&self.0
 	}
 }
 
@@ -59,8 +71,73 @@ struct Deploy {
 	dry_run: bool,
 }
 
+// TODO: check/remove unwrap's
+
 fn main() {
+	env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).init();
+
 	let opts: Opts = Opts::parse();
 
-	println!("{:?}", opts.shared.home);
+	println!("{:?}", opts);
+
+	match opts.command {
+		Command::Deploy(cmd) => {
+			let profile_path = opts
+				.shared
+				.home
+				.join("profiles")
+				.join(format!("{}.pfp", cmd.profile));
+
+			let file = File::open(profile_path).unwrap();
+			let profile: Profile = serde_json::from_reader(file).unwrap();
+
+			let options = DeployerOptions {
+				dry_run: cmd.dry_run,
+			};
+
+			let deployer = Deployer::new(options, ask_user_merge);
+
+			let deployment = deployer
+				.deploy(opts.shared.home.0.join("items"), profile)
+				.unwrap();
+
+			println!("{:#?}", deployment);
+		}
+	}
+}
+
+fn ask_user_merge(deploy_path: &Path, source_path: &Path) -> bool {
+	use std::io::Write;
+
+	let stdin = std::io::stdin();
+	let mut stdout = std::io::stdout();
+	let mut line = String::new();
+
+	loop {
+		stdout
+			.write(
+				format!(
+					"Overwrite `{}` with `{}` [y/N]:",
+					deploy_path.display(),
+					source_path.display()
+				)
+				.as_bytes(),
+			)
+			.unwrap();
+
+		stdout.flush().unwrap();
+
+		stdin.read_line(&mut line).unwrap();
+
+		line.make_ascii_lowercase();
+
+		return match line.trim() {
+			"y" => true,
+			"n" => false,
+			_ => {
+				line.clear();
+				continue;
+			}
+		};
+	}
 }
