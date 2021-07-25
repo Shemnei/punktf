@@ -1,14 +1,16 @@
 #![feature(exit_status_error)]
+#![feature(array_windows)]
 #![allow(dead_code)]
 
-mod deploy;
+pub mod deploy;
 
 use std::borrow::Cow;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::error::Error;
 use std::fmt;
+use std::io::{BufRead as _, BufReader};
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use serde::{Deserialize, Serialize};
 
@@ -40,6 +42,31 @@ impl Environment for SystemEnv {
 		K: AsRef<str>,
 	{
 		std::env::var(key.as_ref()).ok().map(Cow::Owned)
+	}
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct RangeMap(Vec<usize>);
+
+impl RangeMap {
+	pub fn new<I: IntoIterator<Item = usize>>(items: I) -> Self {
+		let items: Vec<usize> = items.into_iter().collect();
+
+		// TODO: make err
+		assert_eq!(items.len() % 2, 0, "Unclosed range");
+
+		Self(items)
+	}
+
+	pub fn in_range(&self, value: &usize) -> bool {
+		match self.0.binary_search(value) {
+			// value is at start or at the end of a range
+			Ok(_) => true,
+			// value is in range if the index is uneven
+			// e.g. (0 1) (2 3)
+			// idx = 1 => (0 [1] 2) (3 4)
+			Err(idx) => idx % 2 == 1,
+		}
 	}
 }
 
@@ -87,19 +114,68 @@ impl Hook {
 	}
 
 	pub fn execute(&self) -> Result<(), HookError> {
-		let mut cmd = if cfg!(target_os = "windows") {
-			let mut cmd = Command::new("cmd");
-			cmd.arg("/C");
-			cmd
-		} else {
-			let mut cmd = Command::new("sh");
-			cmd.arg("-c");
-			cmd
-		};
+		let mut child = self
+			.prepare_command()
+			.stdout(Stdio::piped())
+			.stderr(Stdio::piped())
+			.spawn()?;
 
-		let _ = cmd.arg(&self.0).output()?.status.exit_ok()?;
+		for line in BufReader::new(child.stdout.take().unwrap()).lines() {
+			println!("{}", line.unwrap());
+		}
 
-		Ok(())
+		for line in BufReader::new(child.stderr.take().unwrap()).lines() {
+			println!("{}", line.unwrap());
+		}
+
+		child
+			.wait_with_output()?
+			.status
+			.exit_ok()
+			.map_err(|err| err.into())
+	}
+
+	fn prepare_command(&self) -> Command {
+		// Flow:
+		//	- detect `\"` (future maybe: `'`, `$(`, ```)
+		//	- split by ` `, `\"`
+		let mut escape_idxs = Vec::new();
+		let mut start_idx = 0;
+
+		// find escape sequences
+		while let Some(escape_idx) = self.0[start_idx..].find('\"') {
+			start_idx += escape_idx;
+			escape_idxs.push(start_idx);
+			start_idx += 1;
+		}
+
+		let ranges = RangeMap::new(escape_idxs);
+
+		let mut parts = VecDeque::new();
+		let mut split_idx = 0;
+		let mut start_idx = 0;
+
+		while let Some(space_idx) = self.0[start_idx..].find(' ') {
+			start_idx += space_idx;
+
+			// If not in range means we need to split as the space is not in a
+			// escaped part
+			if !ranges.in_range(&start_idx) {
+				parts.push_back(&self.0[split_idx..start_idx]);
+
+				split_idx = start_idx + 1;
+			}
+
+			start_idx += 1;
+		}
+
+		if split_idx < self.0.len() {
+			parts.push_back(&self.0[split_idx..]);
+		}
+
+		let mut cmd = Command::new(parts.pop_front().unwrap());
+		cmd.args(parts);
+		cmd
 	}
 }
 
@@ -115,12 +191,12 @@ pub struct Profile {
 
 	/// Hook will be executed once before the deployment begins. If the hook fails
 	/// the deployment will not be continued.
-	#[serde(skip_serializing_if = "Option::is_none")]
-	pre_hook: Option<Hook>,
+	#[serde(skip_serializing_if = "Vec::is_empty")]
+	pre_hooks: Vec<Hook>,
 
 	/// Hook will be executed once after the deployment begins.
-	#[serde(skip_serializing_if = "Option::is_none")]
-	post_hook: Option<Hook>,
+	#[serde(skip_serializing_if = "Vec::is_empty")]
+	post_hooks: Vec<Hook>,
 
 	/// Items which will be deployed.
 	items: Vec<Item>,
@@ -155,6 +231,12 @@ pub struct Item {
 	template: Option<bool>,
 }
 
+impl Item {
+	pub fn template_or_default(&self) -> bool {
+		self.template.unwrap_or(false)
+	}
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DeployTarget {
 	/// Target will be deployed under [Profile::target] + Alias.
@@ -173,6 +255,12 @@ pub enum MergeMode {
 
 	/// Asks the user for input to decide what to do.
 	Ask,
+}
+
+impl Default for MergeMode {
+	fn default() -> Self {
+		Self::Keep
+	}
 }
 
 #[derive(

@@ -63,11 +63,11 @@ PunktF searches for the home path in the following order:
 	// Target path of config dir; used when no specific deploy_location was given
 	"target": "/home/demo/.config",
 
-	// OPT: Hook which is executed once before the deployment.
-	"pre_hook": "echo \"Foo\"",
+	// OPT: Hooks which are executed once before the deployment.
+	"pre_hooks": ["echo \"Foo\""],
 
-	// OPT: Hook which is executed once after the deployment.
-	"pre_hook": "echo \"Bar\"",
+	// OPT: Hooks which are executed once after the deployment.
+	"post_hooks": ["echo \"Bar\""],
 
 	// Items to be deployed
 	"items": [
