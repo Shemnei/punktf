@@ -84,7 +84,7 @@ impl Profile {
 
 		match extension.to_string_lossy().as_ref() {
 			"json" => serde_json::from_reader(file).map_err(|err| err.to_string()),
-			"yaml" => serde_yaml::from_reader(file).map_err(|err| err.to_string()),
+			"yaml" | "yml" => serde_yaml::from_reader(file).map_err(|err| err.to_string()),
 			&_ => Err(String::from("Invalid file extension for profile")),
 		}
 		.map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))

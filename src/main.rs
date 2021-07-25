@@ -75,6 +75,9 @@ struct Deploy {
 // TODO: check/remove unwrap's
 // TODO: function to read profile with right serde impl
 // TODO: save deployment in binary blob to check if file changed since then
+// TODO: rename home to source
+// TODO: make profile names match case idependent
+// TODO: target path as cli arg
 
 fn main() {
 	env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).init();

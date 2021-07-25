@@ -179,6 +179,14 @@ where
 		directory_source_path: PathBuf,
 		directory_deploy_path: PathBuf,
 	) -> Result<(), ExecutorError> {
+		let directory_deploy_path = match directory.target {
+			None => profile
+				.target
+				.clone()
+				.unwrap_or_else(crate::get_target_path),
+			Some(_) => directory_deploy_path,
+		};
+
 		let mut backlog: VecDeque<ReadDir> = VecDeque::new();
 
 		match std::fs::create_dir_all(&directory_deploy_path) {
