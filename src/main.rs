@@ -115,7 +115,7 @@ fn ask_user_merge(deploy_path: &Path, source_path: &Path) -> bool {
 
 	loop {
 		stdout
-			.write(
+			.write_all(
 				format!(
 					"Overwrite `{}` with `{}` [y/N]:",
 					deploy_path.display(),

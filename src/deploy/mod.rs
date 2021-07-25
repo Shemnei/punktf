@@ -298,12 +298,10 @@ where
 		source_path: PathBuf,
 		mut profile: Profile,
 	) -> Result<Deployment, DeployerError> {
-		// TODO: decide what to do when item a dir (skip when exists/higher prio or check each child too)???
-		// TODO: decide how to handle dry-run (either as extra flag, as deployer option)
 		// TODO: decide when deployment failed
 		// TODO: check if it handles relative paths
 		// TODO: enusure directories exits before deploing item
-		// TODO: run hooks
+		// TODO: merge code from deploy_file/deploy_child
 
 		// FLOW:
 		//	- get deployment path
@@ -352,7 +350,7 @@ where
 		item: Item,
 	) -> Result<(), DeployerError> {
 		let item_deploy_path = resolve_deployment_path(&profile.target, &item);
-		let item_source_path = resolve_source_path(&source_path, &item);
+		let item_source_path = resolve_source_path(source_path, &item);
 
 		log::debug!(
 			"[{}] `{}` | `{}`",
@@ -549,13 +547,15 @@ where
 		Ok(())
 	}
 
+	// Allowed as the final args are not yet been decided
+	#[allow(clippy::too_many_arguments)]
 	fn deploy_child(
 		&self,
 		builder: &mut DeploymentBuilder,
-		source_path: &Path,
-		profile: &Profile,
+		_source_path: &Path,
+		_profile: &Profile,
 		directory: &Item,
-		directory_source_path: &Path,
+		_directory_source_path: &Path,
 		directory_deploy_path: &Path,
 		// relative path in source
 		child_path: PathBuf,
@@ -686,8 +686,8 @@ where
 	fn deploy_file(
 		&self,
 		builder: &mut DeploymentBuilder,
-		source_path: &Path,
-		profile: &Profile,
+		_source_path: &Path,
+		_profile: &Profile,
 		file: Item,
 		file_source_path: PathBuf,
 		file_deploy_path: PathBuf,
@@ -772,14 +772,9 @@ where
 					return Ok(());
 				}
 			}
-
-			log::info!(
-				"[{}] Item successfully deployed",
-				file_deploy_path.display()
-			);
-
-			builder.add_item(file_deploy_path, file, ItemStatus::Success);
 		} else {
+			// Allowed for readability
+			#[allow(clippy::collapsible_else_if)]
 			if !self.options.dry_run {
 				if let Err(err) = std::fs::copy(&file_source_path, &file_deploy_path) {
 					log::info!("[{}] Failed to copy item", file.path.display());
@@ -787,11 +782,10 @@ where
 					return Ok(());
 				}
 			}
-
-			log::info!("[{}] Item successfully deployed", file.path.display());
-
-			builder.add_item(file_deploy_path, file, ItemStatus::Success);
 		}
+
+		log::info!("[{}] Item successfully deployed", file.path.display());
+		builder.add_item(file_deploy_path, file, ItemStatus::Success);
 
 		Ok(())
 	}

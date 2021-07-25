@@ -298,8 +298,8 @@ mod tests {
 		let profile = Profile {
 			env: Some(Env { inner: profile_env }),
 			target: PathBuf::from("/home/demo/.config"),
-			pre_hook: Some(Hook::new("echo \"Foo\"")),
-			post_hook: Some(Hook::new("profiles/test.sh")),
+			pre_hooks: vec![Hook::new("echo \"Foo\"")],
+			post_hooks: vec![Hook::new("profiles/test.sh")],
 			items: vec![
 				Item {
 					path: PathBuf::from("init.vim.ubuntu"),
