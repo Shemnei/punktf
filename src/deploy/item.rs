@@ -77,6 +77,6 @@ impl DeployedItemKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeployedItem {
-	pub(crate) status: ItemStatus,
-	pub(crate) kind: DeployedItemKind,
+	pub status: ItemStatus,
+	pub kind: DeployedItemKind,
 }

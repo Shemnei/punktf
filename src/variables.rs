@@ -12,7 +12,7 @@ pub trait Variables {
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UserVars {
 	#[serde(flatten)]
-	pub(crate) inner: HashMap<String, String>,
+	pub inner: HashMap<String, String>,
 }
 
 impl Variables for UserVars {

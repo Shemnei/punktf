@@ -1,46 +1,19 @@
 use std::collections::VecDeque;
-use std::error::Error;
-use std::fmt;
 use std::io::{BufRead as _, BufReader};
 use std::process::{Command, Stdio};
 
+use color_eyre::Result;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 use crate::RangeMap;
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum HookError {
-	IoError(std::io::Error),
-	ExitStatusError(std::process::ExitStatusError),
-}
-
-impl fmt::Display for HookError {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-		match self {
-			Self::IoError(err) => fmt::Display::fmt(err, f),
-			Self::ExitStatusError(err) => fmt::Display::fmt(err, f),
-		}
-	}
-}
-
-impl Error for HookError {
-	fn source(&self) -> Option<&(dyn Error + 'static)> {
-		match self {
-			Self::IoError(err) => Some(err),
-			Self::ExitStatusError(err) => Some(err),
-		}
-	}
-}
-
-impl From<std::io::Error> for HookError {
-	fn from(value: std::io::Error) -> Self {
-		Self::IoError(value)
-	}
-}
-impl From<std::process::ExitStatusError> for HookError {
-	fn from(value: std::process::ExitStatusError) -> Self {
-		Self::ExitStatusError(value)
-	}
+	#[error("IO Error")]
+	IoError(#[from] std::io::Error),
+	#[error("Process failed")]
+	ExitStatusError(#[from] std::process::ExitStatusError),
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -51,7 +24,7 @@ impl Hook {
 		Self(command.into())
 	}
 
-	pub fn execute(&self) -> Result<(), HookError> {
+	pub fn execute(&self) -> Result<()> {
 		let mut child = self
 			.prepare_command()
 			.stdout(Stdio::piped())

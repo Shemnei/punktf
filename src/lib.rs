@@ -9,6 +9,7 @@ use std::collections::HashSet;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
+use color_eyre::eyre::{Context, Result};
 use serde::{Deserialize, Serialize};
 use variables::UserVars;
 
@@ -214,33 +215,31 @@ fn get_target_path() -> PathBuf {
 		.into()
 }
 
-fn find_profile_path(profile_path: &Path, name: &str) -> Option<PathBuf> {
+fn find_profile_path(profile_path: &Path, name: &str) -> Result<PathBuf> {
 	// TODO: cleanup
 	let name = name.to_lowercase();
 
-	Some(
-		profile_path
-			.read_dir()
-			.unwrap()
-			.find(|dent| {
-				dent.as_ref()
-					.map(|dent| {
-						let file_path = dent.path();
-						let file_name = file_path.file_name().unwrap().to_str().unwrap();
-						name == file_name[..file_name.rfind('.').unwrap()].to_lowercase()
-					})
-					.unwrap_or(false)
-			})?
-			.unwrap()
-			.path(),
-	)
+	Ok(profile_path
+		.read_dir()
+		.wrap_err("Failed to read profile directory")?
+		.find(|dent| {
+			dent.as_ref()
+				.map(|dent| {
+					let file_path = dent.path();
+					let file_name = file_path.file_name().unwrap().to_str().unwrap();
+					name == file_name[..file_name.rfind('.').unwrap()].to_lowercase()
+				})
+				.unwrap_or(false)
+		})
+		.unwrap()?
+		.path())
 }
 
-pub fn resolve_profile(profile_path: &Path, name: &str) -> Profile {
+pub fn resolve_profile(profile_path: &Path, name: &str) -> Result<Profile> {
 	// TODO: unwraps
 	let mut profiles = HashSet::new();
 
-	let mut root = Profile::from_file(find_profile_path(profile_path, name).unwrap()).unwrap();
+	let mut root = Profile::from_file(find_profile_path(profile_path, name)?)?;
 	profiles.insert(name.to_string().to_lowercase());
 
 	while let Some(base_name) = root.extends.clone() {
@@ -253,10 +252,10 @@ pub fn resolve_profile(profile_path: &Path, name: &str) -> Profile {
 			break;
 		}
 
-		let path = find_profile_path(profile_path, &base_name).unwrap();
+		let path = find_profile_path(profile_path, &base_name)?;
 		log::debug!("Path for profile `{}`: {}", base_name, path.display());
 
-		let profile = Profile::from_file(path).unwrap();
+		let profile = Profile::from_file(path)?;
 
 		log::debug!("Profile `{}`: {:#?}", base_name, profile);
 
@@ -265,7 +264,7 @@ pub fn resolve_profile(profile_path: &Path, name: &str) -> Profile {
 		profiles.insert(base_name);
 	}
 
-	root
+	Ok(root)
 }
 
 #[cfg(test)]

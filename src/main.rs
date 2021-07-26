@@ -4,6 +4,9 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use clap::Clap;
+use color_eyre::eyre::Context;
+use color_eyre::Result;
+use log::debug;
 use punktf::deploy::executor::{Executor, ExecutorOptions};
 use punktf::{resolve_profile, Profile};
 
@@ -70,23 +73,28 @@ struct Deploy {
 	dry_run: bool,
 }
 
-// TODO: check/remove unwrap's
 // TODO: target path as cli arg
 
-fn main() {
+fn main() -> Result<()> {
+	color_eyre::install()?;
+
 	env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).init();
 
 	let opts: Opts = Opts::parse();
 
-	println!("{:#?}", opts);
+	debug!("Parsed Opts: {:#?}", opts);
 
+	handle_commands(opts)
+}
+
+fn handle_commands(opts: Opts) -> Result<()> {
 	match opts.command {
 		Command::Deploy(cmd) => {
 			let profile_path = opts.shared.source.join("profiles");
 
-			let profile: Profile = resolve_profile(&profile_path, &cmd.profile);
+			let profile: Profile = resolve_profile(&profile_path, &cmd.profile)?;
 
-			println!("{:#?}", profile);
+			debug!("Profile: {:#?}", profile);
 			//println!("{}", serde_yaml::to_string(&profile).unwrap());
 
 			let options = ExecutorOptions {
@@ -97,14 +105,16 @@ fn main() {
 
 			let deployment = deployer
 				.deploy(opts.shared.source.join("items"), profile)
-				.unwrap();
+				.wrap_err("Failed to deploy");
 
 			println!("{:#?}", deployment);
 		}
 	}
+
+	Ok(())
 }
 
-fn ask_user_merge(deploy_path: &Path, source_path: &Path) -> bool {
+fn ask_user_merge(deploy_path: &Path, source_path: &Path) -> Result<bool> {
 	use std::io::Write;
 
 	let stdin = std::io::stdin();
@@ -112,26 +122,24 @@ fn ask_user_merge(deploy_path: &Path, source_path: &Path) -> bool {
 	let mut line = String::new();
 
 	loop {
-		stdout
-			.write_all(
-				format!(
-					"Overwrite `{}` with `{}` [y/N]:",
-					deploy_path.display(),
-					source_path.display()
-				)
-				.as_bytes(),
+		stdout.write_all(
+			format!(
+				"Overwrite `{}` with `{}` [y/N]:",
+				deploy_path.display(),
+				source_path.display()
 			)
-			.unwrap();
+			.as_bytes(),
+		)?;
 
-		stdout.flush().unwrap();
+		stdout.flush()?;
 
-		stdin.read_line(&mut line).unwrap();
+		stdin.read_line(&mut line)?;
 
 		line.make_ascii_lowercase();
 
 		return match line.trim() {
-			"y" => true,
-			"n" => false,
+			"y" => Ok(true),
+			"n" => Ok(false),
 			_ => {
 				line.clear();
 				continue;

@@ -1,8 +1,9 @@
 use std::collections::VecDeque;
-use std::error::Error;
-use std::fmt;
 use std::fs::ReadDir;
 use std::path::{Path, PathBuf};
+
+use color_eyre::eyre::Context;
+use color_eyre::Result;
 
 use super::deployment::{Deployment, DeploymentBuilder};
 use crate::deploy::item::ItemStatus;
@@ -14,17 +15,6 @@ pub struct ExecutorOptions {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ExecutorError {}
-
-impl fmt::Display for ExecutorError {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		fmt::Debug::fmt(&self, f)
-	}
-}
-
-impl Error for ExecutorError {}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Executor<F> {
 	options: ExecutorOptions,
 	merge_ask_fn: F,
@@ -32,7 +22,7 @@ pub struct Executor<F> {
 
 impl<F> Executor<F>
 where
-	F: Fn(&Path, &Path) -> bool,
+	F: Fn(&Path, &Path) -> Result<bool>,
 {
 	pub fn new(options: ExecutorOptions, f: F) -> Self {
 		Self {
@@ -41,11 +31,7 @@ where
 		}
 	}
 
-	pub fn deploy(
-		&self,
-		source_path: PathBuf,
-		mut profile: Profile,
-	) -> Result<Deployment, ExecutorError> {
+	pub fn deploy(&self, source_path: PathBuf, mut profile: Profile) -> Result<Deployment> {
 		// TODO: decide when deployment failed
 		// TODO: check if it handles relative paths
 		// TODO: merge code from deploy_file/deploy_child
@@ -73,7 +59,7 @@ where
 
 		for hook in &profile.pre_hooks {
 			log::info!("Executing pre hook: `{:?}`", hook);
-			hook.execute().unwrap();
+			hook.execute()?;
 		}
 
 		let items = std::mem::take(&mut profile.items);
@@ -83,8 +69,8 @@ where
 		}
 
 		for hook in &profile.post_hooks {
-			log::info!("Executing post hook: `{:?}`", hook);
-			hook.execute().unwrap();
+			log::info!("Executing post-hook: `{:?}`", hook);
+			hook.execute().wrap_err("Failed to execute post-hook")?;
 		}
 
 		Ok(builder.success())
@@ -96,7 +82,7 @@ where
 		source_path: &Path,
 		profile: &Profile,
 		item: Item,
-	) -> Result<(), ExecutorError> {
+	) -> Result<()> {
 		// TODO: cleanup
 		let item_deploy_path = resolve_deployment_path(
 			&profile
@@ -178,7 +164,7 @@ where
 		directory: Item,
 		directory_source_path: PathBuf,
 		directory_deploy_path: PathBuf,
-	) -> Result<(), ExecutorError> {
+	) -> Result<()> {
 		let directory_deploy_path = match directory.target {
 			None => profile
 				.target
@@ -339,7 +325,7 @@ where
 		child_path: PathBuf,
 		child_source_path: PathBuf,
 		child_deploy_path: PathBuf,
-	) -> Result<(), ExecutorError> {
+	) -> Result<()> {
 		// Check if there is an already deployed item at `deploy_path`.
 		if let Some(other_priority) = builder.get_priority(&child_deploy_path) {
 			// Previously deployed item has higher priority; Skip current item.
@@ -389,7 +375,10 @@ where
 				MergeMode::Ask => {
 					log::info!("[{}] Asking for action", child_path.display());
 
-					if !(self.merge_ask_fn)(&child_deploy_path, &child_source_path) {
+					if !((self.merge_ask_fn)(&child_deploy_path, &child_source_path)
+						.wrap_err("Error evaluating user response")
+						.unwrap())
+					{
 						log::info!("[{}] Merge was denied", child_path.display());
 
 						builder.add_child(
@@ -486,7 +475,7 @@ where
 		file: Item,
 		file_source_path: PathBuf,
 		file_deploy_path: PathBuf,
-	) -> Result<(), ExecutorError> {
+	) -> Result<()> {
 		// Check if there is an already deployed item at `deploy_path`.
 		if let Some(other_priority) = builder.get_priority(&file_deploy_path) {
 			// Previously deployed item has higher priority; Skip current item.
@@ -536,7 +525,9 @@ where
 				MergeMode::Ask => {
 					log::info!("[{}] Asking for action", file_deploy_path.display());
 
-					if !(self.merge_ask_fn)(&file_deploy_path, &file_source_path) {
+					if !((self.merge_ask_fn)(&file_deploy_path, &file_source_path)
+						.wrap_err("Error evaluating user response")?)
+					{
 						log::info!("[{}] Merge was denied", file.path.display());
 
 						builder.add_item(
