@@ -31,16 +31,36 @@ impl Hook {
 			.stderr(Stdio::piped())
 			.spawn()?;
 
+		// No need to call kill here as the program will immediately exit
+		// and thereby kill all spawned children
 		let stdout = child.stdout.take().expect("Failed to get stdout from hook");
 
 		for line in BufReader::new(stdout).lines() {
-			println!("{}", line?);
+			match line {
+				Ok(line) => println!("{}", line),
+				Err(err) => {
+					// Result is explicitly ignored as an error was already
+					// encountered
+					let _ = child.kill();
+					return Err(err.into());
+				}
+			}
 		}
 
+		// No need to call kill here as the program will immediately exit
+		// and thereby kill all spawned children
 		let stderr = child.stderr.take().expect("Failed to get stderr from hook");
 
 		for line in BufReader::new(stderr).lines() {
-			println!("{}", line?);
+			match line {
+				Ok(line) => println!("{}", line),
+				Err(err) => {
+					// Result is explicitly ignored as an error was already
+					// encountered
+					let _ = child.kill();
+					return Err(err.into());
+				}
+			}
 		}
 
 		child
