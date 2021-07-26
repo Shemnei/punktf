@@ -25,11 +25,13 @@ impl Hook {
 	}
 
 	pub fn execute(&self) -> Result<()> {
-		let mut child = self
-			.prepare_command()
-			.stdout(Stdio::piped())
-			.stderr(Stdio::piped())
-			.spawn()?;
+		let mut cmd = if let Some(cmd) = self.prepare_command() {
+			cmd
+		} else {
+			return Ok(());
+		};
+
+		let mut child = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
 
 		// No need to call kill here as the program will immediately exit
 		// and thereby kill all spawned children
@@ -70,7 +72,7 @@ impl Hook {
 			.map_err(Into::into)
 	}
 
-	fn prepare_command(&self) -> Command {
+	fn prepare_command(&self) -> Option<Command> {
 		// Flow:
 		//	- detect `\"` (future maybe: `'`, `$(`, ```)
 		//	- split by ` `, `\"`
@@ -110,8 +112,8 @@ impl Hook {
 
 		log::debug!("Hook parts: {:?}", parts);
 
-		let mut cmd = Command::new(parts.pop_front().unwrap());
+		let mut cmd = Command::new(parts.pop_front()?);
 		cmd.args(parts);
-		cmd
+		Some(cmd)
 	}
 }

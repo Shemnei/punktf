@@ -100,8 +100,6 @@ where
 			item_deploy_path.display()
 		);
 
-		log::debug!("{}", item_source_path.canonicalize().unwrap().display());
-
 		// TODO: for now dont follow symlinks
 		let metadata = match item_source_path.symlink_metadata() {
 			Ok(metadata) => metadata,
@@ -376,8 +374,7 @@ where
 					log::info!("[{}] Asking for action", child_path.display());
 
 					if !((self.merge_ask_fn)(&child_deploy_path, &child_source_path)
-						.wrap_err("Error evaluating user response")
-						.unwrap())
+						.wrap_err("Error evaluating user response")?)
 					{
 						log::info!("[{}] Merge was denied", child_path.display());
 

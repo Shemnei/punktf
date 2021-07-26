@@ -226,8 +226,17 @@ fn find_profile_path(profile_path: &Path, name: &str) -> Result<PathBuf> {
 			dent.as_ref()
 				.map(|dent| {
 					let file_path = dent.path();
-					let file_name = file_path.file_name().unwrap().to_str().unwrap();
-					name == file_name[..file_name.rfind('.').unwrap()].to_lowercase()
+
+					let file_name = match file_path.file_name() {
+						Some(file_name) => file_name.to_string_lossy(),
+						None => return false,
+					};
+
+					if let Some(dot_idx) = file_name.rfind('.') {
+						name == file_name[..dot_idx].to_lowercase()
+					} else {
+						false
+					}
 				})
 				.unwrap_or(false)
 		})
@@ -236,7 +245,6 @@ fn find_profile_path(profile_path: &Path, name: &str) -> Result<PathBuf> {
 }
 
 pub fn resolve_profile(profile_path: &Path, name: &str) -> Result<Profile> {
-	// TODO: unwraps
 	let mut profiles = HashSet::new();
 
 	let mut root = Profile::from_file(find_profile_path(profile_path, name)?)?;
