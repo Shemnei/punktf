@@ -31,19 +31,23 @@ impl Hook {
 			.stderr(Stdio::piped())
 			.spawn()?;
 
-		for line in BufReader::new(child.stdout.take().unwrap()).lines() {
-			println!("{}", line.unwrap());
+		let stdout = child.stdout.take().expect("Failed to get stdout from hook");
+
+		for line in BufReader::new(stdout).lines() {
+			println!("{}", line?);
 		}
 
-		for line in BufReader::new(child.stderr.take().unwrap()).lines() {
-			println!("{}", line.unwrap());
+		let stderr = child.stderr.take().expect("Failed to get stderr from hook");
+
+		for line in BufReader::new(stderr).lines() {
+			println!("{}", line?);
 		}
 
 		child
 			.wait_with_output()?
 			.status
 			.exit_ok()
-			.map_err(|err| err.into())
+			.map_err(Into::into)
 	}
 
 	fn prepare_command(&self) -> Command {
