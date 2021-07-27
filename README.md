@@ -4,10 +4,22 @@
 
 ## DISCLAIMER
 
-**CURRENTLY THIS CRATE ONLY PARSES COMMAND LINE ARGUMENTS, NOTHING MORE.**
-
 This crate is sill under development and not all features are currently implemented.
-Layouts and formats can and will change will in development.
+Layouts and formats can and will change while in development.
+
+The following features are already implemented:
+
+- [x] Basic deployment process
+- [x] Reading from a profile file
+- [x] Depolying non template items
+- [x] Directories can be used as an item
+- [x] Profiles can have another profile as a base
+- [x] Pre/Post deployment hooks
+- [x] Basic support for merge operations
+
+Before you try this tool, please make sure to save/backup your existing setup.
+While in deployment there are likely bugs which can and will mess up your
+existing setup.
 
 ## Yet another dotfile manager?!
 
