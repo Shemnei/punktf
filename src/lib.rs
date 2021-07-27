@@ -15,32 +15,6 @@ use variables::UserVars;
 
 use crate::hook::Hook;
 
-#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct RangeMap(Vec<usize>);
-
-impl RangeMap {
-	pub fn new<I: IntoIterator<Item = usize>>(items: I) -> Result<Self> {
-		let items: Vec<usize> = items.into_iter().collect();
-
-		if items.len() % 2 != 0 {
-			return Err(eyre!("RangeMap must have an even number of items"));
-		}
-
-		Ok(Self(items))
-	}
-
-	pub fn in_range(&self, value: &usize) -> bool {
-		match self.0.binary_search(value) {
-			// value is at start or at the end of a range
-			Ok(_) => true,
-			// value is in range if the index is uneven
-			// e.g. (0 1) (2 3)
-			// idx = 1 => (0 [1] 2) (3 4)
-			Err(idx) => idx % 2 == 1,
-		}
-	}
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Profile {
 	/// Defines the base profile. All settings from the base are merged with the
@@ -217,32 +191,25 @@ fn get_target_path() -> PathBuf {
 }
 
 fn find_profile_path(profile_path: &Path, name: &str) -> Result<PathBuf> {
-	// TODO: cleanup
 	let name = name.to_lowercase();
 
-	Ok(profile_path
+	profile_path
 		.read_dir()
 		.wrap_err("Failed to read profile directory")?
-		.find(|dent| {
-			if let Ok(dent) = dent {
-				let file_path = dent.path();
+		.filter_map(|dent| dent.ok().map(|dent| dent.path()))
+		.find(|path| {
+			let file_name = match path.file_name() {
+				Some(file_name) => file_name.to_string_lossy(),
+				None => return false,
+			};
 
-				let file_name = match file_path.file_name() {
-					Some(file_name) => file_name.to_string_lossy(),
-					None => return false,
-				};
-
-				if let Some(dot_idx) = file_name.rfind('.') {
-					name == file_name[..dot_idx].to_lowercase()
-				} else {
-					false
-				}
+			if let Some(dot_idx) = file_name.rfind('.') {
+				name == file_name[..dot_idx].to_lowercase()
 			} else {
 				false
 			}
 		})
-		.ok_or(())?
-		.path())
+		.ok_or_else(|| eyre!("No matching profile found"))
 }
 
 pub fn resolve_profile(profile_path: &Path, name: &str) -> Result<Profile> {

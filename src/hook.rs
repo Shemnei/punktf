@@ -2,11 +2,35 @@ use std::collections::VecDeque;
 use std::io::{BufRead as _, BufReader};
 use std::process::{Command, Stdio};
 
-use color_eyre::Result;
+use color_eyre::eyre::{eyre, Result};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::RangeMap;
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct RangeMap(Vec<usize>);
+
+impl RangeMap {
+	pub fn new<I: IntoIterator<Item = usize>>(items: I) -> Result<Self> {
+		let items: Vec<usize> = items.into_iter().collect();
+
+		if items.len() % 2 != 0 {
+			return Err(eyre!("RangeMap must have an even number of items"));
+		}
+
+		Ok(Self(items))
+	}
+
+	pub fn in_range(&self, value: &usize) -> bool {
+		match self.0.binary_search(value) {
+			// value is at start or at the end of a range
+			Ok(_) => true,
+			// value is in range if the index is uneven
+			// e.g. (0 1) (2 3)
+			// idx = 1 => (0 [1] 2) (3 4)
+			Err(idx) => idx % 2 == 1,
+		}
+	}
+}
 
 #[derive(Error, Debug)]
 pub enum HookError {
@@ -25,13 +49,11 @@ impl Hook {
 	}
 
 	pub fn execute(&self) -> Result<()> {
-		let mut cmd = if let Some(cmd) = self.prepare_command() {
-			cmd
-		} else {
-			return Ok(());
-		};
-
-		let mut child = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
+		let mut child = self
+			.prepare_command()?
+			.stdout(Stdio::piped())
+			.stderr(Stdio::piped())
+			.spawn()?;
 
 		// No need to call kill here as the program will immediately exit
 		// and thereby kill all spawned children
@@ -72,7 +94,7 @@ impl Hook {
 			.map_err(Into::into)
 	}
 
-	fn prepare_command(&self) -> Option<Command> {
+	fn prepare_command(&self) -> Result<Command> {
 		// Flow:
 		//	- detect `\"` (future maybe: `'`, `$(`, ```)
 		//	- split by ` `, `\"`
@@ -112,8 +134,9 @@ impl Hook {
 
 		log::debug!("Hook parts: {:?}", parts);
 
-		let mut cmd = Command::new(parts.pop_front()?);
+		let program = parts.pop_front().ok_or_else(|| eyre!("Hook is empty"))?;
+		let mut cmd = Command::new(program);
 		cmd.args(parts);
-		Some(cmd)
+		Ok(cmd)
 	}
 }
