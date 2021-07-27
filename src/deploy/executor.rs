@@ -59,7 +59,7 @@ where
 
 		for hook in &profile.pre_hooks {
 			log::info!("Executing pre hook: `{:?}`", hook);
-			hook.execute()?;
+			hook.execute().wrap_err("Failed to execute pre-hook")?;
 		}
 
 		let items = std::mem::take(&mut profile.items);

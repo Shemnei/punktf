@@ -9,7 +9,7 @@ use std::collections::HashSet;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
-use color_eyre::eyre::{Context, Result};
+use color_eyre::eyre::{eyre, Context, Result};
 use serde::{Deserialize, Serialize};
 use variables::UserVars;
 
@@ -19,13 +19,14 @@ use crate::hook::Hook;
 pub struct RangeMap(Vec<usize>);
 
 impl RangeMap {
-	pub fn new<I: IntoIterator<Item = usize>>(items: I) -> Self {
+	pub fn new<I: IntoIterator<Item = usize>>(items: I) -> Result<Self> {
 		let items: Vec<usize> = items.into_iter().collect();
 
-		// TODO: make err
-		assert_eq!(items.len() % 2, 0, "Unclosed range");
+		if items.len() % 2 != 0 {
+			return Err(eyre!("RangeMap must have an even number of items"));
+		}
 
-		Self(items)
+		Ok(Self(items))
 	}
 
 	pub fn in_range(&self, value: &usize) -> bool {
@@ -223,24 +224,24 @@ fn find_profile_path(profile_path: &Path, name: &str) -> Result<PathBuf> {
 		.read_dir()
 		.wrap_err("Failed to read profile directory")?
 		.find(|dent| {
-			dent.as_ref()
-				.map(|dent| {
-					let file_path = dent.path();
+			if let Ok(dent) = dent {
+				let file_path = dent.path();
 
-					let file_name = match file_path.file_name() {
-						Some(file_name) => file_name.to_string_lossy(),
-						None => return false,
-					};
+				let file_name = match file_path.file_name() {
+					Some(file_name) => file_name.to_string_lossy(),
+					None => return false,
+				};
 
-					if let Some(dot_idx) = file_name.rfind('.') {
-						name == file_name[..dot_idx].to_lowercase()
-					} else {
-						false
-					}
-				})
-				.unwrap_or(false)
+				if let Some(dot_idx) = file_name.rfind('.') {
+					name == file_name[..dot_idx].to_lowercase()
+				} else {
+					false
+				}
+			} else {
+				false
+			}
 		})
-		.unwrap()?
+		.ok_or(())?
 		.path())
 }
 

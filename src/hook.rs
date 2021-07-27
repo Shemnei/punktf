@@ -86,7 +86,7 @@ impl Hook {
 			start_idx += 1;
 		}
 
-		let ranges = RangeMap::new(escape_idxs);
+		let ranges = RangeMap::new(escape_idxs)?;
 
 		let mut parts = VecDeque::new();
 		let mut split_idx = 0;
