@@ -1,46 +1,43 @@
 use std::collections::VecDeque;
-use std::error::Error;
-use std::fmt;
 use std::io::{BufRead as _, BufReader};
 use std::process::{Command, Stdio};
 
+use color_eyre::eyre::{eyre, Result};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
-use crate::RangeMap;
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct RangeMap(Vec<usize>);
 
-#[derive(Debug)]
+impl RangeMap {
+	pub fn new<I: IntoIterator<Item = usize>>(items: I) -> Result<Self> {
+		let items: Vec<usize> = items.into_iter().collect();
+
+		if items.len() % 2 != 0 {
+			return Err(eyre!("RangeMap must have an even number of items"));
+		}
+
+		Ok(Self(items))
+	}
+
+	pub fn in_range(&self, value: &usize) -> bool {
+		match self.0.binary_search(value) {
+			// value is at start or at the end of a range
+			Ok(_) => true,
+			// value is in range if the index is uneven
+			// e.g. (0 1) (2 3)
+			// idx = 1 => (0 [1] 2) (3 4)
+			Err(idx) => idx % 2 == 1,
+		}
+	}
+}
+
+#[derive(Error, Debug)]
 pub enum HookError {
-	IoError(std::io::Error),
-	ExitStatusError(std::process::ExitStatusError),
-}
-
-impl fmt::Display for HookError {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-		match self {
-			Self::IoError(err) => fmt::Display::fmt(err, f),
-			Self::ExitStatusError(err) => fmt::Display::fmt(err, f),
-		}
-	}
-}
-
-impl Error for HookError {
-	fn source(&self) -> Option<&(dyn Error + 'static)> {
-		match self {
-			Self::IoError(err) => Some(err),
-			Self::ExitStatusError(err) => Some(err),
-		}
-	}
-}
-
-impl From<std::io::Error> for HookError {
-	fn from(value: std::io::Error) -> Self {
-		Self::IoError(value)
-	}
-}
-impl From<std::process::ExitStatusError> for HookError {
-	fn from(value: std::process::ExitStatusError) -> Self {
-		Self::ExitStatusError(value)
-	}
+	#[error("IO Error")]
+	IoError(#[from] std::io::Error),
+	#[error("Process failed")]
+	ExitStatusError(#[from] std::process::ExitStatusError),
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -51,29 +48,53 @@ impl Hook {
 		Self(command.into())
 	}
 
-	pub fn execute(&self) -> Result<(), HookError> {
+	pub fn execute(&self) -> Result<()> {
 		let mut child = self
-			.prepare_command()
+			.prepare_command()?
 			.stdout(Stdio::piped())
 			.stderr(Stdio::piped())
 			.spawn()?;
 
-		for line in BufReader::new(child.stdout.take().unwrap()).lines() {
-			println!("{}", line.unwrap());
+		// No need to call kill here as the program will immediately exit
+		// and thereby kill all spawned children
+		let stdout = child.stdout.take().expect("Failed to get stdout from hook");
+
+		for line in BufReader::new(stdout).lines() {
+			match line {
+				Ok(line) => println!("{}", line),
+				Err(err) => {
+					// Result is explicitly ignored as an error was already
+					// encountered
+					let _ = child.kill();
+					return Err(err.into());
+				}
+			}
 		}
 
-		for line in BufReader::new(child.stderr.take().unwrap()).lines() {
-			println!("{}", line.unwrap());
+		// No need to call kill here as the program will immediately exit
+		// and thereby kill all spawned children
+		let stderr = child.stderr.take().expect("Failed to get stderr from hook");
+
+		for line in BufReader::new(stderr).lines() {
+			match line {
+				Ok(line) => println!("{}", line),
+				Err(err) => {
+					// Result is explicitly ignored as an error was already
+					// encountered
+					let _ = child.kill();
+					return Err(err.into());
+				}
+			}
 		}
 
 		child
 			.wait_with_output()?
 			.status
 			.exit_ok()
-			.map_err(|err| err.into())
+			.map_err(Into::into)
 	}
 
-	fn prepare_command(&self) -> Command {
+	fn prepare_command(&self) -> Result<Command> {
 		// Flow:
 		//	- detect `\"` (future maybe: `'`, `$(`, ```)
 		//	- split by ` `, `\"`
@@ -87,7 +108,7 @@ impl Hook {
 			start_idx += 1;
 		}
 
-		let ranges = RangeMap::new(escape_idxs);
+		let ranges = RangeMap::new(escape_idxs)?;
 
 		let mut parts = VecDeque::new();
 		let mut split_idx = 0;
@@ -113,8 +134,9 @@ impl Hook {
 
 		log::debug!("Hook parts: {:?}", parts);
 
-		let mut cmd = Command::new(parts.pop_front().unwrap());
+		let program = parts.pop_front().ok_or_else(|| eyre!("Hook is empty"))?;
+		let mut cmd = Command::new(program);
 		cmd.args(parts);
-		cmd
+		Ok(cmd)
 	}
 }

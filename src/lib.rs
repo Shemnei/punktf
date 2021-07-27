@@ -9,35 +9,11 @@ use std::collections::HashSet;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
+use color_eyre::eyre::{eyre, Context, Result};
 use serde::{Deserialize, Serialize};
 use variables::UserVars;
 
 use crate::hook::Hook;
-
-#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct RangeMap(Vec<usize>);
-
-impl RangeMap {
-	pub fn new<I: IntoIterator<Item = usize>>(items: I) -> Self {
-		let items: Vec<usize> = items.into_iter().collect();
-
-		// TODO: make err
-		assert_eq!(items.len() % 2, 0, "Unclosed range");
-
-		Self(items)
-	}
-
-	pub fn in_range(&self, value: &usize) -> bool {
-		match self.0.binary_search(value) {
-			// value is at start or at the end of a range
-			Ok(_) => true,
-			// value is in range if the index is uneven
-			// e.g. (0 1) (2 3)
-			// idx = 1 => (0 [1] 2) (3 4)
-			Err(idx) => idx % 2 == 1,
-		}
-	}
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Profile {
@@ -214,33 +190,32 @@ fn get_target_path() -> PathBuf {
 		.into()
 }
 
-fn find_profile_path(profile_path: &Path, name: &str) -> Option<PathBuf> {
-	// TODO: cleanup
+fn find_profile_path(profile_path: &Path, name: &str) -> Result<PathBuf> {
 	let name = name.to_lowercase();
 
-	Some(
-		profile_path
-			.read_dir()
-			.unwrap()
-			.find(|dent| {
-				dent.as_ref()
-					.map(|dent| {
-						let file_path = dent.path();
-						let file_name = file_path.file_name().unwrap().to_str().unwrap();
-						name == file_name[..file_name.rfind('.').unwrap()].to_lowercase()
-					})
-					.unwrap_or(false)
-			})?
-			.unwrap()
-			.path(),
-	)
+	profile_path
+		.read_dir()
+		.wrap_err("Failed to read profile directory")?
+		.filter_map(|dent| dent.ok().map(|dent| dent.path()))
+		.find(|path| {
+			let file_name = match path.file_name() {
+				Some(file_name) => file_name.to_string_lossy(),
+				None => return false,
+			};
+
+			if let Some(dot_idx) = file_name.rfind('.') {
+				name == file_name[..dot_idx].to_lowercase()
+			} else {
+				false
+			}
+		})
+		.ok_or_else(|| eyre!("No matching profile found"))
 }
 
-pub fn resolve_profile(profile_path: &Path, name: &str) -> Profile {
-	// TODO: unwraps
+pub fn resolve_profile(profile_path: &Path, name: &str) -> Result<Profile> {
 	let mut profiles = HashSet::new();
 
-	let mut root = Profile::from_file(find_profile_path(profile_path, name).unwrap()).unwrap();
+	let mut root = Profile::from_file(find_profile_path(profile_path, name)?)?;
 	profiles.insert(name.to_string().to_lowercase());
 
 	while let Some(base_name) = root.extends.clone() {
@@ -253,10 +228,10 @@ pub fn resolve_profile(profile_path: &Path, name: &str) -> Profile {
 			break;
 		}
 
-		let path = find_profile_path(profile_path, &base_name).unwrap();
+		let path = find_profile_path(profile_path, &base_name)?;
 		log::debug!("Path for profile `{}`: {}", base_name, path.display());
 
-		let profile = Profile::from_file(path).unwrap();
+		let profile = Profile::from_file(path)?;
 
 		log::debug!("Profile `{}`: {:#?}", base_name, profile);
 
@@ -265,7 +240,7 @@ pub fn resolve_profile(profile_path: &Path, name: &str) -> Profile {
 		profiles.insert(base_name);
 	}
 
-	root
+	Ok(root)
 }
 
 #[cfg(test)]
