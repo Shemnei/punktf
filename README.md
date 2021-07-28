@@ -10,6 +10,7 @@ Layouts and formats can and will change while in development.
 The following features are already implemented:
 
 - [x] Basic deployment process
+- [x] Basic templating support
 - [x] Reading from a profile file
 - [x] Depolying non template items
 - [x] Directories can be used as an item
@@ -61,7 +62,7 @@ PunktF searches for the source path in the following order:
 	+ init.vim.win
 ```
 
-## PFP Format (PunktF profile)
+## PunktF profile (either json or yaml)
 
 ```json5
 {
