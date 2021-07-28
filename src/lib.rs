@@ -3,6 +3,7 @@
 
 pub mod deploy;
 pub mod hook;
+pub mod template;
 pub mod variables;
 
 use std::collections::HashSet;
@@ -138,8 +139,8 @@ pub struct Item {
 }
 
 impl Item {
-	pub fn template_or_default(&self) -> bool {
-		self.template.unwrap_or(false)
+	pub fn is_template(&self) -> bool {
+		self.template.unwrap_or(true)
 	}
 }
 

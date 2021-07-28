@@ -7,6 +7,7 @@ use color_eyre::Result;
 
 use super::deployment::{Deployment, DeploymentBuilder};
 use crate::deploy::item::ItemStatus;
+use crate::template::Template;
 use crate::{DeployTarget, Item, MergeMode, Profile};
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
@@ -315,7 +316,7 @@ where
 		&self,
 		builder: &mut DeploymentBuilder,
 		_source_path: &Path,
-		_profile: &Profile,
+		profile: &Profile,
 		directory: &Item,
 		_directory_source_path: &Path,
 		directory_deploy_path: &Path,
@@ -411,23 +412,28 @@ where
 			}
 		}
 
-		if directory.template_or_default() {
-			if !self.options.dry_run {
-				let content = match std::fs::read(&child_source_path) {
-					Ok(content) => content,
-					Err(err) => {
-						log::info!("[{}] Failed to read source content", child_path.display());
-						builder.add_child(
-							child_deploy_path,
-							directory_deploy_path.to_path_buf(),
-							err.into(),
-						);
-						return Ok(());
-					}
-				};
+		if directory.is_template() {
+			let content = match std::fs::read_to_string(&child_source_path) {
+				Ok(content) => content,
+				Err(err) => {
+					log::info!("[{}] Failed to read source content", child_path.display());
+					builder.add_child(
+						child_deploy_path,
+						directory_deploy_path.to_path_buf(),
+						err.into(),
+					);
+					return Ok(());
+				}
+			};
 
-				// TODO: do template transform
-				if let Err(err) = std::fs::write(&child_deploy_path, content) {
+			let template = Template::parse(&content)
+				.with_context(|| format!("File: {}", child_source_path.display()))?;
+			let content = template
+				.fill(profile.variables.as_ref(), directory.variables.as_ref())
+				.with_context(|| format!("File: {}", child_source_path.display()))?;
+
+			if !self.options.dry_run {
+				if let Err(err) = std::fs::write(&child_deploy_path, content.as_bytes()) {
 					log::info!("[{}] Failed to write content", child_path.display());
 					builder.add_child(
 						child_deploy_path,
@@ -468,7 +474,7 @@ where
 		&self,
 		builder: &mut DeploymentBuilder,
 		_source_path: &Path,
-		_profile: &Profile,
+		profile: &Profile,
 		file: Item,
 		file_source_path: PathBuf,
 		file_deploy_path: PathBuf,
@@ -556,19 +562,25 @@ where
 			}
 		}
 
-		if file.template_or_default() {
-			if !self.options.dry_run {
-				let content = match std::fs::read(&file_source_path) {
-					Ok(content) => content,
-					Err(err) => {
-						log::info!("[{}] Failed to read source content", file.path.display());
-						builder.add_item(file_deploy_path, file, err.into());
-						return Ok(());
-					}
-				};
+		if file.is_template() {
+			let content = match std::fs::read_to_string(&file_source_path) {
+				Ok(content) => content,
+				Err(err) => {
+					log::info!("[{}] Failed to read source content", file.path.display());
+					builder.add_item(file_deploy_path, file, err.into());
+					return Ok(());
+				}
+			};
 
+			let template = Template::parse(&content)
+				.with_context(|| format!("File: {}", file_source_path.display()))?;
+			let content = template
+				.fill(profile.variables.as_ref(), file.variables.as_ref())
+				.with_context(|| format!("File: {}", file_source_path.display()))?;
+
+			if !self.options.dry_run {
 				// TODO: do template transform
-				if let Err(err) = std::fs::write(&file_deploy_path, content) {
+				if let Err(err) = std::fs::write(&file_deploy_path, content.as_bytes()) {
 					log::info!("[{}] Failed to write content", file.path.display());
 					builder.add_item(file_deploy_path, file, err.into());
 					return Ok(());
