@@ -56,22 +56,27 @@ where
 		//	- IF FILE: write item
 		//	- IF DIR: for each item in dir START AT TOP
 
+		let profiles_source_path = source_path.join("profiles");
+		let items_source_path = source_path.join("items");
+
 		let mut builder = Deployment::build();
 
 		for hook in &profile.pre_hooks {
 			log::info!("Executing pre hook: `{:?}`", hook);
-			hook.execute().wrap_err("Failed to execute pre-hook")?;
+			hook.execute(&profiles_source_path)
+				.wrap_err("Failed to execute pre-hook")?;
 		}
 
 		let items = std::mem::take(&mut profile.items);
 
 		for item in items.into_iter() {
-			let _ = self.deploy_item(&mut builder, &source_path, &profile, item)?;
+			let _ = self.deploy_item(&mut builder, &items_source_path, &profile, item)?;
 		}
 
 		for hook in &profile.post_hooks {
 			log::info!("Executing post-hook: `{:?}`", hook);
-			hook.execute().wrap_err("Failed to execute post-hook")?;
+			hook.execute(&profiles_source_path)
+				.wrap_err("Failed to execute post-hook")?;
 		}
 
 		Ok(builder.success())
@@ -80,7 +85,7 @@ where
 	fn deploy_item(
 		&self,
 		builder: &mut DeploymentBuilder,
-		source_path: &Path,
+		items_source_path: &Path,
 		profile: &Profile,
 		item: Item,
 	) -> Result<()> {
@@ -92,7 +97,7 @@ where
 				.unwrap_or_else(crate::get_target_path),
 			&item,
 		);
-		let item_source_path = resolve_source_path(source_path, &item);
+		let item_source_path = resolve_source_path(items_source_path, &item);
 
 		log::debug!(
 			"[{}] `{}` | `{}`",
@@ -120,7 +125,7 @@ where
 		if metadata.is_file() {
 			self.deploy_file(
 				builder,
-				source_path,
+				items_source_path,
 				profile,
 				item,
 				item_source_path,
@@ -129,7 +134,7 @@ where
 		} else if metadata.is_dir() {
 			self.deploy_dir(
 				builder,
-				source_path,
+				items_source_path,
 				profile,
 				item,
 				item_source_path,
