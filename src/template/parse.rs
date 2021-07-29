@@ -29,7 +29,24 @@ impl<'a> Parser<'a> {
 	}
 
 	fn parse_next_block(&mut self) -> Option<Result<Block>> {
-		let (span, content) = self.blocks.next()?;
+		let (span, hint, content) = self.blocks.next()?;
+
+		dbg!(hint);
+
+		if let Some(hint) = hint {
+			let kind = match hint {
+				BlockKindHint::Text => BlockKind::Text,
+				BlockKindHint::Escaped => BlockKind::Escaped(span.offset_low(3).offset_high(-3)),
+				BlockKindHint::Comment => BlockKind::Comment,
+			};
+
+			return Some(Ok(Block::new(span, kind)));
+		}
+
+		if !matches!(content.as_bytes(), &[b'{', b'{', .., b'}', b'}']) {
+			return Some(Ok(Block::new(span, BlockKind::Text)));
+		}
+
 		let content = &content[2..content.len() - 2];
 
 		println!("Content: `{}`", content);
@@ -44,7 +61,7 @@ impl<'a> Parser<'a> {
 		}
 
 		if let Some(b"@if") = content.as_bytes().get(..3) {
-			return Some(self.parse_if_blocks(span.span(content)));
+			return Some(self.parse_if_block(span.span(content)));
 		}
 
 		match parse_var(content, span.low().as_usize() + 2) {
@@ -53,7 +70,8 @@ impl<'a> Parser<'a> {
 		}
 	}
 
-	fn parse_if_blocks(&mut self, head: Spanned<&str>) -> Result<Block> {
+	// TODO: allow nested blocks
+	fn parse_if_block(&mut self, head: Spanned<&str>) -> Result<Block> {
 		// parse head
 		// check if next block is else / elif / fi
 
@@ -69,10 +87,11 @@ impl<'a> Parser<'a> {
 
 			// +2 for if opening `{{` the other +2 for var opening
 			let var_start = span.low().as_usize() + 2 + start + 2;
+			let var_end = span.low().as_usize() + 2 + end + 2;
 
 			let var = parse_var(&content[start + 2..end], var_start)?;
 			let op = parse_ifop(&content[end + 2..])?;
-			let other = parse_other(&content[end + 2..], var_start)?;
+			let other = parse_other(&content[end + 2..], var_end)?;
 
 			span.span(IfExpr { var, op, other })
 		};
@@ -85,10 +104,12 @@ impl<'a> Parser<'a> {
 		// check next block for elif
 		let mut elifs = Vec::new();
 
-		let (mut span, mut content) = self
-			.blocks
-			.next()
+		let (mut span, hint, mut content) = self
+			.next_non_text_block()
 			.ok_or_else(|| eyre!("Unexpected end of if at {:?}", span))?;
+
+		// loop and discard any text blocks
+		while let Some(BlockKindHint::Text) = hint {}
 
 		loop {
 			content = &content[2..content.len() - 2];
@@ -104,10 +125,11 @@ impl<'a> Parser<'a> {
 
 					// +2 for if opening `{{` the other +2 for var opening
 					let var_start = span.low().as_usize() + 2 + start + 2;
+					let var_end = span.low().as_usize() + 2 + end + 2;
 
 					let var = parse_var(&content[start + 2..end], var_start)?;
 					let op = parse_ifop(&content[end + 2..])?;
-					let other = parse_other(&content[end + 2..], var_start)?;
+					let other = parse_other(&content[end + 2..], var_end)?;
 
 					span.span(IfExpr { var, op, other })
 				};
@@ -122,9 +144,8 @@ impl<'a> Parser<'a> {
 				break;
 			}
 
-			let (_span, _content) = self
-				.blocks
-				.next()
+			let (_span, _hint, _content) = self
+				.next_non_text_block()
 				.ok_or_else(|| eyre!("Unexpected end of if at {:?}", span))?;
 
 			span = _span;
@@ -133,9 +154,8 @@ impl<'a> Parser<'a> {
 
 		// check next block for else
 		let els = if content == "@else" {
-			let (_span, _content) = self
-				.blocks
-				.next()
+			let (_span, _hint, _content) = self
+				.next_non_text_block()
 				.ok_or_else(|| eyre!("Unexpected end of if at {:?}", span))?;
 
 			let ret = Some(span);
@@ -167,57 +187,86 @@ impl<'a> Parser<'a> {
 			}),
 		))
 	}
+
+	fn next_non_text_block(&mut self) -> Option<(CharSpan, Option<BlockKindHint>, &str)> {
+		// loop and discard any text blocks
+		loop {
+			let (span, hint, content) = self.blocks.next()?;
+			if hint != Some(BlockKindHint::Text) {
+				return Some((span, hint, content));
+			}
+		}
+	}
 }
 
-fn find_block(s: &str) -> Option<Result<CharSpan>> {
-	if let Some(low) = s.find("{{") {
-		if let Some(b'{') = s.as_bytes().get(low + 2) {
-			// block is an escaped block
-			if let Some(high) = s.find("}}}") {
-				Some(Ok(CharSpan::new(low, high + 3)))
-			} else {
-				Some(Err(eyre!(
-					"Found opening for an escaped block at {} but no closing",
-					low
-				)))
-			}
-		} else if let Some(b"!--") = s.as_bytes().get(low + 2..low + 5) {
-			// block is an comment block
-			if let Some(high) = s.find("--}}") {
-				Some(Ok(CharSpan::new(low, high + 4)))
-			} else {
-				Some(Err(eyre!(
-					"Found opening for a comment block at {} but no closing",
-					low
-				)))
-			}
-		} else {
-			// check depth
-			let mut openings = s[low + 1..].match_indices("{{").map(|(idx, _)| idx);
-			let closings = s[low + 1..].match_indices("}}").map(|(idx, _)| idx);
+fn next_block(s: &str) -> Option<Result<(CharSpan, Option<BlockKindHint>)>> {
+	if s.is_empty() {
+		return None;
+	}
 
-			for high in closings {
-				// check the is a opening.
-				if let Some(opening) = openings.next() {
-					// check if opening comes before the closing.
-					if opening < high {
-						// opening lies before the closing. Continue to search
-						// for the matching closing of low.
-						continue;
+	if let Some(low) = s.find("{{") {
+		if low > 0 {
+			// found text block
+			Some(Ok((CharSpan::new(0usize, low), Some(BlockKindHint::Text))))
+		} else {
+			if let Some(b'{') = s.as_bytes().get(low + 2) {
+				// block is an escaped block
+				if let Some(high) = s.find("}}}") {
+					Some(Ok((
+						CharSpan::new(low, high + 3),
+						Some(BlockKindHint::Escaped),
+					)))
+				} else {
+					Some(Err(eyre!(
+						"Found opening for an escaped block at {} but no closing",
+						low
+					)))
+				}
+			} else if let Some(b"!--") = s.as_bytes().get(low + 2..low + 5) {
+				// block is an comment block
+				if let Some(high) = s.find("--}}") {
+					Some(Ok((
+						CharSpan::new(low, high + 4),
+						Some(BlockKindHint::Comment),
+					)))
+				} else {
+					Some(Err(eyre!(
+						"Found opening for a comment block at {} but no closing",
+						low
+					)))
+				}
+			} else {
+				// check depth
+				let mut openings = s[low + 1..].match_indices("{{").map(|(idx, _)| idx);
+				let closings = s[low + 1..].match_indices("}}").map(|(idx, _)| idx);
+
+				for high in closings {
+					// check the is a opening.
+					if let Some(opening) = openings.next() {
+						// check if opening comes before the closing.
+						if opening < high {
+							// opening lies before the closing. Continue to search
+							// for the matching closing of low.
+							continue;
+						}
 					}
+
+					let high = high + 2 + (low + 1);
+					return Some(Ok((CharSpan::new(low, high), None)));
 				}
 
-				let high = high + 2 + (low + 1);
-				return Some(Ok(CharSpan::new(low, high)));
+				Some(Err(eyre!(
+					"Found opening for a block at {} but no closing",
+					low
+				)))
 			}
-
-			Some(Err(eyre!(
-				"Found opening for a block at {} but no closing",
-				low
-			)))
 		}
 	} else {
-		None
+		// Found text block
+		Some(Ok((
+			CharSpan::new(0usize, s.len()),
+			Some(BlockKindHint::Text),
+		)))
 	}
 }
 
@@ -308,7 +357,7 @@ fn parse_other(inner: &str, offset: usize) -> Result<CharSpan> {
 		(Some(low), Some(high)) => Ok(CharSpan::new(offset + low + 1, offset + high)),
 		(Some(low), None) => Err(eyre!(
 			"Found opening `\"` at {} but no closing",
-			low + offset
+			offset + low
 		)),
 		_ => Err(eyre!("Found no other")),
 	}
@@ -319,6 +368,13 @@ fn is_var_name_symbol(b: u8) -> bool {
 		|| (b'A'..=b'Z').contains(&b)
 		|| (b'0'..=b'9').contains(&b)
 		|| b == b'_'
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BlockKindHint {
+	Text,
+	Escaped,
+	Comment,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -334,15 +390,15 @@ impl<'a> BlockIter<'a> {
 }
 
 impl<'a> Iterator for BlockIter<'a> {
-	type Item = (CharSpan, &'a str);
+	type Item = (CharSpan, Option<BlockKindHint>, &'a str);
 
 	fn next(&mut self) -> Option<Self::Item> {
-		let mut span = find_block(&self.content[self.index..])?.unwrap();
+		let (mut span, hint) = next_block(&self.content[self.index..])?.unwrap();
 
 		span = span.offset(self.index as i32);
 		self.index = span.high().as_usize();
 
-		Some((span, &self.content[span]))
+		Some((span, hint, &self.content[span]))
 	}
 }
 
@@ -362,7 +418,7 @@ mod tests {
 
 		let iter = BlockIter::new(content);
 
-		for (span, content) in iter {
+		for (span, _hint, content) in iter {
 			println!("{:?}: {}", span, content);
 		}
 	}

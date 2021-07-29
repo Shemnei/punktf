@@ -29,13 +29,8 @@ impl<'a> Template<'a> {
 		item_vars: Option<&UserVars>,
 	) -> Result<String> {
 		let mut output = String::new();
-		let mut idx = 0;
 
 		for Block { span, kind } in &self.blocks {
-			if idx < span.low().as_usize() {
-				output.push_str(&self.content[idx..span.low().as_usize()])
-			}
-
 			match kind {
 				BlockKind::Var(var) => {
 					output.push_str(&self.resolve_var(var, profile_vars, item_vars)?);
@@ -99,15 +94,9 @@ impl<'a> Template<'a> {
 					// NOP
 				}
 				BlockKind::Text => {
-					// TODO
+					output.push_str(&self.content[span]);
 				}
 			};
-
-			idx = span.high().as_usize();
-		}
-
-		if idx < self.content.len() {
-			output.push_str(&self.content[idx..]);
 		}
 
 		Ok(output)
