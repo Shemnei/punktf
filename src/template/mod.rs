@@ -1,12 +1,12 @@
+mod block;
 mod parse;
 mod span;
-mod token;
 
 use color_eyre::eyre::{eyre, Result};
 
+use self::block::{Block, BlockKind, If, IfExpr, Var, VarEnv};
 use self::parse::Parser;
 use self::span::{CharSpan, Spanned};
-use self::token::{If, IfExpr, Token, Var, VarEnv};
 use crate::variables::{UserVars, Variables};
 
 // TODO: handle unicode
@@ -14,7 +14,7 @@ use crate::variables::{UserVars, Variables};
 #[derive(Debug, Clone)]
 pub struct Template<'a> {
 	content: &'a str,
-	tokens: Vec<Spanned<Token>>,
+	blocks: Vec<Block>,
 }
 
 impl<'a> Template<'a> {
@@ -31,16 +31,16 @@ impl<'a> Template<'a> {
 		let mut output = String::new();
 		let mut idx = 0;
 
-		for Spanned { span, value: token } in &self.tokens {
+		for Block { span, kind } in &self.blocks {
 			if idx < span.low().as_usize() {
 				output.push_str(&self.content[idx..span.low().as_usize()])
 			}
 
-			match token {
-				Token::Var(var) => {
+			match kind {
+				BlockKind::Var(var) => {
 					output.push_str(&self.resolve_var(var, profile_vars, item_vars)?);
 				}
-				Token::If(If {
+				BlockKind::If(If {
 					head,
 					elifs,
 					els,
@@ -92,11 +92,14 @@ impl<'a> Template<'a> {
 						}
 					}
 				}
-				Token::Escaped(inner) => {
+				BlockKind::Escaped(inner) => {
 					output.push_str(&self.content[inner]);
 				}
-				Token::Comment => {
+				BlockKind::Comment => {
 					// NOP
+				}
+				BlockKind::Text => {
+					// TODO
 				}
 			};
 

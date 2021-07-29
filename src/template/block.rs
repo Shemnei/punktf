@@ -1,21 +1,34 @@
 use super::span::{CharSpan, Spanned};
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum Token {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BlockKind {
+	Text,
+	Comment,
+	Escaped(CharSpan),
 	Var(Var),
 	If(If),
-	Escaped(CharSpan),
-	Comment,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Block {
+	pub span: CharSpan,
+	pub kind: BlockKind,
+}
+
+impl Block {
+	pub fn new(span: CharSpan, kind: BlockKind) -> Self {
+		Self { span, kind }
+	}
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum VarEnv {
 	Environment,
 	Profile,
 	Item,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct VarEnvSet(pub [Option<VarEnv>; 3]);
 
 impl VarEnvSet {
@@ -57,13 +70,13 @@ impl Default for VarEnvSet {
 	}
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Var {
 	pub envs: VarEnvSet,
 	pub name: CharSpan,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct If {
 	pub head: Spanned<IfExpr>,
 	pub elifs: Vec<Spanned<IfExpr>>,
@@ -71,7 +84,7 @@ pub struct If {
 	pub end: CharSpan,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IfOp {
 	Eq,
 	NotEq,
@@ -86,7 +99,7 @@ impl IfOp {
 	}
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IfExpr {
 	pub var: Var,
 	pub op: IfOp,

@@ -1,8 +1,9 @@
 use color_eyre::eyre::{eyre, Result};
 
+use super::block::{Block, If, IfExpr, IfOp, Var, VarEnv, VarEnvSet};
 use super::span::{CharSpan, Spanned};
-use super::token::{If, IfExpr, IfOp, Token, Var, VarEnv, VarEnvSet};
 use super::Template;
+use crate::template::block::BlockKind;
 
 pub struct Parser<'a> {
 	content: &'a str,
@@ -18,16 +19,16 @@ impl<'a> Parser<'a> {
 	}
 
 	pub fn parse(mut self) -> Result<Template<'a>> {
-		let tokens =
+		let blocks =
 			std::iter::from_fn(|| self.parse_next_block()).collect::<Result<Vec<_>, _>>()?;
 
 		Ok(Template {
 			content: self.content,
-			tokens,
+			blocks,
 		})
 	}
 
-	fn parse_next_block(&mut self) -> Option<Result<Spanned<Token>>> {
+	fn parse_next_block(&mut self) -> Option<Result<Block>> {
 		let (span, content) = self.blocks.next()?;
 		let content = &content[2..content.len() - 2];
 
@@ -35,11 +36,11 @@ impl<'a> Parser<'a> {
 
 		if let Some(b'{') = content.as_bytes().get(0) {
 			let escaped = span.offset_low(3).offset_high(-3);
-			return Some(Ok(span.span(Token::Escaped(escaped))));
+			return Some(Ok(Block::new(span, BlockKind::Escaped(escaped))));
 		}
 
 		if let Some(b"!--") = content.as_bytes().get(..3) {
-			return Some(Ok(span.span(Token::Comment)));
+			return Some(Ok(Block::new(span, BlockKind::Comment)));
 		}
 
 		if let Some(b"@if") = content.as_bytes().get(..3) {
@@ -47,13 +48,13 @@ impl<'a> Parser<'a> {
 		}
 
 		match parse_var(content, span.low().as_usize() + 2) {
-			Ok(var) => Some(Ok(span.span(Token::Var(var)))),
+			Ok(var) => Some(Ok(Block::new(span, BlockKind::Var(var)))),
 			Err(err) => Some(Err(err)),
 		}
 	}
 
-	fn parse_if_blocks(&mut self, head: Spanned<&str>) -> Result<Spanned<Token>> {
-		// TODO: parse head
+	fn parse_if_blocks(&mut self, head: Spanned<&str>) -> Result<Block> {
+		// parse head
 		// check if next block is else / elif / fi
 
 		let (span, content) = head.into_inner();
@@ -156,12 +157,15 @@ impl<'a> Parser<'a> {
 
 		let whole_span = head.span().union(&end);
 
-		Ok(whole_span.span(Token::If(If {
-			head,
-			elifs,
-			els,
-			end,
-		})))
+		Ok(Block::new(
+			whole_span,
+			BlockKind::If(If {
+				head,
+				elifs,
+				els,
+				end,
+			}),
+		))
 	}
 }
 
@@ -372,7 +376,7 @@ mod tests {
 
 		assert_eq!(
 			token,
-			Spanned::new(CharSpan::new(0usize, content.len()), Token::Comment)
+			Block::new(CharSpan::new(0usize, content.len()), BlockKind::Comment)
 		);
 
 		Ok(())
@@ -387,9 +391,9 @@ mod tests {
 
 		assert_eq!(
 			token,
-			Spanned::new(
+			Block::new(
 				CharSpan::new(0usize, content.len()),
-				Token::Escaped(CharSpan::new(3usize, content.len() - 3))
+				BlockKind::Escaped(CharSpan::new(3usize, content.len() - 3))
 			)
 		);
 
@@ -411,12 +415,12 @@ mod tests {
 
 		assert!(matches!(
 			token,
-			Spanned {
+			Block {
 				span: CharSpan {
 					low: CharPos(l),
 					high: CharPos(h)
 				},
-				value: Token::If(_)
+				kind: BlockKind::If(_)
 			} if l == 0 && h as usize == content.len()
 		));
 
