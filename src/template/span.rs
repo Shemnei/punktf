@@ -1,81 +1,81 @@
 use std::fmt;
 use std::ops::{Deref, DerefMut, Index};
 
-type CharPosType = u32;
+type BytePosType = u32;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CharPos(pub CharPosType);
+pub struct BytePos(pub BytePosType);
 
-impl CharPos {
-	pub fn new(value: CharPosType) -> Self {
+impl BytePos {
+	pub fn new(value: BytePosType) -> Self {
 		Self(value)
 	}
 
 	pub fn from_usize(value: usize) -> Self {
-		Self(value as CharPosType)
+		Self(value as BytePosType)
 	}
 
 	pub fn as_usize(&self) -> usize {
 		self.0 as usize
 	}
 
-	pub fn into_inner(self) -> CharPosType {
+	pub fn into_inner(self) -> BytePosType {
 		self.0
 	}
 }
 
-impl fmt::Display for CharPos {
+impl fmt::Display for BytePos {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		fmt::Display::fmt(&self.0, f)
 	}
 }
 
-impl From<usize> for CharPos {
+impl From<usize> for BytePos {
 	fn from(value: usize) -> Self {
-		CharPos::from_usize(value)
+		BytePos::from_usize(value)
 	}
 }
 
-impl From<CharPosType> for CharPos {
-	fn from(value: CharPosType) -> Self {
+impl From<BytePosType> for BytePos {
+	fn from(value: BytePosType) -> Self {
 		Self(value)
 	}
 }
 
-impl From<CharPos> for usize {
-	fn from(value: CharPos) -> Self {
+impl From<BytePos> for usize {
+	fn from(value: BytePos) -> Self {
 		value.as_usize()
 	}
 }
 
-impl From<CharPos> for CharPosType {
-	fn from(value: CharPos) -> Self {
+impl From<BytePos> for BytePosType {
+	fn from(value: BytePos) -> Self {
 		value.0
 	}
 }
 
-impl Deref for CharPos {
-	type Target = CharPosType;
+impl Deref for BytePos {
+	type Target = BytePosType;
 
 	fn deref(&self) -> &Self::Target {
 		&self.0
 	}
 }
 
-impl DerefMut for CharPos {
+impl DerefMut for BytePos {
 	fn deref_mut(&mut self) -> &mut Self::Target {
 		&mut self.0
 	}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CharSpan {
-	pub low: CharPos,
-	pub high: CharPos,
+pub struct ByteSpan {
+	pub low: BytePos,
+	pub high: BytePos,
 }
 
-impl CharSpan {
-	pub fn new<L: Into<CharPos>, H: Into<CharPos>>(low: L, high: H) -> Self {
+impl ByteSpan {
+	pub fn new<L: Into<BytePos>, H: Into<BytePos>>(low: L, high: H) -> Self {
 		let mut low = low.into();
 		let mut high = high.into();
 
@@ -90,14 +90,14 @@ impl CharSpan {
 		Spanned::new(self, value)
 	}
 
-	pub fn with_low<L: Into<CharPos>>(&self, low: L) -> Self {
+	pub fn with_low<L: Into<BytePos>>(&self, low: L) -> Self {
 		let mut copy = *self;
 		copy.low = low.into();
 
 		copy
 	}
 
-	pub fn with_high<H: Into<CharPos>>(&self, high: H) -> Self {
+	pub fn with_high<H: Into<BytePos>>(&self, high: H) -> Self {
 		let mut copy = *self;
 		copy.high = high.into();
 
@@ -111,72 +111,76 @@ impl CharSpan {
 		Self { low, high }
 	}
 
-	pub fn offset_low(&self, amount: i32) -> Self {
+	pub fn offset_low<A: Into<i32>>(&self, amount: A) -> Self {
+		let amount = amount.into();
+
 		let mut copy = *self;
-		// TODO: make better
-		copy.low.0 = (copy.low.0 as i32 + amount) as CharPosType;
+		copy.low.0 = (copy.low.0 as i32 + amount) as BytePosType;
 
 		copy
 	}
 
-	pub fn offset_high(&self, amount: i32) -> Self {
+	pub fn offset_high<A: Into<i32>>(&self, amount: A) -> Self {
+		let amount = amount.into();
+
 		let mut copy = *self;
-		// TODO: make better
-		copy.high.0 = (copy.high.0 as i32 + amount) as CharPosType;
+		copy.high.0 = (copy.high.0 as i32 + amount) as BytePosType;
 
 		copy
 	}
 
-	pub fn offset(&self, amount: i32) -> Self {
+	pub fn offset<A: Into<i32>>(&self, amount: A) -> Self {
+		let amount = amount.into();
+
 		let mut copy = *self;
-		copy.low.0 = (copy.low.0 as i32 + amount) as CharPosType;
-		copy.high.0 = (copy.high.0 as i32 + amount) as CharPosType;
+		copy.low.0 = (copy.low.0 as i32 + amount) as BytePosType;
+		copy.high.0 = (copy.high.0 as i32 + amount) as BytePosType;
 
 		copy
 	}
 
-	pub fn low(&self) -> &CharPos {
+	pub fn low(&self) -> &BytePos {
 		&self.low
 	}
 
-	pub fn high(&self) -> &CharPos {
+	pub fn high(&self) -> &BytePos {
 		&self.high
 	}
 }
 
-impl fmt::Display for CharSpan {
+impl fmt::Display for ByteSpan {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		write!(f, "{}..{}", self.low, self.high)
 	}
 }
 
-impl Index<CharSpan> for str {
+impl Index<ByteSpan> for str {
 	type Output = str;
 
-	fn index(&self, index: CharSpan) -> &Self::Output {
+	fn index(&self, index: ByteSpan) -> &Self::Output {
 		&self[index.low.as_usize()..index.high.as_usize()]
 	}
 }
 
-impl Index<&CharSpan> for str {
+impl Index<&ByteSpan> for str {
 	type Output = str;
 
-	fn index(&self, index: &CharSpan) -> &Self::Output {
+	fn index(&self, index: &ByteSpan) -> &Self::Output {
 		&self[index.low.as_usize()..index.high.as_usize()]
 	}
 }
 
 pub struct Spanned<T> {
-	pub span: CharSpan,
+	pub span: ByteSpan,
 	pub value: T,
 }
 
 impl<T> Spanned<T> {
-	pub fn new(span: CharSpan, value: T) -> Self {
+	pub fn new(span: ByteSpan, value: T) -> Self {
 		Self { span, value }
 	}
 
-	pub fn span(&self) -> &CharSpan {
+	pub fn span(&self) -> &ByteSpan {
 		&self.span
 	}
 
@@ -184,7 +188,7 @@ impl<T> Spanned<T> {
 		&self.value
 	}
 
-	pub fn into_span(self) -> CharSpan {
+	pub fn into_span(self) -> ByteSpan {
 		self.span
 	}
 
@@ -192,7 +196,7 @@ impl<T> Spanned<T> {
 		self.value
 	}
 
-	pub fn into_inner(self) -> (CharSpan, T) {
+	pub fn into_inner(self) -> (ByteSpan, T) {
 		(self.span, self.value)
 	}
 }

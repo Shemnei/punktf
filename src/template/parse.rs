@@ -1,7 +1,7 @@
 use color_eyre::eyre::{eyre, Result};
 
 use super::block::{Block, If, IfExpr, IfOp, Var, VarEnv, VarEnvSet};
-use super::span::{CharSpan, Spanned};
+use super::span::{ByteSpan, Spanned};
 use super::Template;
 use crate::template::block::BlockKind;
 
@@ -188,7 +188,7 @@ impl<'a> Parser<'a> {
 		))
 	}
 
-	fn next_non_text_block(&mut self) -> Option<(CharSpan, Option<BlockKindHint>, &str)> {
+	fn next_non_text_block(&mut self) -> Option<(ByteSpan, Option<BlockKindHint>, &str)> {
 		// loop and discard any text blocks
 		loop {
 			let (span, hint, content) = self.blocks.next()?;
@@ -199,7 +199,7 @@ impl<'a> Parser<'a> {
 	}
 }
 
-fn next_block(s: &str) -> Option<Result<(CharSpan, Option<BlockKindHint>)>> {
+fn next_block(s: &str) -> Option<Result<(ByteSpan, Option<BlockKindHint>)>> {
 	if s.is_empty() {
 		return None;
 	}
@@ -207,12 +207,12 @@ fn next_block(s: &str) -> Option<Result<(CharSpan, Option<BlockKindHint>)>> {
 	if let Some(low) = s.find("{{") {
 		if low > 0 {
 			// found text block
-			Some(Ok((CharSpan::new(0usize, low), Some(BlockKindHint::Text))))
+			Some(Ok((ByteSpan::new(0usize, low), Some(BlockKindHint::Text))))
 		} else if let Some(b'{') = s.as_bytes().get(low + 2) {
 			// block is an escaped block
 			if let Some(high) = s.find("}}}") {
 				Some(Ok((
-					CharSpan::new(low, high + 3),
+					ByteSpan::new(low, high + 3),
 					Some(BlockKindHint::Escaped),
 				)))
 			} else {
@@ -225,7 +225,7 @@ fn next_block(s: &str) -> Option<Result<(CharSpan, Option<BlockKindHint>)>> {
 			// block is an comment block
 			if let Some(high) = s.find("--}}") {
 				Some(Ok((
-					CharSpan::new(low, high + 4),
+					ByteSpan::new(low, high + 4),
 					Some(BlockKindHint::Comment),
 				)))
 			} else {
@@ -251,7 +251,7 @@ fn next_block(s: &str) -> Option<Result<(CharSpan, Option<BlockKindHint>)>> {
 				}
 
 				let high = high + 2 + (low + 1);
-				return Some(Ok((CharSpan::new(low, high), None)));
+				return Some(Ok((ByteSpan::new(low, high), None)));
 			}
 
 			Some(Err(eyre!(
@@ -262,7 +262,7 @@ fn next_block(s: &str) -> Option<Result<(CharSpan, Option<BlockKindHint>)>> {
 	} else {
 		// Found text block
 		Some(Ok((
-			CharSpan::new(0usize, s.len()),
+			ByteSpan::new(0usize, s.len()),
 			Some(BlockKindHint::Text),
 		)))
 	}
@@ -326,7 +326,7 @@ fn parse_var(inner: &str, mut offset: usize) -> Result<Var> {
 	} else {
 		Ok(Var {
 			envs,
-			name: CharSpan::new(offset, offset + inner.len()),
+			name: ByteSpan::new(offset, offset + inner.len()),
 		})
 	}
 }
@@ -348,11 +348,11 @@ fn parse_ifop(inner: &str) -> Result<IfOp> {
 
 // parses the right hand side of an if/elif. The `"` characters are not included.
 // e.g. "windows"
-fn parse_other(inner: &str, offset: usize) -> Result<CharSpan> {
+fn parse_other(inner: &str, offset: usize) -> Result<ByteSpan> {
 	let mut matches = inner.match_indices('"').map(|(idx, _)| idx);
 
 	match (matches.next(), matches.next()) {
-		(Some(low), Some(high)) => Ok(CharSpan::new(offset + low + 1, offset + high)),
+		(Some(low), Some(high)) => Ok(ByteSpan::new(offset + low + 1, offset + high)),
 		(Some(low), None) => Err(eyre!(
 			"Found opening `\"` at {} but no closing",
 			offset + low
@@ -388,7 +388,7 @@ impl<'a> BlockIter<'a> {
 }
 
 impl<'a> Iterator for BlockIter<'a> {
-	type Item = (CharSpan, Option<BlockKindHint>, &'a str);
+	type Item = (ByteSpan, Option<BlockKindHint>, &'a str);
 
 	fn next(&mut self) -> Option<Self::Item> {
 		let (mut span, hint) = next_block(&self.content[self.index..])?.unwrap();
@@ -403,7 +403,7 @@ impl<'a> Iterator for BlockIter<'a> {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::template::span::{CharPos, CharSpan};
+	use crate::template::span::{BytePos, ByteSpan};
 
 	#[test]
 	fn find_blocks() {
@@ -430,7 +430,7 @@ mod tests {
 
 		assert_eq!(
 			token,
-			Block::new(CharSpan::new(0usize, content.len()), BlockKind::Comment)
+			Block::new(ByteSpan::new(0usize, content.len()), BlockKind::Comment)
 		);
 
 		Ok(())
@@ -446,8 +446,8 @@ mod tests {
 		assert_eq!(
 			token,
 			Block::new(
-				CharSpan::new(0usize, content.len()),
-				BlockKind::Escaped(CharSpan::new(3usize, content.len() - 3))
+				ByteSpan::new(0usize, content.len()),
+				BlockKind::Escaped(ByteSpan::new(3usize, content.len() - 3))
 			)
 		);
 
@@ -470,9 +470,9 @@ mod tests {
 		assert!(matches!(
 			token,
 			Block {
-				span: CharSpan {
-					low: CharPos(l),
-					high: CharPos(h)
+				span: ByteSpan {
+					low: BytePos(l),
+					high: BytePos(h)
 				},
 				kind: BlockKind::If(_)
 			} if l == 0 && h as usize == content.len()
@@ -491,7 +491,7 @@ mod tests {
 					Some(VarEnv::Profile),
 					Some(VarEnv::Item)
 				]),
-				name: CharSpan::new(3usize, 10usize),
+				name: ByteSpan::new(3usize, 10usize),
 			}
 		);
 
@@ -499,7 +499,7 @@ mod tests {
 			parse_var("&BAZ_1", 0)?,
 			Var {
 				envs: VarEnvSet([Some(VarEnv::Item), None, None]),
-				name: CharSpan::new(1usize, 6usize),
+				name: ByteSpan::new(1usize, 6usize),
 			}
 		);
 
@@ -511,7 +511,7 @@ mod tests {
 					Some(VarEnv::Profile),
 					Some(VarEnv::Item)
 				]),
-				name: CharSpan::new(13usize, 20usize),
+				name: ByteSpan::new(13usize, 20usize),
 			}
 		);
 
@@ -525,10 +525,10 @@ mod tests {
 
 	#[test]
 	fn parse_others() -> Result<()> {
-		assert_eq!(parse_other("\"BAZ_1\"", 0)?, CharSpan::new(1usize, 6usize));
+		assert_eq!(parse_other("\"BAZ_1\"", 0)?, ByteSpan::new(1usize, 6usize));
 		assert_eq!(
 			parse_other("This is a test \"Hello World How are you today\"", 0)?,
-			CharSpan::new(16usize, 45usize)
+			ByteSpan::new(16usize, 45usize)
 		);
 
 		assert!(parse_other("This is a test \"Hello World How are you today", 0).is_err());

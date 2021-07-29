@@ -6,7 +6,7 @@ use color_eyre::eyre::{eyre, Result};
 
 use self::block::{Block, BlockKind, If, IfExpr, Var, VarEnv};
 use self::parse::Parser;
-use self::span::{CharSpan, Spanned};
+use self::span::{ByteSpan, Spanned};
 use crate::variables::{UserVars, Variables};
 
 // TODO: handle unicode
@@ -43,7 +43,7 @@ impl<'a> Template<'a> {
 				}) => {
 					let head_val = self.resolve_var(&head.var, profile_vars, item_vars)?;
 					if head.op.eval(&head_val, &self.content[head.other]) {
-						let span = CharSpan::new(
+						let span = ByteSpan::new(
 							head.span().high().as_usize(),
 							elifs
 								.first()
@@ -64,7 +64,7 @@ impl<'a> Template<'a> {
 							let elif_val = self.resolve_var(var, profile_vars, item_vars)?;
 
 							if op.eval(&elif_val, &self.content[other]) {
-								let span = CharSpan::new(
+								let span = ByteSpan::new(
 									span.high().as_usize(),
 									elifs
 										.get(idx + 1)
@@ -81,7 +81,7 @@ impl<'a> Template<'a> {
 						if !found {
 							if let Some(span) = els {
 								let span =
-									CharSpan::new(span.high().as_usize(), end.low().as_usize());
+									ByteSpan::new(span.high().as_usize(), end.low().as_usize());
 								output.push_str(&self.content[span]);
 							}
 						}

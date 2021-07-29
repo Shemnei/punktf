@@ -1,22 +1,22 @@
-use super::span::{CharSpan, Spanned};
+use super::span::{ByteSpan, Spanned};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BlockKind {
 	Text,
 	Comment,
-	Escaped(CharSpan),
+	Escaped(ByteSpan),
 	Var(Var),
 	If(If),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block {
-	pub span: CharSpan,
+	pub span: ByteSpan,
 	pub kind: BlockKind,
 }
 
 impl Block {
-	pub fn new(span: CharSpan, kind: BlockKind) -> Self {
+	pub fn new(span: ByteSpan, kind: BlockKind) -> Self {
 		Self { span, kind }
 	}
 }
@@ -73,15 +73,15 @@ impl Default for VarEnvSet {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Var {
 	pub envs: VarEnvSet,
-	pub name: CharSpan,
+	pub name: ByteSpan,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct If {
 	pub head: Spanned<IfExpr>,
 	pub elifs: Vec<Spanned<IfExpr>>,
-	pub els: Option<CharSpan>,
-	pub end: CharSpan,
+	pub els: Option<ByteSpan>,
+	pub end: ByteSpan,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -103,5 +103,5 @@ impl IfOp {
 pub struct IfExpr {
 	pub var: Var,
 	pub op: IfOp,
-	pub other: CharSpan,
+	pub other: ByteSpan,
 }
