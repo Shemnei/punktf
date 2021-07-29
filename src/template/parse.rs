@@ -208,58 +208,56 @@ fn next_block(s: &str) -> Option<Result<(CharSpan, Option<BlockKindHint>)>> {
 		if low > 0 {
 			// found text block
 			Some(Ok((CharSpan::new(0usize, low), Some(BlockKindHint::Text))))
-		} else {
-			if let Some(b'{') = s.as_bytes().get(low + 2) {
-				// block is an escaped block
-				if let Some(high) = s.find("}}}") {
-					Some(Ok((
-						CharSpan::new(low, high + 3),
-						Some(BlockKindHint::Escaped),
-					)))
-				} else {
-					Some(Err(eyre!(
-						"Found opening for an escaped block at {} but no closing",
-						low
-					)))
-				}
-			} else if let Some(b"!--") = s.as_bytes().get(low + 2..low + 5) {
-				// block is an comment block
-				if let Some(high) = s.find("--}}") {
-					Some(Ok((
-						CharSpan::new(low, high + 4),
-						Some(BlockKindHint::Comment),
-					)))
-				} else {
-					Some(Err(eyre!(
-						"Found opening for a comment block at {} but no closing",
-						low
-					)))
-				}
+		} else if let Some(b'{') = s.as_bytes().get(low + 2) {
+			// block is an escaped block
+			if let Some(high) = s.find("}}}") {
+				Some(Ok((
+					CharSpan::new(low, high + 3),
+					Some(BlockKindHint::Escaped),
+				)))
 			} else {
-				// check depth
-				let mut openings = s[low + 1..].match_indices("{{").map(|(idx, _)| idx);
-				let closings = s[low + 1..].match_indices("}}").map(|(idx, _)| idx);
-
-				for high in closings {
-					// check the is a opening.
-					if let Some(opening) = openings.next() {
-						// check if opening comes before the closing.
-						if opening < high {
-							// opening lies before the closing. Continue to search
-							// for the matching closing of low.
-							continue;
-						}
-					}
-
-					let high = high + 2 + (low + 1);
-					return Some(Ok((CharSpan::new(low, high), None)));
-				}
-
 				Some(Err(eyre!(
-					"Found opening for a block at {} but no closing",
+					"Found opening for an escaped block at {} but no closing",
 					low
 				)))
 			}
+		} else if let Some(b"!--") = s.as_bytes().get(low + 2..low + 5) {
+			// block is an comment block
+			if let Some(high) = s.find("--}}") {
+				Some(Ok((
+					CharSpan::new(low, high + 4),
+					Some(BlockKindHint::Comment),
+				)))
+			} else {
+				Some(Err(eyre!(
+					"Found opening for a comment block at {} but no closing",
+					low
+				)))
+			}
+		} else {
+			// check depth
+			let mut openings = s[low + 1..].match_indices("{{").map(|(idx, _)| idx);
+			let closings = s[low + 1..].match_indices("}}").map(|(idx, _)| idx);
+
+			for high in closings {
+				// check the is a opening.
+				if let Some(opening) = openings.next() {
+					// check if opening comes before the closing.
+					if opening < high {
+						// opening lies before the closing. Continue to search
+						// for the matching closing of low.
+						continue;
+					}
+				}
+
+				let high = high + 2 + (low + 1);
+				return Some(Ok((CharSpan::new(low, high), None)));
+			}
+
+			Some(Err(eyre!(
+				"Found opening for a block at {} but no closing",
+				low
+			)))
 		}
 	} else {
 		// Found text block
