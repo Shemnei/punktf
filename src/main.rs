@@ -58,7 +58,9 @@ struct Opts {
 struct Shared {
 	#[clap(short, long, env = "PUNKTF_SOURCE", default_value)]
 	source: SourcePath,
-	// TODO: log verbosity
+
+	#[clap(short, long, parse(from_occurrences))]
+	verbose: u8,
 }
 
 #[derive(Debug, Clap)]
@@ -79,9 +81,19 @@ struct Deploy {
 fn main() -> Result<()> {
 	color_eyre::install()?;
 
-	env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).init();
-
 	let opts: Opts = Opts::parse();
+
+	let log_level = match opts.shared.verbose {
+		0 => log::Level::Warn,
+		1 => log::Level::Info,
+		2 => log::Level::Debug,
+		_ => log::Level::Trace,
+	};
+
+	env_logger::Builder::from_env(
+		env_logger::Env::default().default_filter_or(log_level.to_string()),
+	)
+	.init();
 
 	debug!("Parsed Opts: {:#?}", opts);
 
