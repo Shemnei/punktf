@@ -58,6 +58,7 @@ struct Opts {
 struct Shared {
 	#[clap(short, long, env = "PUNKTF_SOURCE", default_value)]
 	source: SourcePath,
+	// TODO: log verbosity
 }
 
 #[derive(Debug, Clap)]

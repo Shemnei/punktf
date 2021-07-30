@@ -78,9 +78,9 @@ pub struct Var {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct If {
-	pub head: Spanned<IfExpr>,
-	pub elifs: Vec<Spanned<IfExpr>>,
-	pub els: Option<ByteSpan>,
+	pub head: (Spanned<IfExpr>, Vec<Block>),
+	pub elifs: Vec<(Spanned<IfExpr>, Vec<Block>)>,
+	pub els: Option<(ByteSpan, Vec<Block>)>,
 	pub end: ByteSpan,
 }
 

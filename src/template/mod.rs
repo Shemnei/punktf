@@ -4,9 +4,9 @@ mod span;
 
 use color_eyre::eyre::{eyre, Result};
 
-use self::block::{Block, BlockKind, If, IfExpr, Var, VarEnv};
+use self::block::{Block, BlockKind, If, Var, VarEnv};
 use self::parse::Parser;
-use self::span::{ByteSpan, Spanned};
+use self::span::Spanned;
 use crate::variables::{UserVars, Variables};
 
 // TODO: handle unicode
@@ -30,76 +30,79 @@ impl<'a> Template<'a> {
 	) -> Result<String> {
 		let mut output = String::new();
 
-		for Block { span, kind } in &self.blocks {
-			match kind {
-				BlockKind::Var(var) => {
-					output.push_str(&self.resolve_var(var, profile_vars, item_vars)?);
-				}
-				BlockKind::If(If {
-					head,
-					elifs,
-					els,
-					end,
-				}) => {
-					let head_val = self.resolve_var(&head.var, profile_vars, item_vars)?;
-					if head.op.eval(&head_val, &self.content[head.other]) {
-						let span = ByteSpan::new(
-							head.span().high().as_usize(),
-							elifs
-								.first()
-								.map(|elif| elif.span())
-								.unwrap_or_else(|| els.as_ref().unwrap_or(end))
-								.low()
-								.as_usize(),
-						);
-						output.push_str(&self.content[span]);
-					} else {
-						let mut found = false;
-						for idx in 0..elifs.len() {
-							let Spanned {
-								span,
-								value: IfExpr { var, op, other },
-							} = &elifs[idx];
-
-							let elif_val = self.resolve_var(var, profile_vars, item_vars)?;
-
-							if op.eval(&elif_val, &self.content[other]) {
-								let span = ByteSpan::new(
-									span.high().as_usize(),
-									elifs
-										.get(idx + 1)
-										.map(|elif| elif.span())
-										.unwrap_or_else(|| els.as_ref().unwrap_or(end))
-										.low()
-										.as_usize(),
-								);
-								output.push_str(&self.content[span]);
-								found = true;
-							}
-						}
-
-						if !found {
-							if let Some(span) = els {
-								let span =
-									ByteSpan::new(span.high().as_usize(), end.low().as_usize());
-								output.push_str(&self.content[span]);
-							}
-						}
-					}
-				}
-				BlockKind::Escaped(inner) => {
-					output.push_str(&self.content[inner]);
-				}
-				BlockKind::Comment => {
-					// NOP
-				}
-				BlockKind::Text => {
-					output.push_str(&self.content[span]);
-				}
-			};
+		for block in &self.blocks {
+			self.process_block(profile_vars, item_vars, &mut output, block)?;
 		}
 
 		Ok(output)
+	}
+
+	fn process_block(
+		&self,
+		profile_vars: Option<&UserVars>,
+		item_vars: Option<&UserVars>,
+		output: &mut String,
+		block: &Block,
+	) -> Result<()> {
+		let Block { span, kind } = block;
+
+		match kind {
+			BlockKind::Escaped(inner) => {
+				output.push_str(&self.content[inner]);
+			}
+			BlockKind::Comment => {
+				// NOP
+			}
+			BlockKind::Text => {
+				output.push_str(&self.content[span]);
+			}
+			BlockKind::Var(var) => {
+				output.push_str(&self.resolve_var(var, profile_vars, item_vars)?);
+			}
+			BlockKind::If(If {
+				head,
+				elifs,
+				els,
+				end: _,
+			}) => {
+				let (head, head_nested) = head;
+
+				let head_val = self.resolve_var(&head.var, profile_vars, item_vars)?;
+
+				if head.op.eval(&head_val, &self.content[head.other]) {
+					for block in head_nested {
+						// TODO: if first block is text (trim lf start)
+						// TODO: if last block is text (trim lf end)
+						self.process_block(profile_vars, item_vars, output, block)?;
+					}
+				} else {
+					for (elif, elif_nested) in elifs {
+						let Spanned {
+							span: _,
+							value: elif,
+						} = elif;
+						let elif_val = self.resolve_var(&elif.var, profile_vars, item_vars)?;
+
+						if elif.op.eval(&elif_val, &self.content[elif.other]) {
+							// return if matching elif arm was found
+							for block in elif_nested {
+								self.process_block(profile_vars, item_vars, output, block)?;
+							}
+
+							return Ok(());
+						}
+					}
+
+					if let Some((_, els_nested)) = els {
+						for block in els_nested {
+							self.process_block(profile_vars, item_vars, output, block)?;
+						}
+					}
+				}
+			}
+		};
+
+		Ok(())
 	}
 
 	fn resolve_var(
