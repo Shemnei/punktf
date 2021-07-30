@@ -1,27 +1,9 @@
 use color_eyre::eyre::{eyre, Result};
 
-use super::block::{Block, If, IfExpr, IfOp, Var, VarEnv, VarEnvSet};
+use super::block::{Block, BlockHint, If, IfExpr, IfOp, Var, VarEnv, VarEnvSet};
 use super::span::{ByteSpan, Spanned};
 use super::Template;
 use crate::template::block::BlockKind;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum BlockHint {
-	Text,
-	Comment,
-	Escaped,
-	Variable,
-	IfStart,
-	ElIf,
-	Else,
-	IfEnd,
-}
-
-impl BlockHint {
-	pub fn is_if_subblock(&self) -> bool {
-		self == &Self::ElIf || self == &Self::Else || self == &Self::IfEnd
-	}
-}
 
 #[derive(Debug, Clone, Copy)]
 pub struct Parser<'a> {

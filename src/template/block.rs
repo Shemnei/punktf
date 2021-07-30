@@ -1,5 +1,23 @@
 use super::span::{ByteSpan, Spanned};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BlockHint {
+	Text,
+	Comment,
+	Escaped,
+	Variable,
+	IfStart,
+	ElIf,
+	Else,
+	IfEnd,
+}
+
+impl BlockHint {
+	pub fn is_if_subblock(&self) -> bool {
+		self == &Self::ElIf || self == &Self::Else || self == &Self::IfEnd
+	}
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BlockKind {
 	Text,
@@ -62,11 +80,7 @@ impl VarEnvSet {
 
 impl Default for VarEnvSet {
 	fn default() -> Self {
-		Self([
-			Some(VarEnv::Item),
-			Some(VarEnv::Profile),
-			Some(VarEnv::Environment),
-		])
+		Self([Some(VarEnv::Item), Some(VarEnv::Profile), None])
 	}
 }
 
