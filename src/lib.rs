@@ -166,7 +166,7 @@ pub enum MergeMode {
 
 impl Default for MergeMode {
 	fn default() -> Self {
-		Self::Keep
+		Self::Overwrite
 	}
 }
 
