@@ -8,7 +8,91 @@ use color_eyre::Result;
 use super::deployment::{Deployment, DeploymentBuilder};
 use crate::deploy::item::ItemStatus;
 use crate::template::Template;
-use crate::{DeployTarget, Item, MergeMode, Profile};
+use crate::variables::UserVars;
+use crate::{DeployTarget, Item, MergeMode, Priority, Profile};
+
+enum ExecutorItem<'a> {
+	File {
+		item: Item,
+		source_path: PathBuf,
+		deploy_path: PathBuf,
+	},
+	Child {
+		parent: &'a Item,
+		parent_source_path: &'a Path,
+		parent_deploy_path: &'a Path,
+		// relative path in source
+		path: PathBuf,
+		source_path: PathBuf,
+		deploy_path: PathBuf,
+	},
+}
+
+impl<'a> ExecutorItem<'a> {
+	fn deploy_path(&self) -> &Path {
+		match self {
+			Self::File { deploy_path, .. } => deploy_path,
+			Self::Child { deploy_path, .. } => deploy_path,
+		}
+	}
+
+	fn source_path(&self) -> &Path {
+		match self {
+			Self::File { source_path, .. } => source_path,
+			Self::Child { source_path, .. } => source_path,
+		}
+	}
+
+	fn path(&self) -> &Path {
+		match self {
+			Self::File { item, .. } => &item.path,
+			Self::Child { path, .. } => path,
+		}
+	}
+
+	fn priority(&self) -> Option<Priority> {
+		match self {
+			Self::File { item, .. } => item.priority,
+			Self::Child { parent, .. } => parent.priority,
+		}
+	}
+
+	fn merge_mode(&self) -> Option<MergeMode> {
+		match self {
+			Self::File { item, .. } => item.merge,
+			Self::Child { parent, .. } => parent.merge,
+		}
+	}
+
+	fn is_template(&self) -> bool {
+		match self {
+			Self::File { item, .. } => item.is_template(),
+			Self::Child { parent, .. } => parent.is_template(),
+		}
+	}
+
+	fn variables(&self) -> Option<&UserVars> {
+		match self {
+			Self::File { item, .. } => item.variables.as_ref(),
+			Self::Child { parent, .. } => parent.variables.as_ref(),
+		}
+	}
+
+	fn add_to_builder<S: Into<ItemStatus>>(self, builder: &mut DeploymentBuilder, status: S) {
+		let status = status.into();
+
+		match self {
+			Self::File {
+				item, deploy_path, ..
+			} => builder.add_item(deploy_path, item, status),
+			Self::Child {
+				parent_deploy_path,
+				deploy_path,
+				..
+			} => builder.add_child(deploy_path, parent_deploy_path.to_path_buf(), status),
+		};
+	}
+}
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExecutorOptions {
@@ -18,6 +102,8 @@ pub struct ExecutorOptions {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Executor<F> {
 	options: ExecutorOptions,
+	// called when same priority item exists and merge mode == Ask.
+	// Gets called with item_source_path, item_deploy_path
 	merge_ask_fn: F,
 }
 
@@ -123,14 +209,13 @@ where
 		};
 
 		if metadata.is_file() {
-			self.deploy_file(
-				builder,
-				items_source_path,
-				profile,
+			let exec_item = ExecutorItem::File {
 				item,
-				item_source_path,
-				item_deploy_path,
-			)
+				source_path: item_source_path,
+				deploy_path: item_deploy_path,
+			};
+
+			self.deploy_executor_item(builder, items_source_path, profile, exec_item)
 		} else if metadata.is_dir() {
 			self.deploy_dir(
 				builder,
@@ -261,17 +346,16 @@ where
 				};
 
 				if metadata.is_file() {
-					let _ = self.deploy_child(
-						builder,
-						source_path,
-						profile,
-						&directory,
-						&directory_source_path,
-						&directory_deploy_path,
-						child_path.to_path_buf(),
-						child_source_path,
-						child_deploy_path,
-					)?;
+					let exec_item = ExecutorItem::Child {
+						parent: &directory,
+						parent_source_path: &directory_source_path,
+						parent_deploy_path: &directory_deploy_path,
+						path: child_path.to_path_buf(),
+						source_path: child_source_path,
+						deploy_path: child_deploy_path,
+					};
+
+					let _ = self.deploy_executor_item(builder, source_path, profile, exec_item)?;
 				} else if metadata.is_dir() {
 					let dents = match child_source_path.read_dir() {
 						Ok(read_dir) => read_dir,
@@ -315,33 +399,24 @@ where
 		Ok(())
 	}
 
-	// Allowed as the final args are not yet been decided
-	#[allow(clippy::too_many_arguments)]
-	fn deploy_child(
+	fn deploy_executor_item<'a>(
 		&self,
 		builder: &mut DeploymentBuilder,
 		_source_path: &Path,
 		profile: &Profile,
-		directory: &Item,
-		_directory_source_path: &Path,
-		directory_deploy_path: &Path,
-		// relative path in source
-		child_path: PathBuf,
-		child_source_path: PathBuf,
-		child_deploy_path: PathBuf,
+		exec_item: ExecutorItem<'a>,
 	) -> Result<()> {
 		// Check if there is an already deployed item at `deploy_path`.
-		if let Some(other_priority) = builder.get_priority(&child_deploy_path) {
+		if let Some(other_priority) = builder.get_priority(exec_item.deploy_path()) {
 			// Previously deployed item has higher priority; Skip current item.
-			if other_priority > directory.priority {
+			if other_priority > exec_item.priority() {
 				log::info!(
 					"[{}] Item with higher priority is already deployed",
-					child_path.display()
+					exec_item.path().display()
 				);
 
-				builder.add_child(
-					child_deploy_path,
-					directory_deploy_path.to_path_buf(),
+				exec_item.add_to_builder(
+					builder,
 					ItemStatus::skipped("Item with higher priority is already deployed"),
 				);
 
@@ -349,25 +424,27 @@ where
 			}
 		}
 
-		if child_deploy_path.exists() {
+		if exec_item.deploy_path().exists() {
 			// No previously deployed item at `deploy_path`. Check for merge.
 
 			log::debug!(
 				"[{}] Item already exists (`{}`)",
-				child_path.display(),
-				child_deploy_path.display()
+				exec_item.path().display(),
+				exec_item.deploy_path().display()
 			);
 
-			match directory.merge.unwrap_or_default() {
+			match exec_item.merge_mode().unwrap_or_default() {
 				MergeMode::Overwrite => {
-					log::info!("[{}] Overwritting existing item", child_path.display())
+					log::info!(
+						"[{}] Overwritting existing item",
+						exec_item.path().display()
+					)
 				}
 				MergeMode::Keep => {
-					log::info!("[{}] Skipping existing item", child_path.display());
+					log::info!("[{}] Skipping existing item", exec_item.path().display());
 
-					builder.add_child(
-						child_deploy_path,
-						directory_deploy_path.to_path_buf(),
+					exec_item.add_to_builder(
+						builder,
 						ItemStatus::skipped(format!(
 							"Item already exists and merge mode is `{:?}`",
 							MergeMode::Keep,
@@ -377,16 +454,15 @@ where
 					return Ok(());
 				}
 				MergeMode::Ask => {
-					log::info!("[{}] Asking for action", child_path.display());
+					log::info!("[{}] Asking for action", exec_item.path().display());
 
-					if !((self.merge_ask_fn)(&child_deploy_path, &child_source_path)
+					if !((self.merge_ask_fn)(exec_item.source_path(), exec_item.deploy_path())
 						.wrap_err("Error evaluating user response")?)
 					{
-						log::info!("[{}] Merge was denied", child_path.display());
+						log::info!("[{}] Merge was denied", exec_item.path().display());
 
-						builder.add_child(
-							child_deploy_path,
-							directory_deploy_path.to_path_buf(),
+						exec_item.add_to_builder(
+							builder,
 							ItemStatus::skipped("Item already exists and merge ask was denied"),
 						);
 
@@ -396,55 +472,51 @@ where
 			}
 		}
 
-		if let Some(parent) = child_deploy_path.parent() {
+		if let Some(parent) = exec_item.deploy_path().parent() {
 			match std::fs::create_dir_all(parent) {
 				Ok(_) => {}
 				Err(err) => {
 					log::warn!(
 						"[{}] Failed to create directories (`{}`)",
-						child_path.display(),
+						exec_item.path().display(),
 						err
 					);
 
-					builder.add_child(
-						child_deploy_path,
-						directory_deploy_path.to_path_buf(),
-						err.into(),
-					);
+					exec_item.add_to_builder(builder, err);
 
 					return Ok(());
 				}
 			}
 		}
 
-		if directory.is_template() {
-			let content = match std::fs::read_to_string(&child_source_path) {
+		if exec_item.is_template() {
+			let content = match std::fs::read_to_string(&exec_item.source_path()) {
 				Ok(content) => content,
 				Err(err) => {
-					log::info!("[{}] Failed to read source content", child_path.display());
-					builder.add_child(
-						child_deploy_path,
-						directory_deploy_path.to_path_buf(),
-						err.into(),
+					log::info!(
+						"[{}] Failed to read source content",
+						exec_item.path().display()
 					);
+
+					exec_item.add_to_builder(builder, err);
+
 					return Ok(());
 				}
 			};
 
 			let template = Template::parse(&content)
-				.with_context(|| format!("File: {}", child_source_path.display()))?;
+				.with_context(|| format!("File: {}", exec_item.source_path().display()))?;
+
 			let content = template
-				.fill(profile.variables.as_ref(), directory.variables.as_ref())
-				.with_context(|| format!("File: {}", child_source_path.display()))?;
+				.fill(profile.variables.as_ref(), exec_item.variables())
+				.with_context(|| format!("File: {}", exec_item.source_path().display()))?;
 
 			if !self.options.dry_run {
-				if let Err(err) = std::fs::write(&child_deploy_path, content.as_bytes()) {
-					log::info!("[{}] Failed to write content", child_path.display());
-					builder.add_child(
-						child_deploy_path,
-						directory_deploy_path.to_path_buf(),
-						err.into(),
-					);
+				if let Err(err) = std::fs::write(&exec_item.deploy_path(), content.as_bytes()) {
+					log::info!("[{}] Failed to write content", exec_item.path().display());
+
+					exec_item.add_to_builder(builder, err);
+
 					return Ok(());
 				}
 			}
@@ -452,159 +524,23 @@ where
 			// Allowed for readability
 			#[allow(clippy::collapsible_else_if)]
 			if !self.options.dry_run {
-				if let Err(err) = std::fs::copy(&child_source_path, &child_deploy_path) {
-					log::info!("[{}] Failed to copy item", child_path.display());
-					builder.add_child(
-						child_deploy_path,
-						directory_deploy_path.to_path_buf(),
-						err.into(),
-					);
+				if let Err(err) = std::fs::copy(&exec_item.source_path(), &exec_item.deploy_path())
+				{
+					log::info!("[{}] Failed to copy item", exec_item.path().display());
+
+					exec_item.add_to_builder(builder, err);
+
 					return Ok(());
 				}
 			}
 		}
 
-		builder.add_child(
-			child_deploy_path,
-			directory_deploy_path.to_path_buf(),
-			ItemStatus::Success,
+		log::info!(
+			"[{}] Item successfully deployed",
+			exec_item.path().display()
 		);
 
-		log::info!("[{}] Item successfully deployed", child_path.display());
-
-		Ok(())
-	}
-
-	fn deploy_file(
-		&self,
-		builder: &mut DeploymentBuilder,
-		_source_path: &Path,
-		profile: &Profile,
-		file: Item,
-		file_source_path: PathBuf,
-		file_deploy_path: PathBuf,
-	) -> Result<()> {
-		// Check if there is an already deployed item at `deploy_path`.
-		if let Some(other_priority) = builder.get_priority(&file_deploy_path) {
-			// Previously deployed item has higher priority; Skip current item.
-			if other_priority > file.priority {
-				log::info!(
-					"[{}] Item with higher priority is already deployed",
-					file.path.display()
-				);
-
-				builder.add_item(
-					file_deploy_path,
-					file,
-					ItemStatus::skipped("Item with higher priority is already deployed"),
-				);
-
-				return Ok(());
-			}
-		}
-
-		if file_deploy_path.exists() {
-			// No previously deployed item at `deploy_path`. Check for merge.
-
-			log::debug!(
-				"[{}] Item already exists (`{}`)",
-				file.path.display(),
-				file_deploy_path.display()
-			);
-
-			match file.merge.unwrap_or_default() {
-				MergeMode::Overwrite => {
-					log::info!("[{}] Overwritting existing item", file.path.display())
-				}
-				MergeMode::Keep => {
-					log::info!("[{}] Skipping existing item", file.path.display());
-
-					builder.add_item(
-						file_deploy_path,
-						file,
-						ItemStatus::skipped(format!(
-							"Item already exists and merge mode is `{:?}`",
-							MergeMode::Keep,
-						)),
-					);
-
-					return Ok(());
-				}
-				MergeMode::Ask => {
-					log::info!("[{}] Asking for action", file_deploy_path.display());
-
-					if !((self.merge_ask_fn)(&file_deploy_path, &file_source_path)
-						.wrap_err("Error evaluating user response")?)
-					{
-						log::info!("[{}] Merge was denied", file.path.display());
-
-						builder.add_item(
-							file_deploy_path,
-							file,
-							ItemStatus::skipped("Item already exists and merge ask was denied"),
-						);
-
-						return Ok(());
-					}
-				}
-			}
-		}
-
-		if let Some(parent) = file_deploy_path.parent() {
-			match std::fs::create_dir_all(parent) {
-				Ok(_) => {}
-				Err(err) => {
-					log::warn!(
-						"[{}] Failed to create directories (`{}`)",
-						file.path.display(),
-						err
-					);
-
-					builder.add_item(file_deploy_path, file, err.into());
-
-					return Ok(());
-				}
-			}
-		}
-
-		if file.is_template() {
-			let content = match std::fs::read_to_string(&file_source_path) {
-				Ok(content) => content,
-				Err(err) => {
-					log::info!("[{}] Failed to read source content", file.path.display());
-					builder.add_item(file_deploy_path, file, err.into());
-					return Ok(());
-				}
-			};
-
-			let template = Template::parse(&content)
-				.with_context(|| format!("File: {}", file_source_path.display()))?;
-			let content = template
-				.fill(profile.variables.as_ref(), file.variables.as_ref())
-				.with_context(|| format!("File: {}", file_source_path.display()))?;
-
-			if !self.options.dry_run {
-				// TODO: do template transform
-				if let Err(err) = std::fs::write(&file_deploy_path, content.as_bytes()) {
-					log::info!("[{}] Failed to write content", file.path.display());
-					builder.add_item(file_deploy_path, file, err.into());
-					return Ok(());
-				}
-			}
-		} else {
-			// Allowed for readability
-			#[allow(clippy::collapsible_else_if)]
-			if !self.options.dry_run {
-				if let Err(err) = std::fs::copy(&file_source_path, &file_deploy_path) {
-					log::info!("[{}] Failed to copy item", file.path.display());
-					builder.add_item(file_deploy_path, file, err.into());
-					return Ok(());
-				}
-			}
-		}
-
-		log::info!("[{}] Item successfully deployed", file.path.display());
-		builder.add_item(file_deploy_path, file, ItemStatus::Success);
+		exec_item.add_to_builder(builder, ItemStatus::Success);
 
 		Ok(())
 	}

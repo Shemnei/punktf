@@ -127,7 +127,7 @@ fn handle_commands(opts: Opts) -> Result<()> {
 	Ok(())
 }
 
-fn ask_user_merge(deploy_path: &Path, source_path: &Path) -> Result<bool> {
+fn ask_user_merge(source_path: &Path, deploy_path: &Path) -> Result<bool> {
 	use std::io::Write;
 
 	let stdin = std::io::stdin();
