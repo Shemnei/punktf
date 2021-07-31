@@ -109,8 +109,8 @@ It can be set with:
 			// OPT: Alternative deploy target (PATH: used instead of `root` + `file`, ALIAS: `root` + (alias instead of `file`))
 			// Default: None
 			"target": {
-				"kind": "alias",
-				"value": "init.vim",
+				"Alias": "init.vim",
+				// OR "Path": "/home/demo/test/init.vim",
 			},
 
 			// OPT: Custom variables for the specific file (same as above)

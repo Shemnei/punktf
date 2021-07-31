@@ -108,6 +108,7 @@ fn handle_commands(opts: Opts) -> Result<()> {
 			let profile: Profile = resolve_profile(&profile_path, &cmd.profile)?;
 
 			debug!("Profile: {:#?}", profile);
+			debug!("{}", serde_json::to_string_pretty(&profile).unwrap());
 
 			let options = ExecutorOptions {
 				dry_run: cmd.dry_run,
