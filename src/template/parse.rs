@@ -59,8 +59,6 @@ impl<'a> Parser<'a> {
 	}
 
 	fn next_block(&mut self) -> Option<Result<Spanned<BlockHint>>> {
-		// TODO: ceck perf as_bytes().get() vs starts_with/ends_with
-
 		let (span, hint, content) = match self.blocks.next()? {
 			Ok(x) => x,
 			Err(err) => return Some(Err(err)),
@@ -74,7 +72,7 @@ impl<'a> Parser<'a> {
 		}
 
 		// Check if its a text block (no opening and closing `{{\}}`)
-		if !matches!(content.as_bytes(), &[b'{', b'{', .., b'}', b'}']) {
+		if !content.starts_with("{{") {
 			return Some(Ok(span.span(BlockHint::Text)));
 		}
 
@@ -83,42 +81,37 @@ impl<'a> Parser<'a> {
 
 		// Check for escaped
 		// e.g. `{{{ Escaped }}}`
-		if let (Some(b'{'), Some(b'}')) = (content.as_bytes().get(0), content.as_bytes().last()) {
+		if content.starts_with('{') && content.ends_with('}') {
 			return Some(Ok(span.span(BlockHint::Escaped)));
 		}
 
 		// Check for comment
 		// e.g. `{{!-- Comment --}}`
-		if let (Some(b"!--"), Some(b"--")) = (
-			content.as_bytes().get(..3),
-			content
-				.as_bytes()
-				.get(content.as_bytes().len().saturating_sub(3)..),
-		) {
+		if content.starts_with("!--") && content.ends_with("--") {
 			return Some(Ok(span.span(BlockHint::Comment)));
 		}
 
 		// Check for if
 		// e.g. `{{@if {{VAR}} == "LITERAL"}}`
-		if let Some(b"@if ") = content.as_bytes().get(..4) {
+		if content.starts_with("@if ") {
 			return Some(Ok(span.span(BlockHint::IfStart)));
 		}
 
 		// Check for elif
 		// e.g. `{{@elif {{VAR}} == "LITERAL"}}`
-		if let Some(b"@elif ") = content.as_bytes().get(..6) {
+		if content.starts_with("@elif ") {
 			return Some(Ok(span.span(BlockHint::ElIf)));
 		}
 
 		// Check for else
 		// e.g. `{{@else}}`
-		if let Some(b"@else") = content.as_bytes().get(..5) {
+		if content.starts_with("@else") {
 			return Some(Ok(span.span(BlockHint::Else)));
 		}
 
 		// Check for fi
 		// e.g. `{{@fi}}`
-		if let Some(b"@fi") = content.as_bytes().get(..3) {
+		if content.starts_with("@fi") {
 			return Some(Ok(span.span(BlockHint::IfEnd)));
 		}
 
