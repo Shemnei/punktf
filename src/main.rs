@@ -108,7 +108,6 @@ fn handle_commands(opts: Opts) -> Result<()> {
 			let profile: Profile = resolve_profile(&profile_path, &cmd.profile)?;
 
 			debug!("Profile: {:#?}", profile);
-			//println!("{}", serde_yaml::to_string(&profile).unwrap());
 
 			let options = ExecutorOptions {
 				dry_run: cmd.dry_run,
@@ -120,7 +119,16 @@ fn handle_commands(opts: Opts) -> Result<()> {
 				.deploy(opts.shared.source.0, profile)
 				.wrap_err("Failed to deploy");
 
-			println!("{:#?}", deployment);
+			match deployment {
+				Ok(deployment) => {
+					log::debug!("{:#?}", deployment);
+					println!("Deployment was successful");
+				}
+				Err(err) => {
+					log::error!("Failed to deploy: {}", err);
+					println!("Deployment failed");
+				}
+			};
 		}
 	}
 

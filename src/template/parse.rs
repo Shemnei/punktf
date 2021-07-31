@@ -23,8 +23,6 @@ impl<'a> Parser<'a> {
 		let blocks =
 			std::iter::from_fn(|| self.parse_next_block()).collect::<Result<Vec<_>, _>>()?;
 
-		// TODO: validate structure (e.g. if/elif/fi)
-
 		Ok(Template {
 			content: self.content,
 			blocks,
@@ -404,8 +402,11 @@ fn parse_var(inner: &str, mut offset: usize) -> Result<Var> {
 		Err(eyre!(
 			"Found invalid symbol in variable name: (b`{}`; c`{}`)",
 			invalid,
-			// TODO: could be invalid for unicode
-			*invalid as char
+			if invalid.is_ascii() {
+				*invalid as char
+			} else {
+				'\0'
+			}
 		))
 	} else {
 		Ok(Var {
@@ -494,8 +495,6 @@ mod tests {
 		{{@if {{}} }} }}
 		"#;
 
-		println!("{}", content);
-
 		let iter = BlockIter::new(content);
 
 		// Hello World
@@ -568,7 +567,7 @@ mod tests {
 		let token = parser.parse_next_block().ok_or(eyre!("No block found"))??;
 
 		assert_eq!(token.span, ByteSpan::new(0usize, content.len()));
-		println!("{:#?}", &token.kind);
+		assert!(matches!(token.kind, BlockKind::If(_)));
 
 		Ok(())
 	}
@@ -589,7 +588,7 @@ mod tests {
 		let token = parser.parse_next_block().ok_or(eyre!("No block found"))??;
 
 		assert_eq!(token.span, ByteSpan::new(0usize, content.len()));
-		println!("{:#?}", &token.kind);
+		assert!(matches!(token.kind, BlockKind::If(_)));
 
 		Ok(())
 	}

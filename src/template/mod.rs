@@ -9,8 +9,6 @@ use self::parse::Parser;
 use self::span::Spanned;
 use crate::variables::{UserVars, Variables};
 
-// TODO: handle unicode
-
 #[derive(Debug, Clone)]
 pub struct Template<'a> {
 	content: &'a str,
@@ -22,7 +20,6 @@ impl<'a> Template<'a> {
 		Parser::new(content).parse()
 	}
 
-	// TODO: trim `\r\n` when span start/ends with it
 	pub fn fill(
 		&self,
 		profile_vars: Option<&UserVars>,
@@ -46,6 +43,7 @@ impl<'a> Template<'a> {
 	) -> Result<()> {
 		let Block { span, kind } = block;
 
+		// TODO: trim `\r\n` when span start/ends with it
 		match kind {
 			BlockKind::Escaped(inner) => {
 				output.push_str(&self.content[inner]);
@@ -71,8 +69,6 @@ impl<'a> Template<'a> {
 
 				if head.op.eval(&head_val, &self.content[head.other]) {
 					for block in head_nested {
-						// TODO: if first block is text (trim lf start)
-						// TODO: if last block is text (trim lf end)
 						self.process_block(profile_vars, item_vars, output, block)?;
 					}
 				} else {

@@ -118,10 +118,10 @@ where
 		}
 	}
 
+	// TODO: remove err and just use builder.failed()
 	pub fn deploy(&self, source_path: PathBuf, mut profile: Profile) -> Result<Deployment> {
 		// TODO: decide when deployment failed
 		// TODO: check if it handles relative paths
-		// TODO: merge code from deploy_file/deploy_child
 		// TODO: function to resolve path (e.g. `~`, ...) OR function to resolve templated paths
 
 		// FLOW:
@@ -142,6 +142,10 @@ where
 		//	- IF FILE: write item
 		//	- IF DIR: for each item in dir START AT TOP
 
+		let target_path = &profile
+			.target
+			.clone()
+			.unwrap_or_else(crate::get_target_path);
 		let profiles_source_path = source_path.join("profiles");
 		let items_source_path = source_path.join("items");
 
@@ -156,7 +160,13 @@ where
 		let items = std::mem::take(&mut profile.items);
 
 		for item in items.into_iter() {
-			let _ = self.deploy_item(&mut builder, &items_source_path, &profile, item)?;
+			let _ = self.deploy_item(
+				&mut builder,
+				&items_source_path,
+				target_path,
+				&profile,
+				item,
+			)?;
 		}
 
 		for hook in &profile.post_hooks {
@@ -172,17 +182,11 @@ where
 		&self,
 		builder: &mut DeploymentBuilder,
 		items_source_path: &Path,
+		target_path: &Path,
 		profile: &Profile,
 		item: Item,
 	) -> Result<()> {
-		// TODO: cleanup
-		let item_deploy_path = resolve_deployment_path(
-			&profile
-				.target
-				.clone()
-				.unwrap_or_else(crate::get_target_path),
-			&item,
-		);
+		let item_deploy_path = resolve_deployment_path(target_path, &item);
 		let item_source_path = resolve_source_path(items_source_path, &item);
 
 		log::debug!(
@@ -220,6 +224,7 @@ where
 			self.deploy_dir(
 				builder,
 				items_source_path,
+				target_path,
 				profile,
 				item,
 				item_source_path,
@@ -245,20 +250,22 @@ where
 		}
 	}
 
+	#[allow(clippy::too_many_arguments)]
 	fn deploy_dir(
 		&self,
 		builder: &mut DeploymentBuilder,
 		source_path: &Path,
+		target_path: &Path,
 		profile: &Profile,
 		directory: Item,
 		directory_source_path: PathBuf,
 		directory_deploy_path: PathBuf,
 	) -> Result<()> {
+		// if no specific target path is set for the directory, use the root
+		// target path as target. This will dump all children in the top level
+		// path.
 		let directory_deploy_path = match directory.target {
-			None => profile
-				.target
-				.clone()
-				.unwrap_or_else(crate::get_target_path),
+			None => target_path.to_path_buf(),
 			Some(_) => directory_deploy_path,
 		};
 
@@ -302,7 +309,7 @@ where
 					Ok(dent) => dent,
 					Err(err) => {
 						// TODO: handle better
-						log::error!("{}", err.to_string());
+						log::warn!("Failed to get dent: {}", err.to_string());
 						continue;
 					}
 				};

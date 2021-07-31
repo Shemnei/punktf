@@ -47,14 +47,12 @@ pub struct Profile {
 
 impl Profile {
 	pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, std::io::Error> {
-		// TODO: cleanup
-
 		let path = path.as_ref();
 		let file = File::open(path)?;
 
 		let extension = path.extension().ok_or_else(|| {
 			std::io::Error::new(
-				std::io::ErrorKind::NotFound,
+				std::io::ErrorKind::InvalidData,
 				"Failed to get file extension for profile",
 			)
 		})?;
@@ -62,7 +60,7 @@ impl Profile {
 		match extension.to_string_lossy().as_ref() {
 			"json" => serde_json::from_reader(file).map_err(|err| err.to_string()),
 			"yaml" | "yml" => serde_yaml::from_reader(file).map_err(|err| err.to_string()),
-			&_ => Err(String::from("Invalid file extension for profile")),
+			_ => Err(String::from("Unsupported file extension for profile")),
 		}
 		.map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))
 	}
@@ -92,9 +90,17 @@ impl Profile {
 			self.target = target;
 		}
 
-		// TODO: elimiate same hooks???
-		self.pre_hooks.extend(pre_hooks.into_iter());
-		self.post_hooks.extend(post_hooks.into_iter());
+		let pre_unique = pre_hooks
+			.into_iter()
+			.filter(|h| !self.pre_hooks.contains(h))
+			.collect::<Vec<_>>();
+		self.pre_hooks.extend(pre_unique);
+
+		let post_unique = post_hooks
+			.into_iter()
+			.filter(|h| !self.post_hooks.contains(h))
+			.collect::<Vec<_>>();
+		self.post_hooks.extend(post_unique);
 
 		let self_item_paths = self
 			.items

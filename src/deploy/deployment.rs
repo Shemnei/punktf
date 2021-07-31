@@ -176,8 +176,6 @@ impl Default for DeploymentBuilder {
 		Self {
 			time_start: Utc::now(),
 			items: HashMap::new(),
-			// TODO: INVESTIGATE - Causes stack overflow???
-			//..Default::default()
 		}
 	}
 }
