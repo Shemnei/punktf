@@ -25,6 +25,21 @@ impl Variables for UserVars {
 }
 
 impl UserVars {
+	pub fn from_items<K, V, I, II>(iter: II) -> Self
+	where
+		K: Into<String>,
+		V: Into<String>,
+		I: Iterator<Item = (K, V)>,
+		II: IntoIterator<IntoIter = I, Item = (K, V)>,
+	{
+		let inner = iter
+			.into_iter()
+			.map(|(k, v)| (k.into(), v.into()))
+			.collect();
+
+		Self { inner }
+	}
+
 	/// Merges everything from `other` into `self`.
 	/// Fields from `self` have precendence over `other`.
 	pub fn merge(&mut self, other: UserVars) {

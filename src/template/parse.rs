@@ -47,10 +47,12 @@ impl<'a> Parser<'a> {
 			BlockHint::IfStart => self
 				.parse_if(span)
 				.map(|Spanned { span, value }| Block::new(span, BlockKind::If(value))),
+
 			// Illegal top level blocks
 			BlockHint::ElIf => Err(eyre!("Found invalid top level block elif at {}",)),
 			BlockHint::Else => Err(eyre!("Found invalid top level block else at {}", span)),
 			BlockHint::IfEnd => Err(eyre!("Found invalid top level block fi at {}", span)),
+			// Illegal top level blocks
 		};
 
 		Some(block)
@@ -64,6 +66,9 @@ impl<'a> Parser<'a> {
 			Err(err) => return Some(Err(err)),
 		};
 
+		// Hints can be provided by the block pre parser. It sometimes has to
+		// know what block closings to search for which also can idetify that
+		// blocks kind.
 		if let Some(hint) = hint {
 			return Some(Ok(span.span(hint)));
 		}
@@ -77,11 +82,13 @@ impl<'a> Parser<'a> {
 		let content = &content[2..content.len() - 2];
 
 		// Check for escaped
+		// e.g. `{{{ Escaped }}}`
 		if let (Some(b'{'), Some(b'}')) = (content.as_bytes().get(0), content.as_bytes().last()) {
 			return Some(Ok(span.span(BlockHint::Escaped)));
 		}
 
 		// Check for comment
+		// e.g. `{{!-- Comment --}}`
 		if let (Some(b"!--"), Some(b"--")) = (
 			content.as_bytes().get(..3),
 			content
@@ -92,21 +99,25 @@ impl<'a> Parser<'a> {
 		}
 
 		// Check for if
+		// e.g. `{{@if {{VAR}} == "LITERAL"}}`
 		if let Some(b"@if ") = content.as_bytes().get(..4) {
 			return Some(Ok(span.span(BlockHint::IfStart)));
 		}
 
 		// Check for elif
+		// e.g. `{{@elif {{VAR}} == "LITERAL"}}`
 		if let Some(b"@elif ") = content.as_bytes().get(..6) {
 			return Some(Ok(span.span(BlockHint::ElIf)));
 		}
 
 		// Check for else
+		// e.g. `{{@else}}`
 		if let Some(b"@else") = content.as_bytes().get(..5) {
 			return Some(Ok(span.span(BlockHint::Else)));
 		}
 
-		// Check for else
+		// Check for fi
+		// e.g. `{{@fi}}`
 		if let Some(b"@fi") = content.as_bytes().get(..3) {
 			return Some(Ok(span.span(BlockHint::IfEnd)));
 		}
@@ -282,7 +293,9 @@ impl<'a> Parser<'a> {
 	}
 
 	fn peek_block_hint(&self) -> Option<Result<BlockHint>> {
+		// Make copy of self to not mess up the state of the block iter
 		let mut peek = *self;
+
 		peek.next_block()
 			.map(|opt| opt.map(|spanned| spanned.into_value()))
 	}
