@@ -191,4 +191,87 @@ mod tests {
 
 		Ok(())
 	}
+
+	#[test]
+	fn parse_template_vars() -> Result<()> {
+		// Default
+		let content = r#"{{OS}}"#;
+		let template = Template::parse(content)?;
+
+		let profile_vars = UserVars::from_items(vec![("OS", "windows")]);
+		let item_vars = UserVars::from_items(vec![("OS", "unix")]);
+		std::env::set_var("OS", "macos");
+
+		assert_eq!(
+			template.fill(Some(&profile_vars), Some(&item_vars))?,
+			"unix"
+		);
+
+		// Profile
+		let content = r#"{{#OS}}"#;
+		let template = Template::parse(content)?;
+
+		let profile_vars = UserVars::from_items(vec![("OS", "windows")]);
+		let item_vars = UserVars::from_items(vec![("OS", "unix")]);
+		std::env::set_var("OS", "macos");
+
+		assert_eq!(
+			template.fill(Some(&profile_vars), Some(&item_vars))?,
+			"windows"
+		);
+
+		// Item
+		let content = r#"{{&OS}}"#;
+		let template = Template::parse(content)?;
+
+		let profile_vars = UserVars::from_items(vec![("OS", "windows")]);
+		let item_vars = UserVars::from_items(vec![("OS", "unix")]);
+		std::env::set_var("OS", "macos");
+
+		assert_eq!(
+			template.fill(Some(&profile_vars), Some(&item_vars))?,
+			"unix"
+		);
+
+		// Env
+		let content = r#"{{$OS}}"#;
+		let template = Template::parse(content)?;
+
+		let profile_vars = UserVars::from_items(vec![("OS", "windows")]);
+		let item_vars = UserVars::from_items(vec![("OS", "unix")]);
+		std::env::set_var("OS", "macos");
+
+		assert_eq!(
+			template.fill(Some(&profile_vars), Some(&item_vars))?,
+			"macos"
+		);
+
+		// Mixed - First
+		let content = r#"{{$#OS}}"#;
+		let template = Template::parse(content)?;
+
+		let profile_vars = UserVars::from_items(vec![("OS", "windows")]);
+		let item_vars = UserVars::from_items(vec![("OS", "unix")]);
+		std::env::set_var("OS", "macos");
+
+		assert_eq!(
+			template.fill(Some(&profile_vars), Some(&item_vars))?,
+			"macos"
+		);
+
+		// Mixed - Last
+		let content = r#"{{$&OS}}"#;
+		let template = Template::parse(content)?;
+
+		let profile_vars = UserVars::from_items(vec![("OS", "windows")]);
+		let item_vars = UserVars::from_items(vec![("OS", "unix")]);
+		std::env::remove_var("OS");
+
+		assert_eq!(
+			template.fill(Some(&profile_vars), Some(&item_vars))?,
+			"unix"
+		);
+
+		Ok(())
+	}
 }
