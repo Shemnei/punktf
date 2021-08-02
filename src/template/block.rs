@@ -2,11 +2,11 @@ use super::span::{ByteSpan, Spanned};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BlockHint {
-	Comment,
-	Print,
 	Text,
+	Comment,
 	Escaped,
 	Variable,
+	Print,
 	IfStart,
 	ElIf,
 	Else,
@@ -21,11 +21,11 @@ impl BlockHint {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BlockKind {
-	Comment,
-	Print(ByteSpan),
 	Text,
+	Comment,
 	Escaped(ByteSpan),
 	Var(Var),
+	Print(ByteSpan),
 	If(If),
 }
 

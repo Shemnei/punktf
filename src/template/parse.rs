@@ -38,13 +38,13 @@ impl<'a> Parser<'a> {
 		log::trace!("{:?}: {}", hint, &self.content[span]);
 
 		let block = match hint {
-			BlockHint::Comment => Ok(self.parse_comment(span)),
-			BlockHint::Print => Ok(self.parse_print(span)),
 			BlockHint::Text => Ok(self.parse_text(span)),
+			BlockHint::Comment => Ok(self.parse_comment(span)),
 			BlockHint::Escaped => Ok(self.parse_escaped(span)),
 			BlockHint::Variable => self
 				.parse_variable(span)
 				.map(|var| Block::new(span, BlockKind::Var(var))),
+			BlockHint::Print => Ok(self.parse_print(span)),
 			BlockHint::IfStart => self
 				.parse_if(span)
 				.map(|Spanned { span, value }| Block::new(span, BlockKind::If(value))),
@@ -92,6 +92,12 @@ impl<'a> Parser<'a> {
 			return Some(Ok(span.span(BlockHint::Comment)));
 		}
 
+		// Check for print
+		// e.g. `{{@print ... }}`
+		if content.starts_with("@print ") {
+			return Some(Ok(span.span(BlockHint::Print)));
+		}
+
 		// Check for if
 		// e.g. `{{@if {{VAR}} == "LITERAL"}}`
 		if content.starts_with("@if ") {
@@ -114,12 +120,6 @@ impl<'a> Parser<'a> {
 		// e.g. `{{@fi}}`
 		if content.starts_with("@fi") {
 			return Some(Ok(span.span(BlockHint::IfEnd)));
-		}
-
-		// Check for print
-		// e.g. `{{@print ... }}`
-		if content.starts_with("@print ") {
-			return Some(Ok(span.span(BlockHint::Print)));
 		}
 
 		Some(Ok(span.span(BlockHint::Variable)))
