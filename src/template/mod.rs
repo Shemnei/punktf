@@ -4,9 +4,8 @@ mod span;
 
 use color_eyre::eyre::{eyre, Result};
 
-use self::block::{Block, BlockKind, If, Var, VarEnv};
+use self::block::{Block, BlockKind, If, IfExpr, Var, VarEnv};
 use self::parse::Parser;
-use self::span::Spanned;
 use crate::variables::{UserVars, Variables};
 
 // TODO: handle unicode
@@ -67,9 +66,7 @@ impl<'a> Template<'a> {
 			}) => {
 				let (head, head_nested) = head;
 
-				let head_val = self.resolve_var(&head.var, profile_vars, item_vars)?;
-
-				if head.op.eval(&head_val, &self.content[head.other]) {
+				if self.resolve_if_expr(head.value(), profile_vars, item_vars)? {
 					for block in head_nested {
 						// TODO: if first block is text (trim lf start)
 						// TODO: if last block is text (trim lf end)
@@ -77,13 +74,7 @@ impl<'a> Template<'a> {
 					}
 				} else {
 					for (elif, elif_nested) in elifs {
-						let Spanned {
-							span: _,
-							value: elif,
-						} = elif;
-						let elif_val = self.resolve_var(&elif.var, profile_vars, item_vars)?;
-
-						if elif.op.eval(&elif_val, &self.content[elif.other]) {
+						if self.resolve_if_expr(elif.value(), profile_vars, item_vars)? {
 							// return if matching elif arm was found
 							for block in elif_nested {
 								self.process_block(profile_vars, item_vars, output, block)?;
@@ -103,6 +94,21 @@ impl<'a> Template<'a> {
 		};
 
 		Ok(())
+	}
+
+	fn resolve_if_expr(
+		&self,
+		expr: &IfExpr,
+		profile_vars: Option<&UserVars>,
+		item_vars: Option<&UserVars>,
+	) -> Result<bool> {
+		match expr {
+			IfExpr::Compare { var, op, other } => {
+				let var = self.resolve_var(var, profile_vars, item_vars)?;
+				Ok(op.eval(&var, &self.content[other]))
+			}
+			IfExpr::Exists { var } => Ok(self.resolve_var(var, profile_vars, item_vars).is_ok()),
+		}
 	}
 
 	fn resolve_var(

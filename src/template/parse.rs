@@ -236,7 +236,7 @@ impl<'a> Parser<'a> {
 	}
 
 	fn parse_if_expr(&self, span: ByteSpan) -> Result<IfExpr> {
-		// {{VAR}} (!=|==) "OTHER"
+		// {{VAR}} (!=|==) "OTHER" OR {{VAR}}
 		let content = &self.content[span];
 
 		// read var
@@ -255,14 +255,22 @@ impl<'a> Parser<'a> {
 
 		let var = self.parse_variable(var_block_span)?;
 
-		let op = parse_ifop(&content[var_block_end..])?;
+		// check if it is an exits expr
+		// exclude the closing `}}` with -2.
+		let remainder = &content[var_block_end..];
 
-		let other = parse_other(
-			&content[var_block_end..],
-			span.low().as_usize() + var_block_end,
-		)?;
+		if remainder.trim().is_empty() {
+			Ok(IfExpr::Exists { var })
+		} else {
+			let op = parse_ifop(&content[var_block_end..])?;
 
-		Ok(IfExpr { var, op, other })
+			let other = parse_other(
+				&content[var_block_end..],
+				span.low().as_usize() + var_block_end,
+			)?;
+
+			Ok(IfExpr::Compare { var, op, other })
+		}
 	}
 
 	fn parse_if_enclosed_blocks(&mut self, start_span: ByteSpan) -> Result<Vec<Block>> {
@@ -382,7 +390,10 @@ fn parse_var(inner: &str, mut offset: usize) -> Result<Var> {
 
 			// break if add fails (duplicate, no more space)
 			if !env_set.add(env) {
-				break;
+				return Err(eyre!(
+					"Specified duplicate variable environments at {}",
+					offset
+				));
 			}
 		}
 
@@ -488,6 +499,279 @@ mod tests {
 	use crate::template::span::ByteSpan;
 
 	#[test]
+	fn parse_single_text() -> Result<()> {
+		let content = r#"Hello World this is a text block"#;
+
+		let mut parser = Parser::new(content);
+		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+
+		assert_eq!(
+			block,
+			Block::new(ByteSpan::new(0usize, content.len()), BlockKind::Text)
+		);
+
+		Ok(())
+	}
+
+	#[test]
+	fn parse_single_comment() -> Result<()> {
+		let content = r#"{{!-- Hello World this is a comment block --}}"#;
+
+		let mut parser = Parser::new(content);
+		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+
+		assert_eq!(
+			block,
+			Block::new(ByteSpan::new(0usize, content.len()), BlockKind::Comment)
+		);
+
+		Ok(())
+	}
+
+	#[test]
+	fn parse_single_escaped() -> Result<()> {
+		let content = r#"{{{ Hello World this is a comment block }}}"#;
+
+		let mut parser = Parser::new(content);
+		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+
+		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
+
+		let inner = ByteSpan::new(3usize, content.len() - 3);
+		assert_eq!(&content[inner], " Hello World this is a comment block ");
+		assert_eq!(block.kind(), &BlockKind::Escaped(inner));
+
+		Ok(())
+	}
+
+	#[test]
+	fn parse_single_var_default() -> Result<()> {
+		let content = r#"{{OS}}"#;
+
+		let mut parser = Parser::new(content);
+		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+
+		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
+
+		let name = ByteSpan::new(2usize, content.len() - 2);
+		assert_eq!(&content[name], "OS");
+		let envs = VarEnvSet([Some(VarEnv::Item), Some(VarEnv::Profile), None]);
+		assert_eq!(block.kind(), &BlockKind::Var(Var { envs, name }));
+
+		Ok(())
+	}
+
+	#[test]
+	fn parse_single_var_env() -> Result<()> {
+		let content = r#"{{$ENV}}"#;
+
+		let mut parser = Parser::new(content);
+		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+
+		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
+
+		let name = ByteSpan::new(3usize, content.len() - 2);
+		assert_eq!(&content[name], "ENV");
+		let envs = VarEnvSet([Some(VarEnv::Environment), None, None]);
+		assert_eq!(block.kind(), &BlockKind::Var(Var { envs, name }));
+
+		Ok(())
+	}
+
+	#[test]
+	fn parse_single_var_profile() -> Result<()> {
+		let content = r#"{{#PROFILE}}"#;
+
+		let mut parser = Parser::new(content);
+		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+
+		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
+
+		let name = ByteSpan::new(3usize, content.len() - 2);
+		assert_eq!(&content[name], "PROFILE");
+		let envs = VarEnvSet([Some(VarEnv::Profile), None, None]);
+		assert_eq!(block.kind(), &BlockKind::Var(Var { envs, name }));
+
+		Ok(())
+	}
+
+	#[test]
+	fn parse_single_var_item() -> Result<()> {
+		let content = r#"{{&ITEM}}"#;
+
+		let mut parser = Parser::new(content);
+		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+
+		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
+
+		let name = ByteSpan::new(3usize, content.len() - 2);
+		assert_eq!(&content[name], "ITEM");
+		let envs = VarEnvSet([Some(VarEnv::Item), None, None]);
+		assert_eq!(block.kind(), &BlockKind::Var(Var { envs, name }));
+
+		Ok(())
+	}
+
+	#[test]
+	fn parse_single_var_mixed() -> Result<()> {
+		let content = r#"{{$&#MIXED}}"#;
+
+		let mut parser = Parser::new(content);
+		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+
+		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
+
+		let name = ByteSpan::new(5usize, content.len() - 2);
+		assert_eq!(&content[name], "MIXED");
+		let envs = VarEnvSet([
+			Some(VarEnv::Environment),
+			Some(VarEnv::Item),
+			Some(VarEnv::Profile),
+		]);
+		assert_eq!(block.kind(), &BlockKind::Var(Var { envs, name }));
+
+		Ok(())
+	}
+
+	#[test]
+	fn parse_single_vars() -> Result<()> {
+		// duplicate variable environment
+		let content = r#"{{##OS}}"#;
+
+		let mut parser = Parser::new(content);
+		let block = parser.parse_next_block().ok_or(eyre!("No block found"))?;
+
+		assert!(block.is_err());
+
+		Ok(())
+	}
+
+	#[test]
+	fn parse_single_if_eq() -> Result<()> {
+		let content = r#"{{@if {{OS}} == "windows"}}{{@fi}}"#;
+
+		let mut parser = Parser::new(content);
+		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+
+		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
+
+		let if_span = ByteSpan::new(0usize, 27usize);
+		assert_eq!(&content[if_span], r#"{{@if {{OS}} == "windows"}}"#);
+
+		let name = ByteSpan::new(8usize, 10usize);
+		assert_eq!(&content[name], "OS");
+		let envs = VarEnvSet([Some(VarEnv::Item), Some(VarEnv::Profile), None]);
+
+		let op = IfOp::Eq;
+
+		let other = ByteSpan::new(17usize, 24usize);
+		assert_eq!(&content[other], "windows");
+
+		let end_span = ByteSpan::new(27usize, 34usize);
+		assert_eq!(&content[end_span], r#"{{@fi}}"#);
+
+		assert_eq!(
+			block.kind(),
+			&BlockKind::If(If {
+				head: (
+					if_span.span(IfExpr::Compare {
+						var: Var { envs, name },
+						op,
+						other
+					}),
+					vec![]
+				),
+				elifs: vec![],
+				els: None,
+				end: end_span
+			})
+		);
+
+		Ok(())
+	}
+
+	#[test]
+	fn parse_single_if_neq() -> Result<()> {
+		let content = r#"{{@if {{OS}} != "windows"}}{{@fi}}"#;
+
+		let mut parser = Parser::new(content);
+		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+
+		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
+
+		let if_span = ByteSpan::new(0usize, 27usize);
+		assert_eq!(&content[if_span], r#"{{@if {{OS}} != "windows"}}"#);
+
+		let name = ByteSpan::new(8usize, 10usize);
+		assert_eq!(&content[name], "OS");
+		let envs = VarEnvSet([Some(VarEnv::Item), Some(VarEnv::Profile), None]);
+
+		let op = IfOp::NotEq;
+
+		let other = ByteSpan::new(17usize, 24usize);
+		assert_eq!(&content[other], "windows");
+
+		let end_span = ByteSpan::new(27usize, 34usize);
+		assert_eq!(&content[end_span], r#"{{@fi}}"#);
+
+		assert_eq!(
+			block.kind(),
+			&BlockKind::If(If {
+				head: (
+					if_span.span(IfExpr::Compare {
+						var: Var { envs, name },
+						op,
+						other
+					}),
+					vec![]
+				),
+				elifs: vec![],
+				els: None,
+				end: end_span
+			})
+		);
+
+		Ok(())
+	}
+
+	#[test]
+	fn parse_single_if_exists() -> Result<()> {
+		let content = r#"{{@if {{$#EXISTS}}}}{{@fi}}"#;
+
+		let mut parser = Parser::new(content);
+		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+
+		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
+
+		let if_span = ByteSpan::new(0usize, 20usize);
+		assert_eq!(&content[if_span], r#"{{@if {{$#EXISTS}}}}"#);
+
+		let name = ByteSpan::new(10usize, 16usize);
+		assert_eq!(&content[name], "EXISTS");
+		let envs = VarEnvSet([Some(VarEnv::Environment), Some(VarEnv::Profile), None]);
+
+		let end_span = ByteSpan::new(20usize, 27usize);
+		assert_eq!(&content[end_span], r#"{{@fi}}"#);
+
+		assert_eq!(
+			block.kind(),
+			&BlockKind::If(If {
+				head: (
+					if_span.span(IfExpr::Exists {
+						var: Var { envs, name }
+					}),
+					vec![]
+				),
+				elifs: vec![],
+				els: None,
+				end: end_span
+			})
+		);
+
+		Ok(())
+	}
+
+	#[test]
 	fn find_blocks() {
 		let content = r#"{{ Hello World }} {{{ Escaped {{ }} }} }}}
 		{{!-- Hello World {{}} {{{ asdf }}} this is a comment --}}
@@ -555,7 +839,7 @@ mod tests {
 	}
 
 	#[test]
-	fn parse_if() -> Result<()> {
+	fn parse_if_cmp() -> Result<()> {
 		let content = r#"{{@if {{&OS}} == "windows" }}
 		DEMO
 		{{@elif {{&OS}} == "linux"  }}
@@ -574,7 +858,7 @@ mod tests {
 	}
 
 	#[test]
-	fn parse_if_nested() -> Result<()> {
+	fn parse_if_cmp_nested() -> Result<()> {
 		let content = r#"{{@if {{&OS}} == "windows" }}
 		{{!-- This is a nested comment --}}
 		{{{ Escaped {{}} }}}
@@ -584,6 +868,45 @@ mod tests {
 		{{@else}}
 		ASD
 		{{@fi}}"#;
+
+		let mut parser = Parser::new(content);
+		let token = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+
+		assert_eq!(token.span, ByteSpan::new(0usize, content.len()));
+		println!("{:#?}", &token.kind);
+
+		Ok(())
+	}
+
+	#[test]
+	fn parse_if_exists() -> Result<()> {
+		let content = r#"{{@if {{&OS}}  }}
+		DEMO
+		ASD
+		{{@fi}}"#;
+
+		let mut parser = Parser::new(content);
+		let token = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+
+		assert_eq!(token.span, ByteSpan::new(0usize, content.len()));
+		println!("{:#?}", &token.kind);
+
+		Ok(())
+	}
+
+	#[test]
+	fn parse_if_mixed() -> Result<()> {
+		let content = r#"{{@if {{OS}}}}
+	print("No value for variable `OS` set")
+{{@elif {{&OS}} != "windows"}}
+	print("OS is not windows")
+{{@elif {{OS}} == "windows"}}
+	{{{!-- This is a nested comment. Below it is a nested variable block. --}}}
+	print("OS is {{OS}}")
+{{@else}}
+	{{{!-- This is a nested comment. --}}}
+	print("Can never get here. {{{ {{OS}} is neither `windows` nor not `windows`. }}}")
+{{@fi}}"#;
 
 		let mut parser = Parser::new(content);
 		let token = parser.parse_next_block().ok_or(eyre!("No block found"))??;

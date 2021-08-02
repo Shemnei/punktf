@@ -37,6 +37,14 @@ impl Block {
 	pub fn new(span: ByteSpan, kind: BlockKind) -> Self {
 		Self { span, kind }
 	}
+
+	pub fn span(&self) -> &ByteSpan {
+		&self.span
+	}
+
+	pub fn kind(&self) -> &BlockKind {
+		&self.kind
+	}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -114,8 +122,7 @@ impl IfOp {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct IfExpr {
-	pub var: Var,
-	pub op: IfOp,
-	pub other: ByteSpan,
+pub enum IfExpr {
+	Compare { var: Var, op: IfOp, other: ByteSpan },
+	Exists { var: Var },
 }

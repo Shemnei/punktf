@@ -181,17 +181,20 @@ rustc = {{RUSTC_PATH}}
 
 Supported are only if expressions with the following structure:
 
-`{{VAR}} (==|!=) "LITERAL"`
+- Check if value of `VAR` is (not) equal to `LITERAL`: `{{VAR}} (==|!=) "LITERAL"`
+- Check if a value for `VAR` exists: `{{VAR}}`
 
 
 Example:
 
 ```handlebars
-{{@if {{OS}} == "windows"}}
-	print("running on windows")
-{{@elif {{OS}} == "linux"}}
-	print("running on linux")
-{{@else}}
-	print("NOT running on windows/linux")
+{{@if {{OS}}}}
+	{{@if {{OS}} == "windows"}}
+		print("running on windows")
+	{{@elif {{OS}} == "linux"}}
+		print("running on linux")
+	{{@else}}
+		print("NOT running on windows/linux")
+	{{@fi}}
 {{@fi}}
 ```
