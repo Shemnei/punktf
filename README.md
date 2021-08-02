@@ -145,7 +145,7 @@ parser and will not be transferred to the output.
 
 Example:
 
-```python
+```handlebars
 {{!-- Inserts the current os name and prints it when executed --}}
 print("{{OS}}")
 ```
@@ -157,7 +157,7 @@ escaped block. Everything within it will get copied over without modification.
 
 Example:
 
-```text
+```handlebars
 {{{ This is escaped ... I can use {{ without worry. I can even use }} and is still fine }}}
 ```
 
@@ -173,7 +173,7 @@ Prefix to determine where variables are looked for (can be combined: e.g. {{#$RU
 
 Example:
 
-```python
+```handlebars
 rustc = {{RUSTC_PATH}}
 ```
 
@@ -186,7 +186,7 @@ Supported are only if expressions with the following structure:
 
 Example:
 
-```python
+```handlebars
 {{@if {{OS}} == "windows"}}
 	print("running on windows")
 {{@elif {{OS}} == "linux"}}
