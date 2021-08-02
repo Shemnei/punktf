@@ -80,3 +80,13 @@ pub struct DeployedItem {
 	pub status: ItemStatus,
 	pub kind: DeployedItemKind,
 }
+
+impl DeployedItem {
+	pub fn status(&self) -> &ItemStatus {
+		&self.status
+	}
+
+	pub fn kind(&self) -> &DeployedItemKind {
+		&self.kind
+	}
+}

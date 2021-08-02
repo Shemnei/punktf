@@ -5,9 +5,12 @@ use std::str::FromStr;
 
 use clap::Clap;
 use color_eyre::eyre::Context;
+use color_eyre::owo_colors::OwoColorize;
 use color_eyre::Result;
 use log::debug;
+use punktf::deploy::deployment::{Deployment, DeploymentStatus};
 use punktf::deploy::executor::{Executor, ExecutorOptions};
+use punktf::deploy::item::ItemStatus;
 use punktf::{resolve_profile, Profile};
 
 // Used so that it defaults to current_dir if no value is given.
@@ -77,6 +80,8 @@ struct Deploy {
 }
 
 // TODO: target path as cli arg
+// TODO: cleanup/improve stdout output
+// TODO: option to output deployment struct to file
 
 fn main() -> Result<()> {
 	color_eyre::install()?;
@@ -123,11 +128,10 @@ fn handle_commands(opts: Opts) -> Result<()> {
 			match deployment {
 				Ok(deployment) => {
 					log::debug!("{:#?}", deployment);
-					println!("Deployment was successful");
+					print_deployment(deployment);
 				}
 				Err(err) => {
 					log::error!("Failed to deploy: {}", err);
-					println!("Deployment failed");
 				}
 			};
 		}
@@ -146,7 +150,7 @@ fn ask_user_merge(source_path: &Path, deploy_path: &Path) -> Result<bool> {
 	loop {
 		stdout.write_all(
 			format!(
-				"Overwrite `{}` with `{}` [y/N]:",
+				"Overwrite `{}` with `{}` [y/N]: ",
 				deploy_path.display(),
 				source_path.display()
 			)
@@ -168,4 +172,91 @@ fn ask_user_merge(source_path: &Path, deploy_path: &Path) -> Result<bool> {
 			}
 		};
 	}
+}
+
+fn print_deployment(deployment: Deployment) {
+	println!("-----------------------------------------");
+
+	let mut files_success = 0;
+	for (idx, (path, _)) in deployment
+		.items()
+		.into_iter()
+		.filter(|(_, v)| v.status().is_success())
+		.enumerate()
+	{
+		if idx == 0 {
+			println!("-- {} ---------", "SUCCESS".green());
+		}
+
+		println!("\t{}", path.display().bright_black());
+		files_success += 1;
+	}
+
+	let mut files_skipped = 0;
+	for (idx, (path, reason)) in deployment
+		.items()
+		.into_iter()
+		.filter_map(|(k, v)| {
+			if let ItemStatus::Skipped(reason) = v.status() {
+				Some((k, reason))
+			} else {
+				None
+			}
+		})
+		.enumerate()
+	{
+		if idx == 0 {
+			println!("-- {} ---------", "SKIPPED".yellow());
+		}
+
+		println!("\t{}: {}", path.display(), reason.bright_black());
+		files_skipped += 1;
+	}
+
+	let mut files_failed = 0;
+	for (idx, (path, reason)) in deployment
+		.items()
+		.into_iter()
+		.filter_map(|(k, v)| {
+			if let ItemStatus::Failed(reason) = v.status() {
+				Some((k, reason))
+			} else {
+				None
+			}
+		})
+		.enumerate()
+	{
+		if idx == 0 {
+			println!("-- {} ---------", "FAILED".red());
+		}
+
+		println!("\t{}: {}", path.display(), reason.bright_black());
+		files_failed += 1;
+	}
+
+	println!("");
+
+	match deployment.status() {
+		DeploymentStatus::Success => {
+			println!("Status: {}", "SUCCESS".green());
+		}
+		DeploymentStatus::Failed(reason) => {
+			println!("Status: {}\n\t{}", "FAILED".red(), reason);
+		}
+	};
+
+	let files_total = deployment.items().len();
+
+	println!("");
+	println!(
+		"Time            : {:?}",
+		deployment.duration().to_std().unwrap()
+	);
+	println!("");
+
+	println!("Files (deployed): {}", files_success);
+	println!("Files (skipped) : {}", files_skipped);
+	println!("Files (failed)  : {}", files_failed);
+	println!("----------------");
+	println!("Files (total)   : {}", files_total);
 }

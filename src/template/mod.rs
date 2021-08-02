@@ -80,7 +80,7 @@ impl<'a> Template<'a> {
 						let elif_val = self.resolve_var(&elif.var, profile_vars, item_vars)?;
 
 						if elif.op.eval(&elif_val, &self.content[elif.other]) {
-							// return if matching elif arm was found
+							// Exit after first successful elif condition
 							for block in elif_nested {
 								self.process_block(profile_vars, item_vars, output, block)?;
 							}

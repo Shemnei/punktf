@@ -76,6 +76,10 @@ impl Deployment {
 		&self.status
 	}
 
+	pub fn items(&self) -> &HashMap<PathBuf, DeployedItem> {
+		&self.items
+	}
+
 	pub fn build() -> DeploymentBuilder {
 		DeploymentBuilder::default()
 	}

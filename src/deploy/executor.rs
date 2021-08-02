@@ -118,7 +118,7 @@ where
 		}
 	}
 
-	// TODO: remove err and just use builder.failed()
+	// TODO: remove err and just use builder.failed()???
 	pub fn deploy(&self, source_path: PathBuf, mut profile: Profile) -> Result<Deployment> {
 		// TODO: decide when deployment failed
 		// TODO: check if it handles relative paths
