@@ -152,7 +152,8 @@ mod tests {
 		let _ = env_logger::Builder::from_env(
 			env_logger::Env::default().default_filter_or(log::Level::Debug.to_string()),
 		)
-		.is_test(true).try_init();
+		.is_test(true)
+		.try_init();
 
 		let content = r#"
 			[some settings]
