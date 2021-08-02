@@ -180,7 +180,7 @@ fn print_deployment(deployment: Deployment) {
 	let mut files_success = 0;
 	for (idx, (path, _)) in deployment
 		.items()
-		.into_iter()
+		.iter()
 		.filter(|(_, v)| v.status().is_success())
 		.enumerate()
 	{
@@ -195,7 +195,7 @@ fn print_deployment(deployment: Deployment) {
 	let mut files_skipped = 0;
 	for (idx, (path, reason)) in deployment
 		.items()
-		.into_iter()
+		.iter()
 		.filter_map(|(k, v)| {
 			if let ItemStatus::Skipped(reason) = v.status() {
 				Some((k, reason))
@@ -216,7 +216,7 @@ fn print_deployment(deployment: Deployment) {
 	let mut files_failed = 0;
 	for (idx, (path, reason)) in deployment
 		.items()
-		.into_iter()
+		.iter()
 		.filter_map(|(k, v)| {
 			if let ItemStatus::Failed(reason) = v.status() {
 				Some((k, reason))
@@ -234,7 +234,7 @@ fn print_deployment(deployment: Deployment) {
 		files_failed += 1;
 	}
 
-	println!("");
+	println!();
 
 	match deployment.status() {
 		DeploymentStatus::Success => {
@@ -247,12 +247,12 @@ fn print_deployment(deployment: Deployment) {
 
 	let files_total = deployment.items().len();
 
-	println!("");
+	println!();
 	println!(
 		"Time            : {:?}",
 		deployment.duration().to_std().unwrap()
 	);
-	println!("");
+	println!();
 
 	println!("Files (deployed): {}", files_success);
 	println!("Files (skipped) : {}", files_skipped);
