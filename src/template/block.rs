@@ -2,8 +2,9 @@ use super::span::{ByteSpan, Spanned};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BlockHint {
-	Text,
 	Comment,
+	Print,
+	Text,
 	Escaped,
 	Variable,
 	IfStart,
@@ -20,8 +21,9 @@ impl BlockHint {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BlockKind {
-	Text,
 	Comment,
+	Print(ByteSpan),
+	Text,
 	Escaped(ByteSpan),
 	Var(Var),
 	If(If),

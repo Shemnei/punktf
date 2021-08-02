@@ -38,8 +38,9 @@ impl<'a> Parser<'a> {
 		log::trace!("{:?}: {}", hint, &self.content[span]);
 
 		let block = match hint {
-			BlockHint::Text => Ok(self.parse_text(span)),
 			BlockHint::Comment => Ok(self.parse_comment(span)),
+			BlockHint::Print => Ok(self.parse_print(span)),
+			BlockHint::Text => Ok(self.parse_text(span)),
 			BlockHint::Escaped => Ok(self.parse_escaped(span)),
 			BlockHint::Variable => self
 				.parse_variable(span)
@@ -115,16 +116,27 @@ impl<'a> Parser<'a> {
 			return Some(Ok(span.span(BlockHint::IfEnd)));
 		}
 
+		// Check for print
+		// e.g. `{{@print ... }}`
+		if content.starts_with("@print ") {
+			return Some(Ok(span.span(BlockHint::Print)));
+		}
+
 		Some(Ok(span.span(BlockHint::Variable)))
 	}
 
-	fn parse_text(&self, span: ByteSpan) -> Block {
-		Block::new(span, BlockKind::Text)
+	fn parse_print(&self, span: ByteSpan) -> Block {
+		// {{@print ... }}
+		Block::new(span, BlockKind::Print(span.offset_low(9).offset_high(-2)))
 	}
 
 	fn parse_comment(&self, span: ByteSpan) -> Block {
 		// {{!-- ... --}}
 		Block::new(span, BlockKind::Comment)
+	}
+
+	fn parse_text(&self, span: ByteSpan) -> Block {
+		Block::new(span, BlockKind::Text)
 	}
 
 	fn parse_escaped(&self, span: ByteSpan) -> Block {
