@@ -6,6 +6,7 @@ pub enum BlockHint {
 	Comment,
 	Escaped,
 	Variable,
+	Print,
 	IfStart,
 	ElIf,
 	Else,
@@ -24,6 +25,7 @@ pub enum BlockKind {
 	Comment,
 	Escaped(ByteSpan),
 	Var(Var),
+	Print(ByteSpan),
 	If(If),
 }
 

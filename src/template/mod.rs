@@ -3,6 +3,7 @@ mod parse;
 mod span;
 
 use color_eyre::eyre::{eyre, Result};
+use log::info;
 
 use self::block::{Block, BlockKind, If, Var, VarEnv};
 use self::parse::Parser;
@@ -45,14 +46,17 @@ impl<'a> Template<'a> {
 
 		// TODO: trim `\r\n` when span start/ends with it
 		match kind {
-			BlockKind::Escaped(inner) => {
-				output.push_str(&self.content[inner]);
-			}
 			BlockKind::Comment => {
 				// NOP
 			}
+			BlockKind::Print(inner) => {
+				info!("[Print] {}", &self.content[inner]);
+			}
 			BlockKind::Text => {
 				output.push_str(&self.content[span]);
+			}
+			BlockKind::Escaped(inner) => {
+				output.push_str(&self.content[inner]);
 			}
 			BlockKind::Var(var) => {
 				output.push_str(&self.resolve_var(var, profile_vars, item_vars)?);
@@ -145,6 +149,12 @@ mod tests {
 
 	#[test]
 	fn parse_template() -> Result<()> {
+		let _ = env_logger::Builder::from_env(
+			env_logger::Env::default().default_filter_or(log::Level::Debug.to_string()),
+		)
+		.is_test(true)
+		.try_init();
+
 		let content = r#"
 			[some settings]
 			var = 2
@@ -156,7 +166,9 @@ mod tests {
 				Sets the message of the day for a specific operating system
 				If no os matches it defaults to a generic one.
 			--}}
+			{{@print Writing motd...}}
 			{{@if {{&OS}} == "linux" }}
+			{{@print Linux Motd!}}
 			[linux]
 			motd = "very nice"
 			{{@elif {{&#OS}} == "windows" }}
@@ -180,7 +192,7 @@ mod tests {
 
 		let template = Template::parse(content)?;
 
-		println!("{:#?}", template);
+		// println!("{:#?}", template);
 
 		let mut vars = HashMap::new();
 		vars.insert(String::from("BUZZ"), String::from("Hello World"));

@@ -44,6 +44,7 @@ impl<'a> Parser<'a> {
 			BlockHint::Variable => self
 				.parse_variable(span)
 				.map(|var| Block::new(span, BlockKind::Var(var))),
+			BlockHint::Print => Ok(self.parse_print(span)),
 			BlockHint::IfStart => self
 				.parse_if(span)
 				.map(|Spanned { span, value }| Block::new(span, BlockKind::If(value))),
@@ -91,6 +92,12 @@ impl<'a> Parser<'a> {
 			return Some(Ok(span.span(BlockHint::Comment)));
 		}
 
+		// Check for print
+		// e.g. `{{@print ... }}`
+		if content.starts_with("@print ") {
+			return Some(Ok(span.span(BlockHint::Print)));
+		}
+
 		// Check for if
 		// e.g. `{{@if {{VAR}} == "LITERAL"}}`
 		if content.starts_with("@if ") {
@@ -118,13 +125,18 @@ impl<'a> Parser<'a> {
 		Some(Ok(span.span(BlockHint::Variable)))
 	}
 
-	fn parse_text(&self, span: ByteSpan) -> Block {
-		Block::new(span, BlockKind::Text)
+	fn parse_print(&self, span: ByteSpan) -> Block {
+		// {{@print ... }}
+		Block::new(span, BlockKind::Print(span.offset_low(9).offset_high(-2)))
 	}
 
 	fn parse_comment(&self, span: ByteSpan) -> Block {
 		// {{!-- ... --}}
 		Block::new(span, BlockKind::Comment)
+	}
+
+	fn parse_text(&self, span: ByteSpan) -> Block {
+		Block::new(span, BlockKind::Text)
 	}
 
 	fn parse_escaped(&self, span: ByteSpan) -> Block {
