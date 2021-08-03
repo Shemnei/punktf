@@ -1,6 +1,7 @@
 use color_eyre::eyre::{eyre, Result};
 
 use super::block::{Block, BlockHint, If, IfExpr, IfOp, Var, VarEnv, VarEnvSet};
+use super::diagnostic::{Diagnositic, DiagnositicBuilder, DiagnositicLevel};
 use super::session::{ParseState, Session};
 use super::span::{ByteSpan, Spanned};
 use super::Template;
@@ -24,11 +25,17 @@ impl<'a> Parser<'a> {
 	}
 
 	pub fn parse(mut self) -> Result<Template<'a>> {
-		let blocks =
-			std::iter::from_fn(|| self.parse_next_block()).collect::<Result<Vec<_>, _>>()?;
+		let mut blocks = Vec::new();
 
-		let Parser { session, .. } = self;
-		let session = session.try_finish()?;
+		while let Some(res) = self.next_top_level_block() {
+			match res {
+				Ok(block) => blocks.push(block),
+				Err(builder) => self.report_diagnostic(builder.build()),
+			};
+		}
+
+		self.session.emit();
+		let session = self.session.try_finish()?;
 
 		Ok(Template {
 			source: session.source,
@@ -36,7 +43,16 @@ impl<'a> Parser<'a> {
 		})
 	}
 
-	fn parse_next_block(&mut self) -> Option<Result<Block>> {
+	fn report_diagnostic(&mut self, diagnostic: Diagnositic) {
+		if diagnostic.level() == &DiagnositicLevel::Error {
+			self.session.mark_failed();
+		}
+
+		self.session.report(diagnostic);
+	}
+
+	fn next_top_level_block(&mut self) -> Option<Result<Block, DiagnositicBuilder>> {
+		// TODO-BM: cant handle these errors for now as information is missing
 		let Spanned { span, value: hint } = match self.next_block()? {
 			Ok(x) => x,
 			Err(err) => return Some(Err(err)),
@@ -55,20 +71,38 @@ impl<'a> Parser<'a> {
 				.parse_if(span)
 				.map(|Spanned { span, value }| Block::new(span, BlockKind::If(value))),
 			// Illegal top level blocks
-			BlockHint::ElIf => Err(eyre!("Found invalid top level block elif at {}",)),
-			BlockHint::Else => Err(eyre!("Found invalid top level block else at {}", span)),
-			BlockHint::IfEnd => Err(eyre!("Found invalid top level block fi at {}", span)),
+			BlockHint::ElIf => Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
+				.message("top-level `elif` block")
+				.description("an `elif` block must always come after an `if` block")
+				.primary_span(span)),
+			BlockHint::Else => Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
+				.message("top-level `else` block")
+				.description("an `else` block must always come after an `if` or `elfi` block")
+				.primary_span(span)),
+			BlockHint::IfEnd => Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
+				.message("top-level `fi` block")
+				.description("an `fi` can only be used to close an open `if` block")
+				.primary_span(span)),
 		};
 
 		Some(block)
 	}
 
-	fn next_block(&mut self) -> Option<Result<Spanned<BlockHint>>> {
-		// TODO: ceck perf as_bytes().get() vs starts_with/ends_with
+	fn try_recover(&mut self) -> bool {
+		todo!()
+	}
 
+	fn next_block(&mut self) -> Option<Result<Spanned<BlockHint>, DiagnositicBuilder>> {
 		let (span, hint, content) = match self.blocks.next()? {
 			Ok(x) => x,
-			Err(err) => return Some(Err(err)),
+			Err(err) => {
+				return Some(Err(
+					// TODO: improve error
+					DiagnositicBuilder::new(DiagnositicLevel::Error)
+						.message("failed to get next block")
+						.description(err.to_string()),
+				));
+			}
 		};
 
 		if let Some(hint) = hint {
@@ -135,43 +169,56 @@ impl<'a> Parser<'a> {
 		Block::new(span, BlockKind::Escaped(span.offset_low(3).offset_high(-3)))
 	}
 
-	fn parse_variable(&self, span: ByteSpan) -> Result<Var> {
+	fn parse_variable(&self, span: ByteSpan) -> Result<Var, DiagnositicBuilder> {
 		let span_inner = span.offset_low(2).offset_high(-2);
 		let content_inner = &self.session.source[span_inner];
 
 		// +2 for block opening
 		let offset = span.low().as_usize() + 2;
 
-		parse_var(content_inner, offset)
+		parse_var(content_inner, offset).map_err(|err| {
+			DiagnositicBuilder::new(DiagnositicLevel::Error)
+				.message("failed to parse variable block")
+				.description(err.to_string())
+				.primary_span(span)
+		})
 	}
 
-	fn parse_if(&mut self, span: ByteSpan) -> Result<Spanned<If>> {
+	fn parse_if(&mut self, span: ByteSpan) -> Result<Spanned<If>, DiagnositicBuilder> {
 		let head = span.span(self.parse_if_start(span)?);
 
 		// collect all nested blocks
-		let head_nested = self.parse_if_enclosed_blocks(span)?;
+		let head_nested = self.parse_if_enclosed_blocks()?;
 
 		let Spanned {
 			mut span,
 			value: mut hint,
-		} = self
-			.next_block()
-			.ok_or_else(|| eyre!("Unexpected end of if at {:?}", span))??;
+		} = self.next_block().ok_or_else(|| {
+			DiagnositicBuilder::new(DiagnositicLevel::Error)
+				.message("unexpected end of `if` block")
+				.description("close the `if` block with `{{@fi}}`")
+				.primary_span(span)
+				.label_span(*head.span(), "While parsing this `if` block")
+		})??;
 
 		// check for elif
 		let mut elifs = Vec::new();
 
 		while hint == BlockHint::ElIf {
 			let elif = span.span(self.parse_elif(span)?);
-			let elif_nested = self.parse_if_enclosed_blocks(span)?;
+			let elif_nested = self.parse_if_enclosed_blocks()?;
 			elifs.push((elif, elif_nested));
 
 			let Spanned {
 				span: _span,
 				value: _hint,
-			} = self
-				.next_block()
-				.ok_or_else(|| eyre!("Unexpected end of elif at {:?}", span))??;
+			} = self.next_block().ok_or_else(|| {
+				DiagnositicBuilder::new(DiagnositicLevel::Error)
+					.message("unexpected end of `elif` block")
+					.description("close the `if` block with `{{@fi}}`")
+					.primary_span(span)
+					.label_span(*head.span(), "While parsing this `if` block")
+			})??;
 
 			span = _span;
 			hint = _hint;
@@ -179,14 +226,18 @@ impl<'a> Parser<'a> {
 
 		let els = if hint == BlockHint::Else {
 			let els = self.parse_else(span)?;
-			let els_nested = self.parse_if_enclosed_blocks(span)?;
+			let els_nested = self.parse_if_enclosed_blocks()?;
 
 			let Spanned {
 				span: _span,
 				value: _hint,
-			} = self
-				.next_block()
-				.ok_or_else(|| eyre!("Unexpected end of elif at {:?}", span))??;
+			} = self.next_block().ok_or_else(|| {
+				DiagnositicBuilder::new(DiagnositicLevel::Error)
+					.message("unexpected end of `else` block")
+					.description("close the `if` block with `{{@fi}}`")
+					.primary_span(span)
+					.label_span(*head.span(), "While parsing this `if` block")
+			})??;
 
 			span = _span;
 			hint = _hint;
@@ -199,7 +250,11 @@ impl<'a> Parser<'a> {
 		let end = if hint == BlockHint::IfEnd {
 			self.parse_if_end(span)?
 		} else {
-			return Err(eyre!("No end (fi) for if at {}", head.span()));
+			return Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
+				.message("unexpected end of `if` block")
+				.description("close the `if` block with `{{@fi}}`")
+				.primary_span(span)
+				.label_span(*head.span(), "While parsing this `if` block"));
 		};
 
 		let whole_if = head.span.union(&end);
@@ -212,46 +267,56 @@ impl<'a> Parser<'a> {
 		}))
 	}
 
-	fn parse_if_start(&self, span: ByteSpan) -> Result<IfExpr> {
+	fn parse_if_start(&self, span: ByteSpan) -> Result<IfExpr, DiagnositicBuilder> {
 		// {{@if {{VAR}} (!=|==) "LIT" }}
 		let expr_span = span.offset_low(6).offset_high(-2);
 		self.parse_if_expr(expr_span)
 	}
 
-	fn parse_elif(&self, span: ByteSpan) -> Result<IfExpr> {
+	fn parse_elif(&self, span: ByteSpan) -> Result<IfExpr, DiagnositicBuilder> {
 		// {{@elif {{VAR}} (!=|==) "LIT" }}
 		let expr_span = span.offset_low(8).offset_high(-2);
 		self.parse_if_expr(expr_span)
 	}
 
-	fn parse_else(&self, span: ByteSpan) -> Result<ByteSpan> {
+	fn parse_else(&self, span: ByteSpan) -> Result<ByteSpan, DiagnositicBuilder> {
 		if &self.session.source[span] != "{{@else}}" {
-			Err(eyre!("Invalid else block at {}", span))
+			Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
+				.message("expected a `else` block")
+				.primary_span(span))
 		} else {
 			Ok(span)
 		}
 	}
 
-	fn parse_if_end(&self, span: ByteSpan) -> Result<ByteSpan> {
+	fn parse_if_end(&self, span: ByteSpan) -> Result<ByteSpan, DiagnositicBuilder> {
 		if &self.session.source[span] != "{{@fi}}" {
-			Err(eyre!("Invalid fi block at {}", span))
+			Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
+				.message("expected a `fi` block")
+				.primary_span(span))
 		} else {
 			Ok(span)
 		}
 	}
 
-	fn parse_if_expr(&self, span: ByteSpan) -> Result<IfExpr> {
+	fn parse_if_expr(&self, span: ByteSpan) -> Result<IfExpr, DiagnositicBuilder> {
 		// {{VAR}} (!=|==) "OTHER" OR {{VAR}}
 		let content = &self.session.source[span];
 
 		// read var
-		let var_block_start = content
-			.find("{{")
-			.ok_or_else(|| eyre!("Found no variable block in if at {}", span))?;
-		let var_block_end = content
-			.find("}}")
-			.ok_or_else(|| eyre!("Found no closing for variable block in if at {}", span))?
-			+ 2;
+		let var_block_start = content.find("{{").ok_or_else(|| {
+			DiagnositicBuilder::new(DiagnositicLevel::Error)
+				.message("expected a variable block")
+				.description("add a variable block with `{{VARIABLE_NAME}}`")
+				.primary_span(span)
+		})?;
+
+		let var_block_end = content.find("}}").ok_or_else(|| {
+			DiagnositicBuilder::new(DiagnositicLevel::Error)
+				.message("variable block not closed")
+				.description("add `}}` to the close the open variable block")
+				.primary_span(ByteSpan::new(var_block_start, var_block_start + 2))
+		})? + 2;
 
 		let var_block_span = ByteSpan::new(
 			span.low().as_usize() + var_block_start,
@@ -267,28 +332,40 @@ impl<'a> Parser<'a> {
 		if remainder.trim().is_empty() {
 			Ok(IfExpr::Exists { var })
 		} else {
-			let op = parse_ifop(&content[var_block_end..])?;
+			let op = parse_ifop(&content[var_block_end..]).map_err(|_| {
+				DiagnositicBuilder::new(DiagnositicLevel::Error)
+					.message("failed to find if operation")
+					.description("add either `==` or `!=` after the variable block")
+					.primary_span(var_block_span)
+			})?;
 
 			let other = parse_other(
 				&content[var_block_end..],
 				span.low().as_usize() + var_block_end,
-			)?;
+			)
+			.map_err(|_| {
+				DiagnositicBuilder::new(DiagnositicLevel::Error)
+					.message("failed to find right hand side of the if operation")
+					.description("add a literal to compare againt with `\"LITERAL\"`")
+					.primary_span(var_block_span)
+			})?;
 
 			Ok(IfExpr::Compare { var, op, other })
 		}
 	}
 
-	fn parse_if_enclosed_blocks(&mut self, start_span: ByteSpan) -> Result<Vec<Block>> {
+	fn parse_if_enclosed_blocks(&mut self) -> Result<Vec<Block>, DiagnositicBuilder> {
 		let mut enclosed_blocks = Vec::new();
 
-		while !self
+		while self
 			.peek_block_hint()
-			.ok_or_else(|| eyre!("Unexpected end of if at {:?}", start_span))??
-			.is_if_subblock()
+			.transpose()?
+			.map(|hint| !hint.is_if_subblock())
+			.unwrap_or(false)
 		{
 			let next_block = self
-				.parse_next_block()
-				.ok_or_else(|| eyre!("Unexpected end of if at {:?}", start_span))??;
+				.next_top_level_block()
+				.expect("Some block to be present after peek")?;
 
 			enclosed_blocks.push(next_block);
 		}
@@ -296,7 +373,7 @@ impl<'a> Parser<'a> {
 		Ok(enclosed_blocks)
 	}
 
-	fn peek_block_hint(&self) -> Option<Result<BlockHint>> {
+	fn peek_block_hint(&self) -> Option<Result<BlockHint, DiagnositicBuilder>> {
 		// TODO-BM: improve
 		let mut peek = self.clone();
 		peek.next_block()
@@ -511,7 +588,10 @@ mod tests {
 
 		let source = Source::anonymous(content);
 		let mut parser = Parser::new(Session::new(source));
-		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+		let block = parser
+			.next_top_level_block()
+			.expect("Found no block")
+			.expect("Encountered a parse error");
 
 		assert_eq!(
 			block,
@@ -527,7 +607,10 @@ mod tests {
 
 		let source = Source::anonymous(content);
 		let mut parser = Parser::new(Session::new(source));
-		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+		let block = parser
+			.next_top_level_block()
+			.expect("Found no block")
+			.expect("Encountered a parse error");
 
 		assert_eq!(
 			block,
@@ -543,7 +626,10 @@ mod tests {
 
 		let source = Source::anonymous(content);
 		let mut parser = Parser::new(Session::new(source));
-		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+		let block = parser
+			.next_top_level_block()
+			.expect("Found no block")
+			.expect("Encountered a parse error");
 
 		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
 
@@ -560,7 +646,10 @@ mod tests {
 
 		let source = Source::anonymous(content);
 		let mut parser = Parser::new(Session::new(source));
-		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+		let block = parser
+			.next_top_level_block()
+			.expect("Found no block")
+			.expect("Encountered a parse error");
 
 		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
 
@@ -578,7 +667,10 @@ mod tests {
 
 		let source = Source::anonymous(content);
 		let mut parser = Parser::new(Session::new(source));
-		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+		let block = parser
+			.next_top_level_block()
+			.expect("Found no block")
+			.expect("Encountered a parse error");
 
 		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
 
@@ -596,7 +688,10 @@ mod tests {
 
 		let source = Source::anonymous(content);
 		let mut parser = Parser::new(Session::new(source));
-		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+		let block = parser
+			.next_top_level_block()
+			.expect("Found no block")
+			.expect("Encountered a parse error");
 
 		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
 
@@ -614,7 +709,10 @@ mod tests {
 
 		let source = Source::anonymous(content);
 		let mut parser = Parser::new(Session::new(source));
-		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+		let block = parser
+			.next_top_level_block()
+			.expect("Found no block")
+			.expect("Encountered a parse error");
 
 		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
 
@@ -632,7 +730,10 @@ mod tests {
 
 		let source = Source::anonymous(content);
 		let mut parser = Parser::new(Session::new(source));
-		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+		let block = parser
+			.next_top_level_block()
+			.expect("Found no block")
+			.expect("Encountered a parse error");
 
 		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
 
@@ -655,7 +756,9 @@ mod tests {
 
 		let source = Source::anonymous(content);
 		let mut parser = Parser::new(Session::new(source));
-		let block = parser.parse_next_block().ok_or(eyre!("No block found"))?;
+		let block = parser
+			.next_top_level_block()
+			.ok_or(eyre!("No block found"))?;
 
 		assert!(block.is_err());
 
@@ -668,7 +771,10 @@ mod tests {
 
 		let source = Source::anonymous(content);
 		let mut parser = Parser::new(Session::new(source));
-		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+		let block = parser
+			.next_top_level_block()
+			.expect("Found no block")
+			.expect("Encountered a parse error");
 
 		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
 
@@ -713,7 +819,10 @@ mod tests {
 
 		let source = Source::anonymous(content);
 		let mut parser = Parser::new(Session::new(source));
-		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+		let block = parser
+			.next_top_level_block()
+			.expect("Found no block")
+			.expect("Encountered a parse error");
 
 		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
 
@@ -758,7 +867,10 @@ mod tests {
 
 		let source = Source::anonymous(content);
 		let mut parser = Parser::new(Session::new(source));
-		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+		let block = parser
+			.next_top_level_block()
+			.expect("Found no block")
+			.expect("Encountered a parse error");
 
 		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
 
@@ -830,7 +942,10 @@ mod tests {
 
 		let source = Source::anonymous(content);
 		let mut parser = Parser::new(Session::new(source));
-		let token = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+		let token = parser
+			.next_top_level_block()
+			.expect("Found no block")
+			.expect("Encountered a parse error");
 
 		assert_eq!(
 			token,
@@ -846,7 +961,10 @@ mod tests {
 
 		let source = Source::anonymous(content);
 		let mut parser = Parser::new(Session::new(source));
-		let token = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+		let token = parser
+			.next_top_level_block()
+			.expect("Found no block")
+			.expect("Encountered a parse error");
 
 		assert_eq!(
 			token,
@@ -871,7 +989,10 @@ mod tests {
 
 		let source = Source::anonymous(content);
 		let mut parser = Parser::new(Session::new(source));
-		let token = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+		let token = parser
+			.next_top_level_block()
+			.expect("Found no block")
+			.expect("Encountered a parse error");
 
 		assert_eq!(token.span, ByteSpan::new(0usize, content.len()));
 		println!("{:#?}", &token.kind);
@@ -893,7 +1014,10 @@ mod tests {
 
 		let source = Source::anonymous(content);
 		let mut parser = Parser::new(Session::new(source));
-		let token = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+		let token = parser
+			.next_top_level_block()
+			.expect("Found no block")
+			.expect("Encountered a parse error");
 
 		assert_eq!(token.span, ByteSpan::new(0usize, content.len()));
 		println!("{:#?}", &token.kind);
@@ -910,7 +1034,10 @@ mod tests {
 
 		let source = Source::anonymous(content);
 		let mut parser = Parser::new(Session::new(source));
-		let token = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+		let token = parser
+			.next_top_level_block()
+			.expect("Found no block")
+			.expect("Encountered a parse error");
 
 		assert_eq!(token.span, ByteSpan::new(0usize, content.len()));
 		println!("{:#?}", &token.kind);
@@ -934,7 +1061,10 @@ mod tests {
 
 		let source = Source::anonymous(content);
 		let mut parser = Parser::new(Session::new(source));
-		let token = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+		let token = parser
+			.next_top_level_block()
+			.expect("Found no block")
+			.expect("Encountered a parse error");
 
 		assert_eq!(token.span, ByteSpan::new(0usize, content.len()));
 		println!("{:#?}", &token.kind);

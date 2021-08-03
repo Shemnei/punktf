@@ -5,13 +5,13 @@ use color_eyre::owo_colors::OwoColorize;
 use super::span::ByteSpan;
 use crate::template::source::Source;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct DiagnosticSpan {
 	/// A primary span is displayed with `^` bellow the spanned text.
-	primary: Vec<ByteSpan>,
+	pub(super) primary: Vec<ByteSpan>,
 
 	/// A label is displayed as the spanned text together with the label.
-	labels: Vec<(ByteSpan, Cow<'static, str>)>,
+	pub(super) labels: Vec<(ByteSpan, Cow<'static, str>)>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -103,6 +103,46 @@ impl Diagnositic {
 				));
 				out.push_str(&format!(" {} {} {}", lpad, vsep, highlight));
 			}
+
+			for (span, label) in &span.labels {
+				out.push('\n');
+
+				// location
+				let loc = source.get_pos_location(*span.low());
+				let lpad = " ".repeat(loc.line().to_string().len());
+
+				// highlight
+				let line = source.get_pos_line(*span.low());
+
+				let vsep = "|".bright_blue();
+				let vsep = vsep.bold();
+
+				let loc_end = source.get_pos_location(*span.high());
+				let highlight_len = if loc.line() == loc_end.line() {
+					// on same line; get diff
+					loc_end.character() - loc.character()
+				} else {
+					// on different lines; get until end of line
+					line.len() - loc.character()
+				};
+
+				let highlight = format!(
+					"{}{} {} {}",
+					" ".repeat(loc.character()),
+					"^".repeat(highlight_len).bright_blue().bold(),
+					" <-- ".bright_blue().bold(),
+					label.bright_black()
+				);
+
+				out.push_str(&format!(" {} {}\n", lpad, vsep));
+				out.push_str(&format!(
+					" {} {} {}\n",
+					loc.line().bright_blue().bold(),
+					vsep,
+					line
+				));
+				out.push_str(&format!(" {} {} {}", lpad, vsep, highlight));
+			}
 		}
 
 		// description
@@ -115,5 +155,68 @@ impl Diagnositic {
 			DiagnositicLevel::Error => log::error!("{}", out),
 			DiagnositicLevel::Warning => log::warn!("{}", out),
 		};
+	}
+
+	pub fn level(&self) -> &DiagnositicLevel {
+		&self.level
+	}
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DiagnositicBuilder {
+	level: DiagnositicLevel,
+	msg: Cow<'static, str>,
+	span: Option<DiagnosticSpan>,
+	description: Option<Cow<'static, str>>,
+}
+
+impl DiagnositicBuilder {
+	pub fn new(level: DiagnositicLevel) -> Self {
+		Self {
+			level,
+			msg: Cow::Borrowed(""),
+			span: None,
+			description: None,
+		}
+	}
+
+	pub fn level(mut self, level: DiagnositicLevel) -> Self {
+		self.level = level;
+		self
+	}
+
+	pub fn message<M: Into<Cow<'static, str>>>(mut self, msg: M) -> Self {
+		self.msg = msg.into();
+		self
+	}
+
+	pub fn description<D: Into<Option<impl Into<Cow<'static, str>>>>>(
+		mut self,
+		description: D,
+	) -> Self {
+		self.description = description.into().map(|d| d.into());
+		self
+	}
+
+	pub fn primary_span(mut self, span: ByteSpan) -> Self {
+		self.span.get_or_insert_default().primary.push(span);
+		self
+	}
+
+	pub fn label_span<L: Into<Cow<'static, str>>>(mut self, span: ByteSpan, label: L) -> Self {
+		self.span
+			.get_or_insert_default()
+			.labels
+			.push((span, label.into()));
+		self
+	}
+
+	pub fn build(self) -> Diagnositic {
+		Diagnositic {
+			level: self.level,
+			msg: self.msg,
+			span: self.span,
+			description: self.description,
+		}
 	}
 }
