@@ -37,10 +37,7 @@ impl<'a> Parser<'a> {
 		self.session.emit();
 		let session = self.session.try_finish()?;
 
-		Ok(Template {
-			source: session.source,
-			blocks,
-		})
+		Ok(Template { session, blocks })
 	}
 
 	fn report_diagnostic(&mut self, diagnostic: Diagnositic) {

@@ -5,19 +5,20 @@ mod session;
 pub(crate) mod source;
 mod span;
 
-use color_eyre::eyre::{eyre, Result};
+use color_eyre::eyre::Result;
 
 use self::block::{Block, BlockKind, If, IfExpr, Var, VarEnv};
 use self::parse::Parser;
-use self::session::Session;
+use self::session::{ResolveState, Session};
 use self::source::Source;
+use crate::template::diagnostic::{Diagnositic, DiagnositicBuilder, DiagnositicLevel};
 use crate::variables::{UserVars, Variables};
 
 // TODO: handle unicode
 
 #[derive(Debug, Clone)]
 pub struct Template<'a> {
-	source: Source<'a>,
+	session: Session<'a, ResolveState>,
 	blocks: Vec<Block>,
 }
 
@@ -29,18 +30,32 @@ impl<'a> Template<'a> {
 	}
 
 	// TODO: trim `\r\n` when span start/ends with it
-	pub fn fill(
-		&self,
+	pub fn resolve(
+		mut self,
 		profile_vars: Option<&UserVars>,
 		item_vars: Option<&UserVars>,
 	) -> Result<String> {
 		let mut output = String::new();
 
-		for block in &self.blocks {
-			self.process_block(profile_vars, item_vars, &mut output, block)?;
+		for idx in 0..self.blocks.len() {
+			if let Err(builder) =
+				self.process_block(profile_vars, item_vars, &mut output, &self.blocks[idx])
+			{
+				self.report_diagnostic(builder.build());
+			}
 		}
 
-		Ok(output)
+		self.session.emit();
+
+		self.session.try_finish().map(|_| output)
+	}
+
+	fn report_diagnostic(&mut self, diagnostic: Diagnositic) {
+		if diagnostic.level() == &DiagnositicLevel::Error {
+			self.session.mark_failed();
+		}
+
+		self.session.report(diagnostic);
 	}
 
 	fn process_block(
@@ -49,21 +64,25 @@ impl<'a> Template<'a> {
 		item_vars: Option<&UserVars>,
 		output: &mut String,
 		block: &Block,
-	) -> Result<()> {
+	) -> Result<(), DiagnositicBuilder> {
 		let Block { span, kind } = block;
 
 		match kind {
 			BlockKind::Escaped(inner) => {
-				output.push_str(&self.source[inner]);
+				output.push_str(&self.session.source[inner]);
+				Ok(())
 			}
 			BlockKind::Comment => {
 				// NOP
+				Ok(())
 			}
 			BlockKind::Text => {
-				output.push_str(&self.source[span]);
+				output.push_str(&self.session.source[span]);
+				Ok(())
 			}
 			BlockKind::Var(var) => {
 				output.push_str(&self.resolve_var(var, profile_vars, item_vars)?);
+				Ok(())
 			}
 			BlockKind::If(If {
 				head,
@@ -73,18 +92,39 @@ impl<'a> Template<'a> {
 			}) => {
 				let (head, head_nested) = head;
 
-				if self.resolve_if_expr(head.value(), profile_vars, item_vars)? {
+				let matched = match self.resolve_if_expr(head.value(), profile_vars, item_vars) {
+					Ok(x) => x,
+					Err(builder) => {
+						return Err(
+							builder.label_span(*head.span(), "while resolving this `if` block")
+						)
+					}
+				};
+
+				if matched {
 					for block in head_nested {
 						// TODO: if first block is text (trim lf start)
 						// TODO: if last block is text (trim lf end)
-						self.process_block(profile_vars, item_vars, output, block)?;
+						let _ = self.process_block(profile_vars, item_vars, output, block)?;
 					}
 				} else {
 					for (elif, elif_nested) in elifs {
-						if self.resolve_if_expr(elif.value(), profile_vars, item_vars)? {
+						let matched =
+							match self.resolve_if_expr(elif.value(), profile_vars, item_vars) {
+								Ok(x) => x,
+								Err(builder) => {
+									return Err(builder.label_span(
+										*elif.span(),
+										"while resolving this `elif` block",
+									))
+								}
+							};
+
+						if matched {
 							// return if matching elif arm was found
 							for block in elif_nested {
-								self.process_block(profile_vars, item_vars, output, block)?;
+								let _ =
+									self.process_block(profile_vars, item_vars, output, block)?;
 							}
 
 							return Ok(());
@@ -93,14 +133,13 @@ impl<'a> Template<'a> {
 
 					if let Some((_, els_nested)) = els {
 						for block in els_nested {
-							self.process_block(profile_vars, item_vars, output, block)?;
+							let _ = self.process_block(profile_vars, item_vars, output, block)?;
 						}
 					}
 				}
+				Ok(())
 			}
-		};
-
-		Ok(())
+		}
 	}
 
 	fn resolve_if_expr(
@@ -108,11 +147,11 @@ impl<'a> Template<'a> {
 		expr: &IfExpr,
 		profile_vars: Option<&UserVars>,
 		item_vars: Option<&UserVars>,
-	) -> Result<bool> {
+	) -> Result<bool, DiagnositicBuilder> {
 		match expr {
 			IfExpr::Compare { var, op, other } => {
 				let var = self.resolve_var(var, profile_vars, item_vars)?;
-				Ok(op.eval(&var, &self.source[other]))
+				Ok(op.eval(&var, &self.session.source[other]))
 			}
 			IfExpr::Exists { var } => Ok(self.resolve_var(var, profile_vars, item_vars).is_ok()),
 		}
@@ -123,8 +162,8 @@ impl<'a> Template<'a> {
 		var: &Var,
 		profile_vars: Option<&UserVars>,
 		item_vars: Option<&UserVars>,
-	) -> Result<String> {
-		let name = &self.source[var.name];
+	) -> Result<String, DiagnositicBuilder> {
+		let name = &self.session.source[var.name];
 
 		for env in var.envs.envs() {
 			match env {
@@ -146,11 +185,13 @@ impl<'a> Template<'a> {
 			};
 		}
 
-		Err(eyre!(
-			"Failed to resolve variable `{}` (Envs: {:?})",
-			name,
-			var.envs
-		))
+		Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
+			.message("failed to resolve variable")
+			.description(format!(
+				"no variable `{}` found in environments {}",
+				name, var.envs
+			))
+			.primary_span(var.name))
 	}
 }
 
@@ -205,7 +246,7 @@ mod tests {
 		vars.insert(String::from("OS"), String::from("linux"));
 		let vars = UserVars { inner: vars };
 
-		println!("{}", template.fill(Some(&vars), Some(&vars))?);
+		println!("{}", template.resolve(Some(&vars), Some(&vars))?);
 
 		Ok(())
 	}
