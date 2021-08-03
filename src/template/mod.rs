@@ -1,24 +1,31 @@
 mod block;
+mod diagnostic;
 mod parse;
+mod session;
+pub(crate) mod source;
 mod span;
 
 use color_eyre::eyre::{eyre, Result};
 
 use self::block::{Block, BlockKind, If, IfExpr, Var, VarEnv};
 use self::parse::Parser;
+use self::session::Session;
+use self::source::Source;
 use crate::variables::{UserVars, Variables};
 
 // TODO: handle unicode
 
 #[derive(Debug, Clone)]
 pub struct Template<'a> {
-	content: &'a str,
+	source: Source<'a>,
 	blocks: Vec<Block>,
 }
 
 impl<'a> Template<'a> {
-	pub fn parse(content: &'a str) -> Result<Self> {
-		Parser::new(content).parse()
+	pub fn parse(source: Source<'a>) -> Result<Self> {
+		let session = Session::new(source);
+
+		Parser::new(session).parse()
 	}
 
 	// TODO: trim `\r\n` when span start/ends with it
@@ -47,13 +54,13 @@ impl<'a> Template<'a> {
 
 		match kind {
 			BlockKind::Escaped(inner) => {
-				output.push_str(&self.content[inner]);
+				output.push_str(&self.source[inner]);
 			}
 			BlockKind::Comment => {
 				// NOP
 			}
 			BlockKind::Text => {
-				output.push_str(&self.content[span]);
+				output.push_str(&self.source[span]);
 			}
 			BlockKind::Var(var) => {
 				output.push_str(&self.resolve_var(var, profile_vars, item_vars)?);
@@ -105,7 +112,7 @@ impl<'a> Template<'a> {
 		match expr {
 			IfExpr::Compare { var, op, other } => {
 				let var = self.resolve_var(var, profile_vars, item_vars)?;
-				Ok(op.eval(&var, &self.content[other]))
+				Ok(op.eval(&var, &self.source[other]))
 			}
 			IfExpr::Exists { var } => Ok(self.resolve_var(var, profile_vars, item_vars).is_ok()),
 		}
@@ -117,7 +124,7 @@ impl<'a> Template<'a> {
 		profile_vars: Option<&UserVars>,
 		item_vars: Option<&UserVars>,
 	) -> Result<String> {
-		let name = &self.content[var.name];
+		let name = &self.source[var.name];
 
 		for env in var.envs.envs() {
 			match env {
@@ -188,7 +195,8 @@ mod tests {
 			os_str = "_unkown"
 			"#;
 
-		let template = Template::parse(content)?;
+		let source = Source::anonymous(content);
+		let template = Template::parse(source)?;
 
 		println!("{:#?}", template);
 

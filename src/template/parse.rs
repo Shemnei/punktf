@@ -1,32 +1,37 @@
 use color_eyre::eyre::{eyre, Result};
 
 use super::block::{Block, BlockHint, If, IfExpr, IfOp, Var, VarEnv, VarEnvSet};
+use super::session::{ParseState, Session};
 use super::span::{ByteSpan, Spanned};
 use super::Template;
 use crate::template::block::BlockKind;
 
-#[derive(Debug, Clone, Copy)]
+// TODO:
+// - give mutable source as param
+// - record error on source
+// - try to recover on next block opening/closing
+
+#[derive(Debug, Clone)]
 pub struct Parser<'a> {
-	content: &'a str,
+	session: Session<'a, ParseState>,
 	blocks: BlockIter<'a>,
 }
 
 impl<'a> Parser<'a> {
-	pub fn new(s: &'a str) -> Self {
-		Self {
-			content: s,
-			blocks: BlockIter::new(s),
-		}
+	pub fn new(session: Session<'a, ParseState>) -> Self {
+		let blocks = BlockIter::new(session.source.content);
+		Self { session, blocks }
 	}
 
 	pub fn parse(mut self) -> Result<Template<'a>> {
 		let blocks =
 			std::iter::from_fn(|| self.parse_next_block()).collect::<Result<Vec<_>, _>>()?;
 
-		// TODO: validate structure (e.g. if/elif/fi)
+		let Parser { session, .. } = self;
+		let session = session.try_finish()?;
 
 		Ok(Template {
-			content: self.content,
+			source: session.source,
 			blocks,
 		})
 	}
@@ -37,7 +42,7 @@ impl<'a> Parser<'a> {
 			Err(err) => return Some(Err(err)),
 		};
 
-		log::trace!("{:?}: {}", hint, &self.content[span]);
+		log::trace!("{:?}: {}", hint, &self.session.source[span]);
 
 		let block = match hint {
 			BlockHint::Text => Ok(self.parse_text(span)),
@@ -132,7 +137,7 @@ impl<'a> Parser<'a> {
 
 	fn parse_variable(&self, span: ByteSpan) -> Result<Var> {
 		let span_inner = span.offset_low(2).offset_high(-2);
-		let content_inner = &self.content[span_inner];
+		let content_inner = &self.session.source[span_inner];
 
 		// +2 for block opening
 		let offset = span.low().as_usize() + 2;
@@ -220,7 +225,7 @@ impl<'a> Parser<'a> {
 	}
 
 	fn parse_else(&self, span: ByteSpan) -> Result<ByteSpan> {
-		if &self.content[span] != "{{@else}}" {
+		if &self.session.source[span] != "{{@else}}" {
 			Err(eyre!("Invalid else block at {}", span))
 		} else {
 			Ok(span)
@@ -228,7 +233,7 @@ impl<'a> Parser<'a> {
 	}
 
 	fn parse_if_end(&self, span: ByteSpan) -> Result<ByteSpan> {
-		if &self.content[span] != "{{@fi}}" {
+		if &self.session.source[span] != "{{@fi}}" {
 			Err(eyre!("Invalid fi block at {}", span))
 		} else {
 			Ok(span)
@@ -237,7 +242,7 @@ impl<'a> Parser<'a> {
 
 	fn parse_if_expr(&self, span: ByteSpan) -> Result<IfExpr> {
 		// {{VAR}} (!=|==) "OTHER" OR {{VAR}}
-		let content = &self.content[span];
+		let content = &self.session.source[span];
 
 		// read var
 		let var_block_start = content
@@ -292,7 +297,8 @@ impl<'a> Parser<'a> {
 	}
 
 	fn peek_block_hint(&self) -> Option<Result<BlockHint>> {
-		let mut peek = *self;
+		// TODO-BM: improve
+		let mut peek = self.clone();
 		peek.next_block()
 			.map(|opt| opt.map(|spanned| spanned.into_value()))
 	}
@@ -496,13 +502,15 @@ mod tests {
 	use pretty_assertions::assert_eq;
 
 	use super::*;
+	use crate::template::source::Source;
 	use crate::template::span::ByteSpan;
 
 	#[test]
 	fn parse_single_text() -> Result<()> {
 		let content = r#"Hello World this is a text block"#;
 
-		let mut parser = Parser::new(content);
+		let source = Source::anonymous(content);
+		let mut parser = Parser::new(Session::new(source));
 		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
 
 		assert_eq!(
@@ -517,7 +525,8 @@ mod tests {
 	fn parse_single_comment() -> Result<()> {
 		let content = r#"{{!-- Hello World this is a comment block --}}"#;
 
-		let mut parser = Parser::new(content);
+		let source = Source::anonymous(content);
+		let mut parser = Parser::new(Session::new(source));
 		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
 
 		assert_eq!(
@@ -532,7 +541,8 @@ mod tests {
 	fn parse_single_escaped() -> Result<()> {
 		let content = r#"{{{ Hello World this is a comment block }}}"#;
 
-		let mut parser = Parser::new(content);
+		let source = Source::anonymous(content);
+		let mut parser = Parser::new(Session::new(source));
 		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
 
 		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
@@ -548,7 +558,8 @@ mod tests {
 	fn parse_single_var_default() -> Result<()> {
 		let content = r#"{{OS}}"#;
 
-		let mut parser = Parser::new(content);
+		let source = Source::anonymous(content);
+		let mut parser = Parser::new(Session::new(source));
 		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
 
 		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
@@ -565,7 +576,8 @@ mod tests {
 	fn parse_single_var_env() -> Result<()> {
 		let content = r#"{{$ENV}}"#;
 
-		let mut parser = Parser::new(content);
+		let source = Source::anonymous(content);
+		let mut parser = Parser::new(Session::new(source));
 		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
 
 		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
@@ -582,7 +594,8 @@ mod tests {
 	fn parse_single_var_profile() -> Result<()> {
 		let content = r#"{{#PROFILE}}"#;
 
-		let mut parser = Parser::new(content);
+		let source = Source::anonymous(content);
+		let mut parser = Parser::new(Session::new(source));
 		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
 
 		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
@@ -599,7 +612,8 @@ mod tests {
 	fn parse_single_var_item() -> Result<()> {
 		let content = r#"{{&ITEM}}"#;
 
-		let mut parser = Parser::new(content);
+		let source = Source::anonymous(content);
+		let mut parser = Parser::new(Session::new(source));
 		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
 
 		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
@@ -616,7 +630,8 @@ mod tests {
 	fn parse_single_var_mixed() -> Result<()> {
 		let content = r#"{{$&#MIXED}}"#;
 
-		let mut parser = Parser::new(content);
+		let source = Source::anonymous(content);
+		let mut parser = Parser::new(Session::new(source));
 		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
 
 		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
@@ -638,7 +653,8 @@ mod tests {
 		// duplicate variable environment
 		let content = r#"{{##OS}}"#;
 
-		let mut parser = Parser::new(content);
+		let source = Source::anonymous(content);
+		let mut parser = Parser::new(Session::new(source));
 		let block = parser.parse_next_block().ok_or(eyre!("No block found"))?;
 
 		assert!(block.is_err());
@@ -650,7 +666,8 @@ mod tests {
 	fn parse_single_if_eq() -> Result<()> {
 		let content = r#"{{@if {{OS}} == "windows"}}{{@fi}}"#;
 
-		let mut parser = Parser::new(content);
+		let source = Source::anonymous(content);
+		let mut parser = Parser::new(Session::new(source));
 		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
 
 		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
@@ -694,7 +711,8 @@ mod tests {
 	fn parse_single_if_neq() -> Result<()> {
 		let content = r#"{{@if {{OS}} != "windows"}}{{@fi}}"#;
 
-		let mut parser = Parser::new(content);
+		let source = Source::anonymous(content);
+		let mut parser = Parser::new(Session::new(source));
 		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
 
 		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
@@ -738,7 +756,8 @@ mod tests {
 	fn parse_single_if_exists() -> Result<()> {
 		let content = r#"{{@if {{$#EXISTS}}}}{{@fi}}"#;
 
-		let mut parser = Parser::new(content);
+		let source = Source::anonymous(content);
+		let mut parser = Parser::new(Session::new(source));
 		let block = parser.parse_next_block().ok_or(eyre!("No block found"))??;
 
 		assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
@@ -809,7 +828,8 @@ mod tests {
 	fn parse_comment() -> Result<()> {
 		let content = r#"{{!-- Hello World this {{}} is a comment {{{{{{ }}}--}}"#;
 
-		let mut parser = Parser::new(content);
+		let source = Source::anonymous(content);
+		let mut parser = Parser::new(Session::new(source));
 		let token = parser.parse_next_block().ok_or(eyre!("No block found"))??;
 
 		assert_eq!(
@@ -824,7 +844,8 @@ mod tests {
 	fn parse_escaped() -> Result<()> {
 		let content = r#"{{{!-- Hello World this {{}} is a comment {{{{{{ }}--}}}"#;
 
-		let mut parser = Parser::new(content);
+		let source = Source::anonymous(content);
+		let mut parser = Parser::new(Session::new(source));
 		let token = parser.parse_next_block().ok_or(eyre!("No block found"))??;
 
 		assert_eq!(
@@ -848,7 +869,8 @@ mod tests {
 		ASD
 		{{@fi}}"#;
 
-		let mut parser = Parser::new(content);
+		let source = Source::anonymous(content);
+		let mut parser = Parser::new(Session::new(source));
 		let token = parser.parse_next_block().ok_or(eyre!("No block found"))??;
 
 		assert_eq!(token.span, ByteSpan::new(0usize, content.len()));
@@ -869,7 +891,8 @@ mod tests {
 		ASD
 		{{@fi}}"#;
 
-		let mut parser = Parser::new(content);
+		let source = Source::anonymous(content);
+		let mut parser = Parser::new(Session::new(source));
 		let token = parser.parse_next_block().ok_or(eyre!("No block found"))??;
 
 		assert_eq!(token.span, ByteSpan::new(0usize, content.len()));
@@ -885,7 +908,8 @@ mod tests {
 		ASD
 		{{@fi}}"#;
 
-		let mut parser = Parser::new(content);
+		let source = Source::anonymous(content);
+		let mut parser = Parser::new(Session::new(source));
 		let token = parser.parse_next_block().ok_or(eyre!("No block found"))??;
 
 		assert_eq!(token.span, ByteSpan::new(0usize, content.len()));
@@ -908,7 +932,8 @@ mod tests {
 	print("Can never get here. {{{ {{OS}} is neither `windows` nor not `windows`. }}}")
 {{@fi}}"#;
 
-		let mut parser = Parser::new(content);
+		let source = Source::anonymous(content);
+		let mut parser = Parser::new(Session::new(source));
 		let token = parser.parse_next_block().ok_or(eyre!("No block found"))??;
 
 		assert_eq!(token.span, ByteSpan::new(0usize, content.len()));
