@@ -84,7 +84,7 @@ struct Deploy {
 // TODO: option to output deployment struct to file
 
 fn main() -> Result<()> {
-	color_eyre::install()?;
+	let _ = color_eyre::install()?;
 
 	let opts: Opts = Opts::parse();
 
@@ -95,8 +95,8 @@ fn main() -> Result<()> {
 		_ => log::Level::Trace,
 	};
 
-	env_logger::Builder::from_env(
-		env_logger::Env::default().default_filter_or(log_level.to_string()),
+	let _ = env_logger::Builder::from_env(
+		env_logger::Env::default().default_filter_or(log_level.as_str()),
 	)
 	.init();
 
@@ -175,8 +175,6 @@ fn ask_user_merge(source_path: &Path, deploy_path: &Path) -> Result<bool> {
 }
 
 fn print_deployment(deployment: Deployment) {
-	println!("-----------------------------------------");
-
 	let mut files_success = 0;
 	for (idx, (path, _)) in deployment
 		.items()
@@ -185,7 +183,7 @@ fn print_deployment(deployment: Deployment) {
 		.enumerate()
 	{
 		if idx == 0 {
-			println!("-- {} ---------", "SUCCESS".green());
+			println!("ITEMS ({})", "SUCCESS".green());
 		}
 
 		println!("\t{}", path.display().bright_black());
@@ -206,7 +204,7 @@ fn print_deployment(deployment: Deployment) {
 		.enumerate()
 	{
 		if idx == 0 {
-			println!("-- {} ---------", "SKIPPED".yellow());
+			println!("ITEMS ({})", "SKIPPED".yellow());
 		}
 
 		println!("\t{}: {}", path.display(), reason.bright_black());
@@ -227,7 +225,7 @@ fn print_deployment(deployment: Deployment) {
 		.enumerate()
 	{
 		if idx == 0 {
-			println!("-- {} ---------", "FAILED".red());
+			println!("ITEMS ({})", "FAILED".red());
 		}
 
 		println!("\t{}: {}", path.display(), reason.bright_black());
@@ -246,17 +244,13 @@ fn print_deployment(deployment: Deployment) {
 	};
 
 	let files_total = deployment.items().len();
+	let elapsed = deployment.duration().to_std().unwrap();
 
 	println!();
-	println!(
-		"Time            : {:?}",
-		deployment.duration().to_std().unwrap()
-	);
+	println!("Time            : {:?}", elapsed);
 	println!();
-
 	println!("Files (deployed): {}", files_success);
 	println!("Files (skipped) : {}", files_skipped);
 	println!("Files (failed)  : {}", files_failed);
-	println!("----------------");
 	println!("Files (total)   : {}", files_total);
 }

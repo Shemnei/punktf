@@ -46,20 +46,20 @@ impl<'a> Template<'a> {
 
 		// TODO: trim `\r\n` when span start/ends with it
 		match kind {
-			BlockKind::Comment => {
-				// NOP
-			}
-			BlockKind::Print(inner) => {
-				info!("[Print] {}", &self.content[inner]);
-			}
 			BlockKind::Text => {
 				output.push_str(&self.content[span]);
+			}
+			BlockKind::Comment => {
+				// NOP
 			}
 			BlockKind::Escaped(inner) => {
 				output.push_str(&self.content[inner]);
 			}
 			BlockKind::Var(var) => {
 				output.push_str(&self.resolve_var(var, profile_vars, item_vars)?);
+			}
+			BlockKind::Print(inner) => {
+				info!("[Print] {}", &self.content[inner]);
 			}
 			BlockKind::If(If {
 				head,
@@ -150,10 +150,10 @@ mod tests {
 	#[test]
 	fn parse_template() -> Result<()> {
 		let _ = env_logger::Builder::from_env(
-			env_logger::Env::default().default_filter_or(log::Level::Debug.to_string()),
+			env_logger::Env::default().default_filter_or(log::Level::Debug.as_str()),
 		)
 		.is_test(true)
-		.try_init();
+		.try_init()?;
 
 		let content = r#"
 			[some settings]

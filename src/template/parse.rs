@@ -125,11 +125,6 @@ impl<'a> Parser<'a> {
 		Some(Ok(span.span(BlockHint::Variable)))
 	}
 
-	fn parse_print(&self, span: ByteSpan) -> Block {
-		// {{@print ... }}
-		Block::new(span, BlockKind::Print(span.offset_low(9).offset_high(-2)))
-	}
-
 	fn parse_comment(&self, span: ByteSpan) -> Block {
 		// {{!-- ... --}}
 		Block::new(span, BlockKind::Comment)
@@ -152,6 +147,11 @@ impl<'a> Parser<'a> {
 		let offset = span.low().as_usize() + 2;
 
 		parse_var(content_inner, offset)
+	}
+
+	fn parse_print(&self, span: ByteSpan) -> Block {
+		// {{@print ... }}
+		Block::new(span, BlockKind::Print(span.offset_low(9).offset_high(-2)))
 	}
 
 	fn parse_if(&mut self, span: ByteSpan) -> Result<Spanned<If>> {
@@ -567,6 +567,19 @@ mod tests {
 				BlockKind::Escaped(ByteSpan::new(3usize, content.len() - 3))
 			)
 		);
+
+		Ok(())
+	}
+
+	#[test]
+	fn parse_print() -> Result<()> {
+		let content = r#"{{@print Foo Bar}}"#;
+
+		let mut parser = Parser::new(content);
+		let token = parser.parse_next_block().ok_or(eyre!("No block found"))??;
+
+		assert_eq!(token.span, ByteSpan::new(0usize, content.len()));
+		assert!(matches!(token.kind, BlockKind::Print(_)));
 
 		Ok(())
 	}
