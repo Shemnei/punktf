@@ -372,7 +372,10 @@ impl<'a> Parser<'a> {
 	}
 }
 
-fn next_block(s: &str) -> Option<Result<(ByteSpan, Option<BlockHint>), (Option<usize>, Report)>> {
+type NextBlock = (ByteSpan, Option<BlockHint>);
+type NextBlockError = (Option<usize>, Report);
+
+fn next_block(s: &str) -> Option<Result<NextBlock, NextBlockError>> {
 	if s.is_empty() {
 		return None;
 	}
