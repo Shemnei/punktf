@@ -1,4 +1,5 @@
 use color_eyre::eyre::{eyre, Result};
+use color_eyre::Report;
 
 use super::block::{Block, BlockHint, If, IfExpr, IfOp, Var, VarEnv, VarEnvSet};
 use super::diagnostic::{Diagnositic, DiagnositicBuilder, DiagnositicLevel};
@@ -93,12 +94,7 @@ impl<'a> Parser<'a> {
 		let (span, hint, content) = match self.blocks.next()? {
 			Ok(x) => x,
 			Err(err) => {
-				return Some(Err(
-					// TODO: improve error
-					DiagnositicBuilder::new(DiagnositicLevel::Error)
-						.message("failed to get next block")
-						.description(err.to_string()),
-				));
+				return Some(Err(err));
 			}
 		};
 
@@ -356,7 +352,6 @@ impl<'a> Parser<'a> {
 
 		while self
 			.peek_block_hint()
-			.transpose()?
 			.map(|hint| !hint.is_if_subblock())
 			.unwrap_or(false)
 		{
@@ -370,15 +365,14 @@ impl<'a> Parser<'a> {
 		Ok(enclosed_blocks)
 	}
 
-	fn peek_block_hint(&self) -> Option<Result<BlockHint, DiagnositicBuilder>> {
+	fn peek_block_hint(&self) -> Option<BlockHint> {
 		// TODO-BM: improve
 		let mut peek = self.clone();
-		peek.next_block()
-			.map(|opt| opt.map(|spanned| spanned.into_value()))
+		peek.next_block()?.ok().map(|spanned| spanned.into_value())
 	}
 }
 
-fn next_block(s: &str) -> Option<Result<(ByteSpan, Option<BlockHint>)>> {
+fn next_block(s: &str) -> Option<Result<(ByteSpan, Option<BlockHint>), (Option<usize>, Report)>> {
 	if s.is_empty() {
 		return None;
 	}
@@ -392,9 +386,9 @@ fn next_block(s: &str) -> Option<Result<(ByteSpan, Option<BlockHint>)>> {
 			if let Some(high) = s.find("}}}") {
 				Some(Ok((ByteSpan::new(low, high + 3), Some(BlockHint::Escaped))))
 			} else {
-				Some(Err(eyre!(
-					"Found opening for an escaped block at {} but no closing",
-					low
+				Some(Err((
+					Some(3),
+					eyre!("Found opening for an escaped block but no closing"),
 				)))
 			}
 		} else if let Some(b"!--") = s.as_bytes().get(low + 2..low + 5) {
@@ -402,9 +396,9 @@ fn next_block(s: &str) -> Option<Result<(ByteSpan, Option<BlockHint>)>> {
 			if let Some(high) = s.find("--}}") {
 				Some(Ok((ByteSpan::new(low, high + 4), Some(BlockHint::Comment))))
 			} else {
-				Some(Err(eyre!(
-					"Found opening for a comment block at {} but no closing",
-					low
+				Some(Err((
+					Some(5),
+					eyre!("Found opening for a comment block but no closing"),
 				)))
 			}
 		} else {
@@ -427,9 +421,9 @@ fn next_block(s: &str) -> Option<Result<(ByteSpan, Option<BlockHint>)>> {
 				return Some(Ok((ByteSpan::new(low, high), None)));
 			}
 
-			Some(Err(eyre!(
-				"Found opening for a block at {} but no closing",
-				low
+			Some(Err((
+				Some(2),
+				eyre!("Found opening for a block but no closing"),
 			)))
 		}
 	} else {
@@ -556,12 +550,29 @@ impl<'a> BlockIter<'a> {
 }
 
 impl<'a> Iterator for BlockIter<'a> {
-	type Item = Result<(ByteSpan, Option<BlockHint>, &'a str)>;
+	type Item = Result<(ByteSpan, Option<BlockHint>, &'a str), DiagnositicBuilder>;
 
 	fn next(&mut self) -> Option<Self::Item> {
 		let (mut span, hint) = match next_block(&self.content[self.index..])? {
 			Ok(x) => x,
-			Err(err) => return Some(Err(err)),
+			Err((skip, err)) => {
+				// skip erroneous part to allow recovery and avoid infinite loops
+				let span = ByteSpan::new(self.index, self.index);
+				if let Some(skip) = skip {
+					self.index += skip;
+					log::debug!("Skipping: {} ({})", skip, &self.content[self.index..]);
+				} else {
+					self.index = self.content.len();
+				}
+				let span = span.with_high(self.index);
+
+				log::error!("SPAN: {}/{}", span, err);
+
+				return Some(Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
+					.message("failed to parse block")
+					.description(err.to_string())
+					.primary_span(span)));
+			}
 		};
 
 		span = span.offset(self.index as i32);

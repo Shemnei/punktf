@@ -90,6 +90,7 @@ impl Diagnositic {
 
 				let highlight = format!(
 					"{}{}",
+					// TODO: handle `\t`
 					" ".repeat(loc.character()),
 					"^".repeat(highlight_len).bright_blue().bold()
 				);
