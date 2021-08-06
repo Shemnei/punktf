@@ -104,7 +104,7 @@ fn handle_commands(opts: Opts) -> Result<()> {
 			let deployer = Executor::new(options, ask_user_merge);
 
 			let deployment = deployer
-				.deploy(opts.shared.source.join("items"), profile)
+				.deploy(opts.shared.source.join("configurations"), profile)
 				.wrap_err("Failed to deploy");
 
 			println!("{:#?}", deployment);

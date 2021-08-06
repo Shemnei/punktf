@@ -11,7 +11,7 @@ The following features are already implemented:
 
 - [x] Basic deployment process
 - [x] Reading from a profile file
-- [x] Depolying non template items
+- [x] Depolying non template configurations
 - [x] Directories can be used as an item
 - [x] Profiles can have another profile as a base
 - [x] Pre/Post deployment hooks
@@ -57,7 +57,7 @@ PunktF searches for the source path in the following order:
 ```
 + profiles\
 	+ windows.pfp
-+ items\
++ configurations\
 	+ init.vim.win
 ```
 
@@ -68,7 +68,7 @@ PunktF searches for the source path in the following order:
 	// OPT: Other profile which will be used as base for this one
 	"extends": "base_profile_name",
 
-	// OPT: Variables for all items
+	// OPT: Variables for all configurations
 	"vars": [
 		{
 			"key": "RUSTC_PATH",
@@ -86,10 +86,10 @@ PunktF searches for the source path in the following order:
 	// OPT: Hooks which are executed once after the deployment.
 	"post_hooks": ["echo \"Bar\""],
 
-	// Items to be deployed
-	"items": [
+	// configurations to be deployed
+	"configurations": [
 		{
-			// Relative path in `items/`
+			// Relative path in `configurations/`
 			"path": "init.vim.win",
 
 			// OPT: Alternative deploy target (PATH: used instead of `root` + `file`, ALIAS: `root` + (alias instead of `file`))
