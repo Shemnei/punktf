@@ -83,7 +83,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: Linux Build (x86_64)
-          path: ./out
+          path: target/release/punktf
 
   build-windows:
     name: Windows Build
@@ -105,4 +105,4 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: Windows Build (x86_64)
-          path: ./out
+          path: target/release/punktf.exe
