@@ -4,10 +4,10 @@ class PunktfBin < Formula
   homepage "https://github.com/Shemnei/punktf"
 
   if OS.mac?
-      url "https://github.com/Shemnei/punktf/releases/download/#{version}/ripgrep-#{version}-x86_64-apple-darwin.tar.gz"
+      url "https://github.com/Shemnei/punktf/releases/download/#{version}/punktf-#{version}-x86_64-apple-darwin.tar.gz"
       sha256 ""
   elsif OS.linux?
-      url "https://github.com/Shemnei/punktf/releases/download/#{version}/ripgrep-#{version}-x86_64-unknown-linux-musl.tar.gz"
+      url "https://github.com/Shemnei/punktf/releases/download/#{version}/punktf-#{version}-x86_64-unknown-linux-musl.tar.gz"
       sha256 ""
   end
 
