@@ -1,6 +1,6 @@
 [package]
 name = "punktf"
-version = "0.1.0"
+version = "1.0.0-alpha.1"
 authors = ["Michael Lohr <michael@lohr.dev>", "Shemnei"]
 edition = "2018"
 description = "A cross-platform multi-target dotfiles manager"
