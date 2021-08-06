@@ -70,11 +70,12 @@ impl Diagnositic {
 					lpad,
 					"-->".bright_blue().bold(),
 					source.origin(),
-					loc
+					loc.display()
 				));
 
 				// highlight
-				let line = source.get_pos_line(*primary.low());
+				// TODO: check if there is another way (replace allocs a new string)
+				let line = source.get_pos_line(*primary.low()).replace('\t', "    ");
 
 				let vsep = "|".bright_blue();
 				let vsep = vsep.bold();
@@ -82,16 +83,15 @@ impl Diagnositic {
 				let loc_end = source.get_pos_location(*primary.high());
 				let highlight_len = if loc.line() == loc_end.line() {
 					// on same line; get diff
-					loc_end.character() - loc.character()
+					loc_end.column() - loc.column()
 				} else {
 					// on different lines; get until end of line
-					line.len() - loc.character()
+					line.chars().count() - loc.column()
 				};
 
 				let highlight = format!(
 					"{}{}",
-					// TODO: handle `\t`
-					" ".repeat(loc.character()),
+					" ".repeat(loc.column()),
 					"^".repeat(highlight_len).bright_blue().bold()
 				);
 
@@ -113,7 +113,8 @@ impl Diagnositic {
 				let lpad = " ".repeat(loc.line().to_string().len());
 
 				// highlight
-				let line = source.get_pos_line(*span.low());
+				// TODO: check if there is another way (replace allocs a new string)
+				let line = source.get_pos_line(*span.low()).replace('\t', "    ");
 
 				let vsep = "|".bright_blue();
 				let vsep = vsep.bold();
@@ -121,15 +122,15 @@ impl Diagnositic {
 				let loc_end = source.get_pos_location(*span.high());
 				let highlight_len = if loc.line() == loc_end.line() {
 					// on same line; get diff
-					loc_end.character() - loc.character()
+					loc_end.column() - loc.column()
 				} else {
 					// on different lines; get until end of line
-					line.len() - loc.character()
+					line.len() - loc.column()
 				};
 
 				let highlight = format!(
 					"{}{} {} {}",
-					" ".repeat(loc.character()),
+					" ".repeat(loc.column()),
 					"^".repeat(highlight_len).bright_blue().bold(),
 					" <-- ".bright_blue().bold(),
 					label.bright_black()

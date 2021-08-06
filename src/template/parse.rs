@@ -4,7 +4,7 @@ use color_eyre::Report;
 use super::block::{Block, BlockHint, If, IfExpr, IfOp, Var, VarEnv, VarEnvSet};
 use super::diagnostic::{Diagnositic, DiagnositicBuilder, DiagnositicLevel};
 use super::session::{ParseState, Session};
-use super::span::{ByteSpan, Spanned};
+use super::span::{ByteSpan, Pos, Spanned};
 use super::Template;
 use crate::template::block::BlockKind;
 
@@ -178,59 +178,81 @@ impl<'a> Parser<'a> {
 	}
 
 	fn parse_if(&mut self, span: ByteSpan) -> Result<Spanned<If>, DiagnositicBuilder> {
-		let head = span.span(self.parse_if_start(span)?);
+		let head = span.span(
+			self.parse_if_start(span)
+				.map_err(|build| build.label_span(span, "while parsing this `if` block"))?,
+		);
 
 		// collect all nested blocks
-		let head_nested = self.parse_if_enclosed_blocks()?;
+		let head_nested = self
+			.parse_if_enclosed_blocks()
+			.map_err(|build| build.label_span(*head.span(), "while parsing this `if` block"))?;
 
 		let Spanned {
 			mut span,
 			value: mut hint,
-		} = self.next_block().ok_or_else(|| {
-			DiagnositicBuilder::new(DiagnositicLevel::Error)
-				.message("unexpected end of `if` block")
-				.description("close the `if` block with `{{@fi}}`")
-				.primary_span(span)
-				.label_span(*head.span(), "While parsing this `if` block")
-		})??;
+		} = self
+			.next_block()
+			.ok_or_else(|| {
+				DiagnositicBuilder::new(DiagnositicLevel::Error)
+					.message("unexpected end of `if` block")
+					.description("close the `if` block with `{{@fi}}`")
+					.primary_span(span)
+					.label_span(*head.span(), "While parsing this `if` block")
+			})?
+			.map_err(|build| build.label_span(*head.span(), "while parsing this `if` block"))?;
 
 		// check for elif
 		let mut elifs = Vec::new();
 
 		while hint == BlockHint::ElIf {
-			let elif = span.span(self.parse_elif(span)?);
-			let elif_nested = self.parse_if_enclosed_blocks()?;
+			let elif = span.span(self.parse_elif(span).map_err(|build| {
+				build.label_span(*head.span(), "while parsing this `if` block")
+			})?);
+			let elif_nested = self
+				.parse_if_enclosed_blocks()
+				.map_err(|build| build.label_span(*head.span(), "while parsing this `if` block"))?;
 			elifs.push((elif, elif_nested));
 
 			let Spanned {
 				span: _span,
 				value: _hint,
-			} = self.next_block().ok_or_else(|| {
-				DiagnositicBuilder::new(DiagnositicLevel::Error)
-					.message("unexpected end of `elif` block")
-					.description("close the `if` block with `{{@fi}}`")
-					.primary_span(span)
-					.label_span(*head.span(), "While parsing this `if` block")
-			})??;
+			} = self
+				.next_block()
+				.ok_or_else(|| {
+					DiagnositicBuilder::new(DiagnositicLevel::Error)
+						.message("unexpected end of `elif` block")
+						.description("close the `if` block with `{{@fi}}`")
+						.primary_span(span)
+						.label_span(*head.span(), "While parsing this `if` block")
+				})?
+				.map_err(|build| build.label_span(*head.span(), "while parsing this `if` block"))?;
 
 			span = _span;
 			hint = _hint;
 		}
 
 		let els = if hint == BlockHint::Else {
-			let els = self.parse_else(span)?;
-			let els_nested = self.parse_if_enclosed_blocks()?;
+			let els = self
+				.parse_else(span)
+				.map_err(|build| build.label_span(*head.span(), "while parsing this `if` block"))?;
+			let els_nested = self
+				.parse_if_enclosed_blocks()
+				.map_err(|build| build.label_span(*head.span(), "while parsing this `if` block"))?;
 
 			let Spanned {
 				span: _span,
 				value: _hint,
-			} = self.next_block().ok_or_else(|| {
-				DiagnositicBuilder::new(DiagnositicLevel::Error)
-					.message("unexpected end of `else` block")
-					.description("close the `if` block with `{{@fi}}`")
-					.primary_span(span)
-					.label_span(*head.span(), "While parsing this `if` block")
-			})??;
+			} = self
+				.next_block()
+				.ok_or_else(|| {
+					DiagnositicBuilder::new(DiagnositicLevel::Error)
+						.message("unexpected end of `else` block")
+						.description("close the `if` block with `{{@fi}}`")
+						.primary_span(span)
+						.label_span(*head.span(), "While parsing this `if` block")
+				})?
+				.map_err(|build| build.label_span(*head.span(), "while parsing this `if` block"))?;
 
 			span = _span;
 			hint = _hint;
@@ -241,7 +263,8 @@ impl<'a> Parser<'a> {
 		};
 
 		let end = if hint == BlockHint::IfEnd {
-			self.parse_if_end(span)?
+			self.parse_if_end(span)
+				.map_err(|build| build.label_span(*head.span(), "while parsing this `if` block"))?
 		} else {
 			return Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
 				.message("unexpected end of `if` block")
