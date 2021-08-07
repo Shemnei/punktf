@@ -186,7 +186,19 @@ impl<'a> Parser<'a> {
 		// collect all nested blocks
 		let head_nested = self
 			.parse_if_enclosed_blocks()
-			.map_err(|build| build.label_span(*head.span(), "while parsing this `if` block"))?;
+			.into_iter()
+			.filter_map(|res| match res {
+				Ok(block) => Some(block),
+				Err(builder) => {
+					self.report_diagnostic(
+						builder
+							.label_span(*head.span(), "while parsing this `if` block")
+							.build(),
+					);
+					None
+				}
+			})
+			.collect();
 
 		let Spanned {
 			mut span,
@@ -209,9 +221,23 @@ impl<'a> Parser<'a> {
 			let elif = span.span(self.parse_elif(span).map_err(|build| {
 				build.label_span(*head.span(), "while parsing this `if` block")
 			})?);
+
 			let elif_nested = self
 				.parse_if_enclosed_blocks()
-				.map_err(|build| build.label_span(*head.span(), "while parsing this `if` block"))?;
+				.into_iter()
+				.filter_map(|res| match res {
+					Ok(block) => Some(block),
+					Err(builder) => {
+						self.report_diagnostic(
+							builder
+								.label_span(span, "while parsing this `elif` block")
+								.build(),
+						);
+						None
+					}
+				})
+				.collect();
+
 			elifs.push((elif, elif_nested));
 
 			let Spanned {
@@ -238,7 +264,19 @@ impl<'a> Parser<'a> {
 				.map_err(|build| build.label_span(*head.span(), "while parsing this `if` block"))?;
 			let els_nested = self
 				.parse_if_enclosed_blocks()
-				.map_err(|build| build.label_span(*head.span(), "while parsing this `if` block"))?;
+				.into_iter()
+				.filter_map(|res| match res {
+					Ok(block) => Some(block),
+					Err(builder) => {
+						self.report_diagnostic(
+							builder
+								.label_span(span, "while parsing this `else` block")
+								.build(),
+						);
+						None
+					}
+				})
+				.collect();
 
 			let Spanned {
 				span: _span,
@@ -370,22 +408,22 @@ impl<'a> Parser<'a> {
 		}
 	}
 
-	fn parse_if_enclosed_blocks(&mut self) -> Result<Vec<Block>, DiagnositicBuilder> {
+	fn parse_if_enclosed_blocks(&mut self) -> Vec<Result<Block, DiagnositicBuilder>> {
 		let mut enclosed_blocks = Vec::new();
 
 		while self
 			.peek_block_hint()
 			.map(|hint| !hint.is_if_subblock())
-			.unwrap_or(false)
+			.unwrap_or(true)
 		{
 			let next_block = self
 				.next_top_level_block()
-				.expect("Some block to be present after peek")?;
+				.expect("Some block to be present after peek");
 
 			enclosed_blocks.push(next_block);
 		}
 
-		Ok(enclosed_blocks)
+		enclosed_blocks
 	}
 
 	fn peek_block_hint(&self) -> Option<BlockHint> {
@@ -592,7 +630,7 @@ impl<'a> Iterator for BlockIter<'a> {
 				}
 				let span = span.with_high(self.index);
 
-				log::error!("SPAN: {}/{}", span, err);
+				log::debug!("SPAN: {}/{}", span, err);
 
 				return Some(Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
 					.message("failed to parse block")
