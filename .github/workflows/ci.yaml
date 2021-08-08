@@ -3,26 +3,12 @@ on: [push, pull_request]
 name: Continuous Integration
 
 jobs:
-  check:
-    name: Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          override: true
-      - name: Run cargo check
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-
   test:
     name: Test Suite
     runs-on: ubuntu-latest
+    env:
+      # Get backtraces on panics
+      RUST_BACKTRACE: 1
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -60,49 +46,3 @@ jobs:
         with:
           command: clippy
           args: -- -D warnings
-
-  build-linux:
-    name: Linux Build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-      - name: Update package index
-        run: sudo apt-get update -y
-      - name: Setup toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          target: x86_64-unknown-linux-gnu
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release
-      - name: Upload
-        uses: actions/upload-artifact@v2
-        with:
-          name: x86_64-unknown-linux-gnu
-          path: target/release/punktf
-
-  build-windows:
-    name: Windows Build
-    runs-on: windows-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-      - name: Setup toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          target: x86_64-pc-windows-gnu
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release
-      - name: Upload
-        uses: actions/upload-artifact@v2
-        with:
-          name: x86_64-pc-windows-gnu
-          path: target/release/punktf.exe
