@@ -32,6 +32,7 @@ jobs:
         with:
           tag_name: "v${{ env.PUNKTF_VERSION }}"
           release_name: ${{ env.PUNKTF_VERSION }}
+          draft: true
 
   build-release:
     name: Build release
