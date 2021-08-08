@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop';
 
 $packageName = 'punktf'
 $destDir     = Join-Path $(Get-ToolsLocation) $packageName
-$url64       = 'https://github.com/Shemnei/punktf/releases/download/v1.0.0-alpha/punktf-x86_64-pc-windows-gnu.zip'
+$url64       = 'https://github.com/Shemnei/punktf/releases/download/v1.0.0-alpha/punktf-x86_64-pc-windows-msvc.zip'
 
 
 $packageArgs = @{
@@ -13,7 +13,7 @@ $packageArgs = @{
 
     softwareName  = 'punktf*'
 
-    checksum64    = '74e7c124eba7402c7cedc6cc71c2f7bbbf5e81b957fe2a05d8d4deced82d1115'
+    checksum64    = 'e4cf1d9ed43217df69b7e13659435b86614ac62ea6049fc079785e993b8c5b0f'
     checksumType64= 'sha256'
 
     validExitCodes= @(0)
