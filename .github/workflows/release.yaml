@@ -58,10 +58,6 @@ jobs:
             os: windows-latest
             rust: nightly
             target: x86_64-pc-windows-msvc
-          - build: win-gnu
-            os: windows-latest
-            rust: nightly-x86_64-gnu
-            target: x86_64-pc-windows-gnu
           - build: win32-msvc
             os: windows-latest
             rust: nightly
