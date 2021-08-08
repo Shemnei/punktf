@@ -6,7 +6,7 @@ use super::span::{BytePos, ByteSpan, CharPos, Pos};
 
 /// Describes a location within a source file. The line is 1 indexed while
 /// the column is 0 indexed.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Location {
 	line: usize,
 	column: usize,
@@ -176,18 +176,21 @@ impl<'a> Source<'a> {
 		}
 	}
 
-	pub fn get_pos_line(&self, pos: BytePos) -> &'a str {
-		let line_start_idx = self.get_pos_line_idx(pos);
+	pub fn get_idx_line(&self, idx: usize) -> &'a str {
+		let line_end_idx = self.lines.get(idx + 1);
 
-		let line_end_idx = self.lines.get(line_start_idx + 1);
+		let line_start = self.lines[idx];
 
-		let line_start = self.lines[line_start_idx];
 		// end of the line (-1 to get the last char of the line)
 		let line_end = BytePos::from_usize(
 			line_end_idx.map_or_else(|| self.content.len(), |&idx| idx.as_usize() - 1),
 		);
 
 		&self.content[ByteSpan::new(line_start, line_end)]
+	}
+
+	pub fn get_pos_line(&self, pos: BytePos) -> &'a str {
+		self.get_idx_line(self.get_pos_line_idx(pos))
 	}
 
 	pub fn origin(&self) -> &SourceOrigin<'_> {
