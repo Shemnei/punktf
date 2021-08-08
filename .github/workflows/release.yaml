@@ -15,7 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       upload_url: ${{ steps.release.outputs.upload_url }}
-      punktf_version: ${{ env.PUNKTF_VERSION }}
     steps:
       - name: Get release version
         shell: bash
@@ -31,7 +30,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ env.PUNKTF_VERSION }}
+          tag_name: "v${{ env.PUNKTF_VERSION }}"
           release_name: ${{ env.PUNKTF_VERSION }}
 
   build-release:
@@ -105,7 +104,7 @@ jobs:
       - name: Build archive
         shell: bash
         run: |
-          staging="punktf-${{ needs.create-release.outputs.punktf_version }}-${{ matrix.target }}"
+          staging="punktf-${{ matrix.target }}"
           mkdir -p "$staging"
 
           if [[ "${{ matrix.os }}" = "windows-latest" ]]; then
