@@ -1,5 +1,5 @@
 class PunktfBin < Formula
-  version 'v1.0.0-alpha.1'
+  version 'v1.0.0-alpha'
   desc "A cross-platform multi-target dotfiles manager"
   homepage "https://github.com/Shemnei/punktf"
 

@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop';
 
 $packageName = 'punktf'
 $destDir     = Join-Path $(Get-ToolsLocation) $packageName
-$url64       = 'https://github.com/Shemnei/punktf/releases/download/v1.0.0-alpha.1/punktf-x86_64-pc-windows-gnu.zip'
+$url64       = 'https://github.com/Shemnei/punktf/releases/download/v1.0.0-alpha/punktf-x86_64-pc-windows-gnu.zip'
 
 
 $packageArgs = @{
