@@ -12,6 +12,8 @@ $packageArgs = @{
 
     softwareName  = 'punktf*'
 
+    unzipLocation = $destDir
+
     checksum64    = 'e4cf1d9ed43217df69b7e13659435b86614ac62ea6049fc079785e993b8c5b0f'
     checksumType64= 'sha256'
 
