@@ -1,0 +1,10 @@
+﻿VERIFICATION
+Verification is intended to assist the Chocolatey moderators and community
+in verifying that this package's contents are trustworthy.
+
+1. Go to https://github.com/Shemnei/punktf/releases/download/v1.0.0-alpha/punktf-x86_64-pc-windows-msvc.zip, and download from there.
+2. You can use one of the following methods to obtain the SHA512 checksum:
+   - Use powershell function 'Get-FileHash'
+   - Use Chocolatey utility 'checksum.exe'
+
+   checksum: e4cf1d9ed43217df69b7e13659435b86614ac62ea6049fc079785e993b8c5b0f
