@@ -8,7 +8,6 @@ $url64       = 'https://github.com/Shemnei/punktf/releases/download/v1.0.0-alpha
 
 $packageArgs = @{
     packageName   = $packageName
-    installerType = 'zip'
     url64bit      = $url64
 
     softwareName  = 'punktf*'
@@ -19,4 +18,4 @@ $packageArgs = @{
     validExitCodes= @(0)
 }
 
-Install-ChocolateyPackage @packageArgs
+Install-ChocolateyZipPackage @packageArgs

@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>punktf</id>
-    <version>1.0.0-alpha3</version>
+    <version>1.0.0-alpha4</version>
     <owners>Michael Lohr</owners>
     <title>punktf (Install)</title>
     <authors>Jonas Grawe, Michael Lohr</authors>
