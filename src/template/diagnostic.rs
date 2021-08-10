@@ -324,7 +324,7 @@ impl<'a> LineMap<'a> {
 			.map(|(low, _)| low)
 			.min()
 			.or_else(|| self.label_spans.iter().map(|(low, _, _)| low).min())
-			.map(|loc| *loc)
+			.copied()
 	}
 
 	pub fn line_nrs(&self) -> Vec<usize> {
@@ -332,7 +332,7 @@ impl<'a> LineMap<'a> {
 	}
 
 	pub fn line(&self, line_nr: usize) -> Option<&str> {
-		self.lines.get(&(line_nr - 1)).map(|line| *line)
+		self.lines.get(&(line_nr - 1)).copied()
 	}
 
 	pub fn line_spans_sorted(
