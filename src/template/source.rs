@@ -2,6 +2,8 @@ use std::ops::Deref;
 use std::path::Path;
 use std::{fmt, vec};
 
+use unicode_width::UnicodeWidthChar;
+
 use super::span::{BytePos, ByteSpan, CharPos, Pos};
 
 /// Describes a location within a source file. The line is 1 indexed while
@@ -49,6 +51,16 @@ pub struct MultiByteChar {
 	bytes: u8,
 }
 
+impl MultiByteChar {
+	pub fn pos(&self) -> &BytePos {
+		&self.pos
+	}
+
+	pub fn width(&self) -> u8 {
+		self.bytes
+	}
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SpecialWidthChar {
 	ZeroWidth(BytePos),
@@ -59,6 +71,15 @@ pub enum SpecialWidthChar {
 }
 
 impl SpecialWidthChar {
+	pub fn new(pos: BytePos, width: usize) -> Self {
+		match width {
+			0 => Self::ZeroWidth(pos),
+			2 => Self::Wide(pos),
+			4 => Self::Tab(pos),
+			_ => panic!("Unsupported width for SpecialWidthChar: {}", width),
+		}
+	}
+
 	pub fn width(&self) -> usize {
 		match self {
 			Self::ZeroWidth(_) => 0,
@@ -76,26 +97,46 @@ impl SpecialWidthChar {
 
 fn analyze_source(content: &'_ str) -> (Vec<BytePos>, Vec<SpecialWidthChar>, Vec<MultiByteChar>) {
 	// start first line at index 0
+	let mut i = 0;
+
 	let mut lines = vec![BytePos::new(0)];
 	let mut special_width_chars = Vec::new();
-	let multi_byte_chars = Vec::new();
+	let mut multi_byte_chars = Vec::new();
 
-	for pos in 0..content.len() {
-		let byte = content.as_bytes()[pos];
+	while i < content.len() {
+		let byte = content.as_bytes()[i];
+
+		let mut char_len = 1;
 
 		// all chars between 0-31 are ascii control characters
 		if byte < 32 {
 			match byte {
-				b'\n' => lines.push(BytePos::from_usize(pos + 1)),
-				b'\t' => special_width_chars.push(SpecialWidthChar::Tab(BytePos::from_usize(pos))),
-				_ => {
-					special_width_chars.push(SpecialWidthChar::ZeroWidth(BytePos::from_usize(pos)))
-				}
+				b'\n' => lines.push(BytePos::from_usize(i + 1)),
+				b'\t' => special_width_chars.push(SpecialWidthChar::Tab(BytePos::from_usize(i))),
+				_ => special_width_chars.push(SpecialWidthChar::ZeroWidth(BytePos::from_usize(i))),
 			}
 		} else if byte > 127 {
 			// bigger than `DEL`, could be multi-byte char
-			// TODO
+			let chr = (&content[i..]).chars().next().expect("A valid char");
+			char_len = chr.len_utf8();
+
+			let pos = BytePos::from_usize(i);
+
+			if char_len > 1 {
+				multi_byte_chars.push(MultiByteChar {
+					pos,
+					bytes: char_len as u8,
+				})
+			}
+
+			let char_width = UnicodeWidthChar::width(chr).unwrap_or(0);
+
+			if char_width != 1 {
+				special_width_chars.push(SpecialWidthChar::new(pos, char_width));
+			}
 		}
+
+		i += char_len;
 	}
 
 	(lines, special_width_chars, multi_byte_chars)
@@ -149,7 +190,18 @@ impl<'a> Source<'a> {
 			}
 		}
 
-		let cpos = CharPos::from_usize((pos.as_usize() - count) + offset);
+		for mbc in &self.multi_byte_chars {
+			if mbc.pos() < &pos {
+				offset += 1;
+				count += mbc.width() as usize;
+			} else {
+				// as the pos's are sorted we can abort after the first bigger
+				// pos
+				break;
+			}
+		}
+
+		let cpos = CharPos::from_usize((pos.as_usize() + offset) - count);
 
 		log::trace!("Traslating pos: {} > {}", pos, cpos,);
 
