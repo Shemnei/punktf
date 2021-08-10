@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use std::collections::btree_map::{Entry, Keys};
+use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, HashSet};
 
 use color_eyre::owo_colors::OwoColorize;
@@ -398,7 +398,7 @@ pub struct DiagnositicFormatter<'a> {
 
 impl<'a> DiagnositicFormatter<'a> {
 	pub fn new(source: &'a Source<'a>, msg: &'a str) -> Self {
-		let (descriptions) = <_>::default();
+		let descriptions = <_>::default();
 
 		Self {
 			source,
@@ -469,6 +469,42 @@ impl<'a> DiagnositicFormatter<'a> {
 						separator,
 						line.replace('\t', "    ")
 					));
+
+					if let Some(spans) = self.line_map.line_spans_sorted(line_nr) {
+						for (low_loc, high_loc, label) in spans {
+							let low_cpos = if low_loc.line() != line_nr {
+								0
+							} else {
+								low_loc.column()
+							};
+
+							let (ends_on_line, high_cpos) = if high_loc.line() != line_nr {
+								(false, line.len())
+							} else {
+								(true, high_loc.column())
+							};
+
+							let highlight_left_pad = " ".repeat(low_cpos);
+
+							let highlight = if label.is_some() { "-" } else { "^" }
+								.repeat(high_cpos - low_cpos);
+
+							out.push_str(&format!(
+								"\n {} {} {}{}",
+								&left_pad,
+								separator,
+								highlight_left_pad,
+								style(highlight)
+							));
+
+							if ends_on_line {
+								if let Some(label) = label {
+									out.push(' ');
+									out.push_str(&style(label));
+								}
+							}
+						}
+					}
 
 					last_line_nr = Some(line_nr);
 				}
