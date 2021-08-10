@@ -1,6 +1,6 @@
 # PunktF - A cross-platform multi-target dotfiles manager
 
-[![MIT License](https://img.shields.io/crates/l/punktf)](https://choosealicense.com/licenses/mit/) [![Continuous integration](https://github.com/Shemnei/punktf/workflows/Continuous%20Integration/badge.svg)](https://github.com/Shemnei/punktf/actions) [![Crates.io](https://img.shields.io/crates/v/punktf)](https://crates.io/crates/punktf)
+[![MIT License](https://img.shields.io/github/license/Shemnei/punktf)](https://choosealicense.com/licenses/mit/) [![GitHub Issues](https://img.shields.io/github/issues/Shemnei/punktf)](https://github.com/Shemnei/punktf/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc) [![Continuous integration](https://github.com/Shemnei/punktf/workflows/Continuous%20Integration/badge.svg)](https://github.com/Shemnei/punktf/actions) [![Crates.io](https://img.shields.io/crates/v/punktf)](https://crates.io/crates/punktf) [![Homebrew](https://img.shields.io/badge/dynamic/json.svg?url=https://raw.githubusercontent.com/michidk/homebrew-tools/main/Info/punktf.json&query=$.versions.stable&label=homebrew)](https://github.com/michidk/homebrew-tools/blob/main/Formula/punktf.rb) [![AUR](https://img.shields.io/aur/version/punktf)](https://aur.archlinux.org/packages/punktf) [![Chocolatey](https://img.shields.io/chocolatey/v/git?include_prereleases)](https://community.chocolatey.org/packages/punktf)
 
 ## DISCLAIMER
 
@@ -43,7 +43,7 @@ brew install punktf
 ```
 
 ### AUR
-Install [punktf](https://aur.archlinux.org/packages/punktf) using AUR on Arch Linux.
+Install [punktf](https://aur.archlinux.org/packages/punktf) using aur on Arch Linux.
 ```sh
 todo
 ```
