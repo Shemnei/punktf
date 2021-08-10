@@ -33,6 +33,27 @@ Features:
 - [ ] Define pre- and post-hooks to customize the behaviour with custom commands
 - [ ] Handles file permissions and line endings (CRLF vs LF)
 
+## Installation
+
+### Homebrew
+Install [punktf](https://github.com/michidk/homebrew-tools/blob/main/Formula/punktf.rb) using Homebrew on Linux.
+```sh
+brew tap michidk/tools
+brew install punktf
+```
+
+### AUR
+Install [punktf](https://aur.archlinux.org/packages/punktf) using AUR on Arch Linux.
+```sh
+todo
+```
+
+### Chocolatey
+Install [punktf](https://community.chocolatey.org/packages/punktf) using Chocolatey on Windows.
+```powershell
+choco install punktf --pre
+```
+
 ## Commands
 
 ```shell
