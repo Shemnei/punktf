@@ -1,3 +1,15 @@
+//! The code for error/diagnostics handling is heavily inspiered by
+//! [rust's](https://github.com/rust-lang/rust) compiler. While some code is adpated for use with
+//! punktf, some of it is also a plain copy of it.
+//!
+//! Specifically from those files:
+//! - https://github.com/rust-lang/rust/blob/master/compiler/rustc_span/src/lib.rs
+//! - https://github.com/rust-lang/rust/blob/master/compiler/rustc_span/src/analyze_source_file.rs
+//! - https://github.com/rust-lang/rust/blob/master/compiler/rustc_parse/src/parser/diagnostics.rs
+//! - https://github.com/rust-lang/rust/blob/master/compiler/rustc_errors/src/diagnostic.rs
+//! - https://github.com/rust-lang/rust/blob/master/compiler/rustc_errors/src/diagnostic_builder.rs
+//! - https://github.com/rust-lang/rust/blob/master/compiler/rustc_errors/src/emitter.rs
+
 use std::ops::Deref;
 use std::path::Path;
 use std::{fmt, vec};

@@ -1,3 +1,15 @@
+//! The code for error/diagnostics handling is heavily inspiered by
+//! [rust's](https://github.com/rust-lang/rust) compiler. While some code is adpated for use with
+//! punktf, some of it is also a plain copy of it.
+//!
+//! Specifically from those files:
+//! - https://github.com/rust-lang/rust/blob/master/compiler/rustc_span/src/lib.rs
+//! - https://github.com/rust-lang/rust/blob/master/compiler/rustc_span/src/analyze_source_file.rs
+//! - https://github.com/rust-lang/rust/blob/master/compiler/rustc_parse/src/parser/diagnostics.rs
+//! - https://github.com/rust-lang/rust/blob/master/compiler/rustc_errors/src/diagnostic.rs
+//! - https://github.com/rust-lang/rust/blob/master/compiler/rustc_errors/src/diagnostic_builder.rs
+//! - https://github.com/rust-lang/rust/blob/master/compiler/rustc_errors/src/emitter.rs
+
 use std::borrow::Cow;
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, HashSet};
@@ -47,13 +59,6 @@ impl Diagnositic {
 	}
 
 	pub fn emit(&self, source: &'_ Source<'_>) {
-		// Rust check example:
-		// error: 1 positional argument in format string, but no arguments were given
-		//   --> src/template/source.rs:28:27
-		//    |
-		// 28 |         out.push_str(format!(" |{}", ));
-		//    |                                 ^^
-
 		let mut fmt = DiagnositicFormatter::new(source, &self.msg);
 
 		if let Some(span) = &self.span {
@@ -76,120 +81,10 @@ impl Diagnositic {
 
 		match self.level {
 			DiagnositicLevel::Error => {
-				println!("{}{} {}", "error".bright_red().bold(), ':'.bold(), out)
+				log::error!("{}{} {}", "error".bright_red().bold(), ':'.bold(), out)
 			}
 			DiagnositicLevel::Warning => log::warn!("{}", out),
 		};
-
-		/*
-
-		// TODO-PM: move into separate into extra formatter
-		let mut out = String::new();
-
-		// title
-		out.push_str(&format!("{}", self.msg.bold()));
-
-		if let Some(span) = &self.span {
-			for primary in &span.primary {
-				out.push('\n');
-
-				// location
-				let loc = source.get_pos_location(*primary.low());
-				let lpad = " ".repeat(loc.line().to_string().len());
-
-				out.push_str(&format!(
-					" {}{} {}:{}\n",
-					lpad,
-					"-->".bright_blue().bold(),
-					source.origin(),
-					loc.display()
-				));
-
-				// highlight
-				// TODO: check if there is another way (replace allocs a new string)
-				let line = source.get_pos_line(*primary.low()).replace('\t', "    ");
-
-				let vsep = "|".bright_blue();
-				let vsep = vsep.bold();
-
-				let loc_end = source.get_pos_location(*primary.high());
-				let highlight_len = if loc.line() == loc_end.line() {
-					// on same line; get diff
-					loc_end.column() - loc.column()
-				} else {
-					// on different lines; get until end of line
-					line.chars().count() - loc.column()
-				};
-
-				let highlight = format!(
-					"{}{}",
-					" ".repeat(loc.column()),
-					"^".repeat(highlight_len).bright_blue().bold()
-				);
-
-				out.push_str(&format!(" {} {}\n", lpad, vsep));
-				out.push_str(&format!(
-					" {} {} {}\n",
-					loc.line().bright_blue().bold(),
-					vsep,
-					line
-				));
-				out.push_str(&format!(" {} {} {}", lpad, vsep, highlight));
-			}
-
-			for (span, label) in &span.labels {
-				out.push('\n');
-
-				// location
-				let loc = source.get_pos_location(*span.low());
-				let lpad = " ".repeat(loc.line().to_string().len());
-
-				// highlight
-				// TODO: check if there is another way (replace allocs a new string)
-				let line = source.get_pos_line(*span.low()).replace('\t', "    ");
-
-				let vsep = "|".bright_blue();
-				let vsep = vsep.bold();
-
-				let loc_end = source.get_pos_location(*span.high());
-				let highlight_len = if loc.line() == loc_end.line() {
-					// on same line; get diff
-					loc_end.column() - loc.column()
-				} else {
-					// on different lines; get until end of line
-					line.len() - loc.column()
-				};
-
-				let highlight = format!(
-					"{}{} {} {}",
-					" ".repeat(loc.column()),
-					"^".repeat(highlight_len).bright_blue().bold(),
-					" <-- ".bright_blue().bold(),
-					label.bright_black()
-				);
-
-				out.push_str(&format!(" {} {}\n", lpad, vsep));
-				out.push_str(&format!(
-					" {} {} {}\n",
-					loc.line().bright_blue().bold(),
-					vsep,
-					line
-				));
-				out.push_str(&format!(" {} {} {}", lpad, vsep, highlight));
-			}
-		}
-
-		// description
-		if let Some(description) = &self.description {
-			out.push('\n');
-			out.push_str(description);
-		}
-
-		match self.level {
-			DiagnositicLevel::Error => log::error!("{}", out),
-			DiagnositicLevel::Warning => log::warn!("{}", out),
-		};
-		*/
 	}
 
 	pub fn level(&self) -> &DiagnositicLevel {
@@ -424,6 +319,13 @@ impl<'a> DiagnositicFormatter<'a> {
 	}
 
 	pub fn finish(self) -> String {
+		// Rust check example:
+		// error: 1 positional argument in format string, but no arguments were given
+		//   --> src/template/source.rs:28:27
+		//    |
+		// 28 |         out.push_str(format!(" |{}", ));
+		//    |                                 ^^
+
 		fn style<S: AsRef<str>>(s: S) -> String {
 			s.as_ref().bright_blue().bold().to_string()
 		}
