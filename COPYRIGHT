@@ -1,0 +1,12 @@
+Copyright for portions of project `punktf` are held by the project
+[rust](https://github.com/rust-lang/rust). Some code portions were used as
+insipration and some of them where copied. This happened in accordance with the
+MIT license, which the rust project is licensed under.
+
+This includes:
+
+- Sanitization of the raw source of a template
+- Error and diagnostic handling for parsing and filling a template
+
+All other copyright for project `punktf` is held by Michael Lohr and Jonas
+Grawe, 2021.
