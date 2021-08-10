@@ -1,6 +1,6 @@
 # PunktF - A cross-platform multi-target dotfiles manager
 
-[![MIT License](https://img.shields.io/crates/l/punktf)](https://choosealicense.com/licenses/mit/) [![Continuous integration](https://github.com/Shemnei/punktf/workflows/Continuous%20Integration/badge.svg)](https://github.com/Shemnei/punktf/actions) [![Crates.io](https://img.shields.io/crates/v/punktf)](https://crates.io/crates/punktf)
+[![MIT License](https://img.shields.io/github/license/Shemnei/punktf)](https://choosealicense.com/licenses/mit/) [![GitHub Issues](https://img.shields.io/github/issues/Shemnei/punktf)](https://github.com/Shemnei/punktf/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc) [![Continuous integration](https://github.com/Shemnei/punktf/workflows/Continuous%20Integration/badge.svg)](https://github.com/Shemnei/punktf/actions) [![Crates.io](https://img.shields.io/crates/v/punktf)](https://crates.io/crates/punktf) [![Homebrew](https://img.shields.io/badge/dynamic/json.svg?url=https://raw.githubusercontent.com/michidk/homebrew-tools/main/Info/punktf.json&query=$.versions.stable&label=homebrew)](https://github.com/michidk/homebrew-tools/blob/main/Formula/punktf.rb) [![AUR](https://img.shields.io/aur/version/punktf)](https://aur.archlinux.org/packages/punktf) [![Chocolatey](https://img.shields.io/chocolatey/v/git?include_prereleases)](https://community.chocolatey.org/packages/punktf)
 
 ## DISCLAIMER
 
@@ -32,6 +32,32 @@ Features:
 - [ ] Use hadlebar-like instructions to insert variables and more
 - [ ] Define pre- and post-hooks to customize the behaviour with custom commands
 - [ ] Handles file permissions and line endings (CRLF vs LF)
+
+## Installation
+
+### Homebrew
+Install [punktf](https://github.com/michidk/homebrew-tools/blob/main/Formula/punktf.rb) using Homebrew on Linux.
+```sh
+brew tap michidk/tools
+brew install punktf
+```
+
+### AUR
+Install [punktf](https://aur.archlinux.org/packages/punktf) using aur on Arch Linux.
+To install it use your favorite aur capable package manager (e.g. [yay](https://github.com/Jguer/yay), [pikaur](https://github.com/actionless/pikaur)).
+```sh
+# yay
+yay punktf
+
+# pikaur
+pikaur -S punktf
+```
+
+### Chocolatey
+Install [punktf](https://community.chocolatey.org/packages/punktf) using Chocolatey on Windows.
+```powershell
+choco install punktf --pre
+```
 
 ## Commands
 
