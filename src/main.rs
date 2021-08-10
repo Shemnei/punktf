@@ -3,7 +3,7 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use clap::Clap;
+use clap::{crate_authors, crate_description, crate_version, Clap};
 use color_eyre::eyre::Context;
 use color_eyre::owo_colors::OwoColorize;
 use color_eyre::Result;
@@ -49,6 +49,7 @@ impl FromStr for SourcePath {
 }
 
 #[derive(Debug, Clap)]
+#[clap(version = crate_version!(), author = crate_authors!(), about = crate_description!())]
 struct Opts {
 	#[clap(flatten)]
 	shared: Shared,
