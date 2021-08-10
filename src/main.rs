@@ -89,9 +89,8 @@ fn main() -> Result<()> {
 	let opts: Opts = Opts::parse();
 
 	let log_level = match opts.shared.verbose {
-		0 => log::Level::Warn,
-		1 => log::Level::Info,
-		2 => log::Level::Debug,
+		0 => log::Level::Info,
+		1 => log::Level::Debug,
 		_ => log::Level::Trace,
 	};
 
@@ -128,7 +127,7 @@ fn handle_commands(opts: Opts) -> Result<()> {
 			match deployment {
 				Ok(deployment) => {
 					log::debug!("{:#?}", deployment);
-					print_deployment(deployment);
+					log_deployment(deployment);
 				}
 				Err(err) => {
 					log::error!("Failed to deploy: {}", err);
@@ -174,7 +173,9 @@ fn ask_user_merge(source_path: &Path, deploy_path: &Path) -> Result<bool> {
 	}
 }
 
-fn print_deployment(deployment: Deployment) {
+fn log_deployment(deployment: Deployment) {
+	let mut out = String::new();
+
 	let mut files_success = 0;
 	for (idx, (path, _)) in deployment
 		.items()
@@ -183,11 +184,16 @@ fn print_deployment(deployment: Deployment) {
 		.enumerate()
 	{
 		if idx == 0 {
-			println!("ITEMS ({})", "SUCCESS".green());
+			out.push_str(&format!("ITEMS ({})", "SUCCESS".green()));
 		}
 
-		println!("\t{}", path.display().bright_black());
+		out.push_str(&format!("\n\t{}", path.display().bright_black()));
 		files_success += 1;
+	}
+
+	if !out.is_empty() {
+		log::info!("{}", out);
+		out.clear();
 	}
 
 	let mut files_skipped = 0;
@@ -204,11 +210,20 @@ fn print_deployment(deployment: Deployment) {
 		.enumerate()
 	{
 		if idx == 0 {
-			println!("ITEMS ({})", "SKIPPED".yellow());
+			out.push_str(&format!("\nITEMS ({})", "SKIPPED".yellow()));
 		}
 
-		println!("\t{}: {}", path.display(), reason.bright_black());
+		out.push_str(&format!(
+			"\n\t{}: {}",
+			path.display(),
+			reason.bright_black()
+		));
 		files_skipped += 1;
+	}
+
+	if !out.is_empty() {
+		log::warn!("{}", out);
+		out.clear();
 	}
 
 	let mut files_failed = 0;
@@ -225,32 +240,42 @@ fn print_deployment(deployment: Deployment) {
 		.enumerate()
 	{
 		if idx == 0 {
-			println!("ITEMS ({})", "FAILED".red());
+			out.push_str(&format!("ITEMS ({})", "FAILED".red()));
 		}
 
-		println!("\t{}: {}", path.display(), reason.bright_black());
+		out.push_str(&format!(
+			"\n\t{}: {}",
+			path.display(),
+			reason.bright_black()
+		));
 		files_failed += 1;
 	}
 
-	println!();
+	if !out.is_empty() {
+		log::error!("{}", out);
+		out.clear();
+	}
 
 	match deployment.status() {
 		DeploymentStatus::Success => {
-			println!("Status: {}", "SUCCESS".green());
+			out.push_str(&format!("Status: {}", "SUCCESS".green()));
 		}
 		DeploymentStatus::Failed(reason) => {
-			println!("Status: {}\n\t{}", "FAILED".red(), reason);
+			out.push_str(&format!("Status: {}\n\t{}", "FAILED".red(), reason));
 		}
 	};
 
-	let files_total = deployment.items().len();
-	let elapsed = deployment.duration().to_std().unwrap();
+	let files_total = files_success + files_skipped + files_failed;
+	let elapsed = deployment
+		.duration()
+		.to_std()
+		.expect("Failed to convert chrono::Duration to std::time::Duration");
 
-	println!();
-	println!("Time            : {:?}", elapsed);
-	println!();
-	println!("Files (deployed): {}", files_success);
-	println!("Files (skipped) : {}", files_skipped);
-	println!("Files (failed)  : {}", files_failed);
-	println!("Files (total)   : {}", files_total);
+	out.push_str(&format!("\nTime            : {:?}", elapsed));
+	out.push_str(&format!("\nFiles (deployed): {}", files_success));
+	out.push_str(&format!("\nFiles (skipped) : {}", files_skipped));
+	out.push_str(&format!("\nFiles (failed)  : {}", files_failed));
+	out.push_str(&format!("\nFiles (total)   : {}", files_total));
+
+	log::info!("{}", out);
 }
