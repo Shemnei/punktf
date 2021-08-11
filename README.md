@@ -80,7 +80,7 @@ It can be set with:
 
 	// OPT: Variables for all items
 	// Default: None
-	"vars": [
+	"variables": [
 		{
 			"key": "RUSTC_PATH",
 			"value": "/usr/bin/rustc",
@@ -115,7 +115,7 @@ It can be set with:
 
 			// OPT: Custom variables for the specific file (same as above)
 			// Default: None
-			"vars": [
+			"variables": [
 				...
 			],
 
