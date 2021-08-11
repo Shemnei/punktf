@@ -1,3 +1,5 @@
+// TODO (cleanup): if possible split into separate files
+
 //! The code for error/diagnostics handling is heavily inspiered by
 //! [rust's](https://github.com/rust-lang/rust) compiler. While some code is adpated for use with
 //! punktf, some of it is also a plain copy of it.
