@@ -16,7 +16,6 @@ path = "src/main.rs"
 name = "punktf"
 
 [dependencies]
-chrono = { version = "0.4.19", features = ["serde"] }
 clap = "3.0.0-beta.2"
 color-eyre = "0.5.11"
 env_logger = "0.9.0"

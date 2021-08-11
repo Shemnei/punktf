@@ -2,8 +2,8 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, SystemTime, SystemTimeError};
 
-use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 
 use super::item::{DeployedItem, DeployedItemKind, ItemStatus};
@@ -53,23 +53,23 @@ where
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Deployment {
-	time_start: DateTime<Utc>,
-	time_end: DateTime<Utc>,
+	time_start: SystemTime,
+	time_end: SystemTime,
 	status: DeploymentStatus,
 	items: HashMap<PathBuf, DeployedItem>,
 }
 
 impl Deployment {
-	pub fn time_start(&self) -> &DateTime<Utc> {
+	pub fn time_start(&self) -> &SystemTime {
 		&self.time_start
 	}
 
-	pub fn time_end(&self) -> &DateTime<Utc> {
+	pub fn time_end(&self) -> &SystemTime {
 		&self.time_end
 	}
 
-	pub fn duration(&self) -> Duration {
-		self.time_end - self.time_start
+	pub fn duration(&self) -> Result<Duration, SystemTimeError> {
+		self.time_end.duration_since(self.time_start)
 	}
 
 	pub fn status(&self) -> &DeploymentStatus {
@@ -88,7 +88,7 @@ impl Deployment {
 #[must_use]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeploymentBuilder {
-	time_start: DateTime<Utc>,
+	time_start: SystemTime,
 	items: HashMap<PathBuf, DeployedItem>,
 }
 
@@ -159,7 +159,7 @@ impl DeploymentBuilder {
 	pub fn success(self) -> Deployment {
 		Deployment {
 			time_start: self.time_start,
-			time_end: Utc::now(),
+			time_end: SystemTime::now(),
 			status: DeploymentStatus::Success,
 			items: self.items,
 		}
@@ -168,7 +168,7 @@ impl DeploymentBuilder {
 	pub fn failed<S: Into<Cow<'static, str>>>(self, reason: S) -> Deployment {
 		Deployment {
 			time_start: self.time_start,
-			time_end: Utc::now(),
+			time_end: SystemTime::now(),
 			status: DeploymentStatus::Failed(reason.into()),
 			items: self.items,
 		}
@@ -178,7 +178,7 @@ impl DeploymentBuilder {
 impl Default for DeploymentBuilder {
 	fn default() -> Self {
 		Self {
-			time_start: Utc::now(),
+			time_start: SystemTime::now(),
 			items: HashMap::new(),
 		}
 	}
@@ -186,14 +186,18 @@ impl Default for DeploymentBuilder {
 
 #[cfg(test)]
 mod tests {
+	use color_eyre::Result;
+
 	use super::*;
 
 	#[test]
-	fn deployment_builder() {
+	fn deployment_builder() -> Result<()> {
 		let builder = Deployment::build();
 		let deployment = builder.success();
 
 		assert!(deployment.status().is_success());
-		assert!(deployment.duration() >= Duration::seconds(0));
+		assert!(deployment.duration()? >= Duration::from_secs(0));
+
+		Ok(())
 	}
 }

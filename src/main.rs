@@ -269,8 +269,7 @@ fn log_deployment(deployment: Deployment) {
 	let files_total = files_success + files_skipped + files_failed;
 	let elapsed = deployment
 		.duration()
-		.to_std()
-		.expect("Failed to convert chrono::Duration to std::time::Duration");
+		.expect("Failed to get duration from deployment");
 
 	out.push_str(&format!("\nTime            : {:?}", elapsed));
 	out.push_str(&format!("\nFiles (deployed): {}", files_success));
