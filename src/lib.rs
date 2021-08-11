@@ -21,14 +21,16 @@ pub struct Profile {
 	/// Defines the base profile. All settings from the base are merged with the
 	/// current profile. The settings from the current profile take precendence.
 	/// Items are merged on the item level (not specific item settings level).
+	#[serde(skip_serializing_if = "Option::is_none", default)]
 	extends: Option<String>,
 
 	/// Variables of the profile. Each item will have this environment.
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(skip_serializing_if = "Option::is_none", default)]
 	variables: Option<UserVars>,
 
 	/// Target root path of the deployment. Will be used as file stem for the items
 	/// when not overwritten by [Item::target].
+	#[serde(skip_serializing_if = "Option::is_none", default)]
 	target: Option<PathBuf>,
 
 	/// Hook will be executed once before the deployment begins. If the hook fails
@@ -122,25 +124,25 @@ pub struct Item {
 
 	/// Priority of the item. Items with higher priority as others are allowed
 	/// to overwrite an item deployed in this deployment.
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(skip_serializing_if = "Option::is_none", default)]
 	priority: Option<Priority>,
 
 	/// Variables for the item. If a key is not found here, [Profile::env]
 	/// will be searched.
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(skip_serializing_if = "Option::is_none", default)]
 	variables: Option<UserVars>,
 
 	/// Deployment target for the item. If not given it will be [Profile::target] + [Item::path]`.
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(skip_serializing_if = "Option::is_none", default)]
 	target: Option<DeployTarget>,
 
 	/// Merge operation for already existing items.
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(skip_serializing_if = "Option::is_none", default)]
 	merge: Option<MergeMode>,
 
 	/// Indicates if the item should be treated as a template. If this is `false`
 	/// no template processing will be done.
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(skip_serializing_if = "Option::is_none", default)]
 	template: Option<bool>,
 }
 
