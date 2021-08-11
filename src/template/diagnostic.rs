@@ -92,7 +92,6 @@ impl Diagnositic {
 	}
 }
 
-#[must_use]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiagnositicBuilder {
 	level: DiagnositicLevel,
@@ -142,6 +141,7 @@ impl DiagnositicBuilder {
 		self
 	}
 
+	#[must_use]
 	pub fn build(self) -> Diagnositic {
 		Diagnositic {
 			level: self.level,
@@ -318,6 +318,7 @@ impl<'a> DiagnositicFormatter<'a> {
 		self
 	}
 
+	#[must_use]
 	pub fn finish(self) -> String {
 		// Rust check example:
 		// error: 1 positional argument in format string, but no arguments were given

@@ -1,6 +1,7 @@
 use std::fmt;
 use std::ops::{Deref, Index};
 
+/// A general position which allows convertion from and to [`usize`] and [`u32`].
 pub trait Pos {
 	fn from_usize(value: usize) -> Self;
 	fn from_u32(value: u32) -> Self;
@@ -65,13 +66,16 @@ macro_rules! pos {
 }
 
 pos! {
+	/// A position of a byte.
 	#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 	pub struct BytePos(pub u32);
 
+	/// A position of a character.
 	#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 	pub struct CharPos(pub u32);
 }
 
+/// A span with a start position ([low](`ByteSpan::low`)) and an end position ([high](`ByteSpan::high`)).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ByteSpan {
 	pub low: BytePos,
