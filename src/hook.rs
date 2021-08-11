@@ -79,7 +79,7 @@ impl Hook {
 
 		for line in BufReader::new(stderr).lines() {
 			match line {
-				Ok(line) => println!("hook::stderr > {}", line),
+				Ok(line) => log::error!("hook::stderr > {}", line),
 				Err(err) => {
 					// Result is explicitly ignored as an error was already
 					// encountered
