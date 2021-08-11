@@ -4,8 +4,8 @@ Some code portions are held under different copyrights and/or licenses, which ca
 
 This project contains code portions written by third parties. The following projects are included in the `punktf` project in some way and include their own licenses:
 
-* The [rust](https://github.com/rust-lang/rust) compiler. Some code portions were used as inspiration, and some of them were copied. 
-    
+* The [rust](https://github.com/rust-lang/rust) compiler. Some code portions were used as inspiration, and some of them were copied.
+
     This includes:
       * Sanitization of the raw source of a template
       * Error and diagnostic handling for parsing and filling a template

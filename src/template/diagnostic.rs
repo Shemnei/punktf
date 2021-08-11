@@ -1,15 +1,3 @@
-//! The code for error/diagnostics handling is heavily inspiered by
-//! [rust's](https://github.com/rust-lang/rust) compiler. While some code is adpated for use with
-//! punktf, some of it is also a plain copy of it.
-//!
-//! Specifically from those files:
-//! - https://github.com/rust-lang/rust/blob/master/compiler/rustc_span/src/lib.rs
-//! - https://github.com/rust-lang/rust/blob/master/compiler/rustc_span/src/analyze_source_file.rs
-//! - https://github.com/rust-lang/rust/blob/master/compiler/rustc_parse/src/parser/diagnostics.rs
-//! - https://github.com/rust-lang/rust/blob/master/compiler/rustc_errors/src/diagnostic.rs
-//! - https://github.com/rust-lang/rust/blob/master/compiler/rustc_errors/src/diagnostic_builder.rs
-//! - https://github.com/rust-lang/rust/blob/master/compiler/rustc_errors/src/emitter.rs
-
 use std::borrow::Cow;
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, HashSet};
@@ -20,6 +8,9 @@ use super::source::Location;
 use super::span::ByteSpan;
 use crate::template::source::Source;
 
+// COPYRIGHT
+//
+// Copied from <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_span/src/lib.rs#L474>.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct DiagnosticSpan {
 	/// A primary span is displayed with `^` bellow the spanned text.
@@ -35,6 +26,9 @@ pub enum DiagnositicLevel {
 	Warning,
 }
 
+// COPYRIGHT
+//
+// Copied from by <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_errors/src/diagnostic.rs#L15> with slight adaptations.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Diagnositic {
 	level: DiagnositicLevel,

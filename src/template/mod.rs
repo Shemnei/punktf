@@ -1,3 +1,18 @@
+//! The code for error/diagnostics and source input handling is heavily inspired by
+//! [rust's](https://github.com/rust-lang/rust) compiler, which is licensed under the MIT license.
+//! While some code is adapted for use with `punktf`, some of it is also a plain copy of it. If a
+//! portion of code was copied/adapted from the Rust project there will be an explicit notices
+//! above it. For further information and the license please see the `COPYRIGHT` file in the root
+//! of this project.
+//!
+//! Specifically but not limited to:
+//! - <https://github.com/rust-lang/rust/blob/master/compiler/rustc_span/src/lib.rs>
+//! - <https://github.com/rust-lang/rust/blob/master/compiler/rustc_span/src/analyze_source_file.rs>
+//! - <https://github.com/rust-lang/rust/blob/master/compiler/rustc_parse/src/parser/diagnostics.rs>
+//! - <https://github.com/rust-lang/rust/blob/master/compiler/rustc_errors/src/diagnostic.rs>
+//! - <https://github.com/rust-lang/rust/blob/master/compiler/rustc_errors/src/diagnostic_builder.rs>
+//! - <https://github.com/rust-lang/rust/blob/master/compiler/rustc_errors/src/emitter.rs>
+
 mod block;
 mod diagnostic;
 mod parse;

@@ -1,17 +1,5 @@
 // TODO (cleanup): if possible split into separate files
 
-//! The code for error/diagnostics handling is heavily inspiered by
-//! [rust's](https://github.com/rust-lang/rust) compiler. While some code is adpated for use with
-//! punktf, some of it is also a plain copy of it.
-//!
-//! Specifically from those files:
-//! - <https://github.com/rust-lang/rust/blob/master/compiler/rustc_span/src/lib.rs>
-//! - <https://github.com/rust-lang/rust/blob/master/compiler/rustc_span/src/analyze_source_file.rs>
-//! - <https://github.com/rust-lang/rust/blob/master/compiler/rustc_parse/src/parser/diagnostics.rs>
-//! - <https://github.com/rust-lang/rust/blob/master/compiler/rustc_errors/src/diagnostic.rs>
-//! - <https://github.com/rust-lang/rust/blob/master/compiler/rustc_errors/src/diagnostic_builder.rs>
-//! - <https://github.com/rust-lang/rust/blob/master/compiler/rustc_errors/src/emitter.rs>
-
 use std::ops::Deref;
 use std::path::Path;
 use std::{fmt, vec};
@@ -43,7 +31,11 @@ impl Location {
 	}
 }
 
+// COPYRIGHT
+//
+// Inspired by <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_span/src/lib.rs#L273>.
 /// Describes where some content came from.
+///
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SourceOrigin<'a> {
 	File(&'a Path),
@@ -59,6 +51,9 @@ impl<'a> fmt::Display for SourceOrigin<'a> {
 	}
 }
 
+// COPYRIGHT
+//
+// Copied from <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_span/src/lib.rs#L1059>.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MultiByteChar {
 	pos: BytePos,
@@ -75,10 +70,14 @@ impl MultiByteChar {
 	}
 }
 
+// COPYRIGHT
+//
+// Copied from <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_span/src/lib.rs#L1068>.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SpecialWidthChar {
+	/// A zero width character. These are mostly ASCII control characters.
 	ZeroWidth(BytePos),
-	/// A full width char
+	/// A full width char.
 	Wide(BytePos),
 	/// Tab byte `\t` 0x09
 	Tab(BytePos),
@@ -109,6 +108,9 @@ impl SpecialWidthChar {
 	}
 }
 
+// COPYRIGHT
+//
+// Copied from <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_span/src/analyze_source_file.rs#L207> with slight adaptations.
 fn analyze_source(content: &'_ str) -> (Vec<BytePos>, Vec<SpecialWidthChar>, Vec<MultiByteChar>) {
 	// start first line at index 0
 	let mut i = 0;
@@ -156,6 +158,9 @@ fn analyze_source(content: &'_ str) -> (Vec<BytePos>, Vec<SpecialWidthChar>, Vec
 	(lines, special_width_chars, multi_byte_chars)
 }
 
+// COPYRIGHT
+//
+// Inspired by <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_span/src/lib.rs#L1246>.
 /// Holds the contents of a template file together with the origins where the
 /// content came from. Besides the origin it also holds some information used
 /// in error reporting.
@@ -217,7 +222,7 @@ impl<'a> Source<'a> {
 
 		let cpos = CharPos::from_usize((pos.as_usize() + offset) - count);
 
-		log::trace!("Traslating pos: {} > {}", pos, cpos,);
+		log::trace!("Translating pos: {} > {}", pos, cpos,);
 
 		cpos
 	}

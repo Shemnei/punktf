@@ -1,6 +1,9 @@
 use std::fmt;
 use std::ops::{Deref, Index};
 
+// COPYRIGHT
+//
+// Copied from <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_span/src/lib.rs#L1768>.
 /// A general position which allows convertion from and to [`usize`] and [`u32`].
 pub trait Pos {
 	fn from_usize(value: usize) -> Self;
@@ -9,6 +12,9 @@ pub trait Pos {
 	fn as_u32(&self) -> u32;
 }
 
+// COPYRIGHT
+//
+// Copied from <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_span/src/lib.rs#L1775> with slight adaptations.
 macro_rules! pos {
     (
         $(
@@ -75,6 +81,9 @@ pos! {
 	pub struct CharPos(pub u32);
 }
 
+// COPYRIGHT
+//
+// Inspired by <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_span/src/lib.rs#L419>.
 /// A span with a start position ([low](`ByteSpan::low`)) and an end position ([high](`ByteSpan::high`)).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ByteSpan {
