@@ -1,12 +1,35 @@
-Copyright for portions of project `punktf` are held by the project
-[rust](https://github.com/rust-lang/rust). Some code portions were used as
-insipration and some of them where copied. This happened in accordance with the
-MIT license, which the rust project is licensed under.
+Copyrights of the `punktf` project are held by their contributors.
 
-This includes:
+Some code portions are held under different copyrights and/or licenses, which can be found below. All the other files and code are licensed under the [MIT](https://opensource.org/licenses/MIT) license.
 
-- Sanitization of the raw source of a template
-- Error and diagnostic handling for parsing and filling a template
+This project contains code portions written by third parties. The following projects are included in the `punktf` project in some way and include their own licenses:
 
-All other copyright for project `punktf` is held by Michael Lohr and Jonas
-Grawe, 2021.
+* The [rust](https://github.com/rust-lang/rust) compiler. Some code portions were used as inspiration, and some of them were copied. 
+    
+    This includes:
+      * Sanitization of the raw source of a template
+      * Error and diagnostic handling for parsing and filling a template
+
+    Permission is hereby granted, free of charge, to any
+    person obtaining a copy of this software and associated
+    documentation files (the "Software"), to deal in the
+    Software without restriction, including without
+    limitation the rights to use, copy, modify, merge,
+    publish, distribute, sublicense, and/or sell copies of
+    the Software, and to permit persons to whom the Software
+    is furnished to do so, subject to the following
+    conditions:
+
+    The above copyright notice and this permission notice
+    shall be included in all copies or substantial portions
+    of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+    ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+    TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+    PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+    SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+    OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+    IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
