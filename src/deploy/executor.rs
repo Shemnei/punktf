@@ -1,5 +1,3 @@
-use std::collections::VecDeque;
-use std::fs::ReadDir;
 use std::path::{Path, PathBuf};
 
 use color_eyre::eyre::Context;
@@ -269,8 +267,6 @@ where
 			Some(_) => directory_deploy_path,
 		};
 
-		let mut backlog: VecDeque<ReadDir> = VecDeque::new();
-
 		match std::fs::create_dir_all(&directory_deploy_path) {
 			Ok(_) => {}
 			Err(err) => {
@@ -286,120 +282,78 @@ where
 			}
 		}
 
-		let dents = match directory_source_path.read_dir() {
-			Ok(read_dir) => read_dir,
-			Err(err) => {
+		for dent in walkdir::WalkDir::new(&directory_source_path) {
+			let dent = match dent {
+				Ok(dent) => dent,
+				Err(err) => {
+					// TODO: handle better
+					log::warn!("Failed to get directory entry: {}", err.to_string());
+					continue;
+				}
+			};
+
+			let child_source_path = dent.path();
+
+			let child_path = match child_source_path.strip_prefix(&directory_source_path) {
+				Ok(path) => path,
+				Err(_) => {
+					// TODO: handle better
+					log::warn!(
+						"[{}] Failed resolve child path (`{}`)",
+						directory.path.display(),
+						dent.path().display(),
+					);
+
+					continue;
+				}
+			};
+
+			let child_deploy_path = directory_deploy_path.join(child_path);
+
+			// TODO: for now dont follow symlinks
+			let metadata = match dent.metadata() {
+				Ok(metadata) => metadata,
+				Err(err) => {
+					log::warn!(
+						"[{}] Failed to get metadata for child (`{}`)",
+						child_path.display(),
+						err
+					);
+
+					builder.add_child(child_deploy_path, directory_deploy_path.clone(), err.into());
+
+					continue;
+				}
+			};
+
+			if metadata.is_file() {
+				let exec_item = ExecutorItem::Child {
+					parent: &directory,
+					parent_source_path: &directory_source_path,
+					parent_deploy_path: &directory_deploy_path,
+					path: child_path.to_path_buf(),
+					source_path: child_source_path.to_path_buf(),
+					deploy_path: child_deploy_path,
+				};
+
+				let _ = self.deploy_executor_item(builder, source_path, profile, exec_item)?;
+			} else if metadata.is_dir() {
+				// TODO: decide if empty directory should be kept
+			} else {
 				log::warn!(
-					"[{}] Failed to read directory (`{}`)",
-					directory.path.display(),
-					err
+					"[{}] Unsupported item type (`{:?}`)",
+					child_path.display(),
+					metadata.file_type()
 				);
 
-				builder.add_item(directory_deploy_path, directory, err.into());
-
-				return Ok(());
-			}
-		};
-
-		backlog.push_back(dents);
-
-		while !backlog.is_empty() {
-			for dent in backlog.pop_front().expect("Backlog to have an item") {
-				let dent = match dent {
-					Ok(dent) => dent,
-					Err(err) => {
-						// TODO: handle better
-						log::warn!("Failed to get dent: {}", err.to_string());
-						continue;
-					}
-				};
-
-				let child_source_path = dent.path();
-
-				let child_path = match child_source_path.strip_prefix(&directory_source_path) {
-					Ok(path) => path,
-					Err(_) => {
-						// TODO: handle better
-						log::warn!(
-							"[{}] Failed resolve child path (`{}`)",
-							directory.path.display(),
-							dent.path().display(),
-						);
-
-						continue;
-					}
-				};
-
-				let child_deploy_path = directory_deploy_path.join(child_path);
-
-				// TODO: for now dont follow symlinks
-				let metadata = match dent.metadata() {
-					Ok(metadata) => metadata,
-					Err(err) => {
-						log::warn!(
-							"[{}] Failed to get metadata for child (`{}`)",
-							child_path.display(),
-							err
-						);
-
-						builder.add_child(
-							child_deploy_path,
-							directory_deploy_path.clone(),
-							err.into(),
-						);
-
-						continue;
-					}
-				};
-
-				if metadata.is_file() {
-					let exec_item = ExecutorItem::Child {
-						parent: &directory,
-						parent_source_path: &directory_source_path,
-						parent_deploy_path: &directory_deploy_path,
-						path: child_path.to_path_buf(),
-						source_path: child_source_path,
-						deploy_path: child_deploy_path,
-					};
-
-					let _ = self.deploy_executor_item(builder, source_path, profile, exec_item)?;
-				} else if metadata.is_dir() {
-					let dents = match child_source_path.read_dir() {
-						Ok(read_dir) => read_dir,
-						Err(err) => {
-							log::warn!(
-								"[{}] Failed to read directory (`{}`)",
-								child_path.display(),
-								err
-							);
-
-							builder.add_child(
-								child_deploy_path,
-								directory_deploy_path.clone(),
-								err.into(),
-							);
-
-							continue;
-						}
-					};
-
-					backlog.push_back(dents);
-				} else {
-					log::warn!(
-						"[{}] Unsupported item type (`{:?}`)",
-						child_path.display(),
+				builder.add_child(
+					child_deploy_path,
+					directory_deploy_path.clone(),
+					ItemStatus::failed(format!(
+						"Unsupported item type `{:?}`",
 						metadata.file_type()
-					);
-
-					builder.add_child(
-						child_deploy_path,
-						directory_deploy_path.clone(),
-						ItemStatus::failed(format!(
-							"Unsupported item type `{:?}`",
-							metadata.file_type()
-						)),
-					);
-				}
+					)),
+				);
 			}
 		}
 
