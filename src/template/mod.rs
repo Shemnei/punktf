@@ -48,13 +48,13 @@ impl<'a> Template<'a> {
 	pub fn resolve(
 		mut self,
 		profile_vars: Option<&UserVars>,
-		item_vars: Option<&UserVars>,
+		dotfile_vars: Option<&UserVars>,
 	) -> Result<String> {
 		let mut output = String::new();
 
 		for idx in 0..self.blocks.len() {
 			if let Err(builder) =
-				self.process_block(profile_vars, item_vars, &mut output, &self.blocks[idx])
+				self.process_block(profile_vars, dotfile_vars, &mut output, &self.blocks[idx])
 			{
 				self.report_diagnostic(builder.build());
 			}
@@ -76,7 +76,7 @@ impl<'a> Template<'a> {
 	fn process_block(
 		&self,
 		profile_vars: Option<&UserVars>,
-		item_vars: Option<&UserVars>,
+		dotfile_vars: Option<&UserVars>,
 		output: &mut String,
 		block: &Block,
 	) -> Result<(), DiagnositicBuilder> {
@@ -96,7 +96,7 @@ impl<'a> Template<'a> {
 				Ok(())
 			}
 			BlockKind::Var(var) => {
-				output.push_str(&self.resolve_var(var, profile_vars, item_vars)?);
+				output.push_str(&self.resolve_var(var, profile_vars, dotfile_vars)?);
 				Ok(())
 			}
 			BlockKind::If(If {
@@ -107,7 +107,7 @@ impl<'a> Template<'a> {
 			}) => {
 				let (head, head_nested) = head;
 
-				let matched = match self.resolve_if_expr(head.value(), profile_vars, item_vars) {
+				let matched = match self.resolve_if_expr(head.value(), profile_vars, dotfile_vars) {
 					Ok(x) => x,
 					Err(builder) => {
 						return Err(
@@ -120,12 +120,12 @@ impl<'a> Template<'a> {
 					for block in head_nested {
 						// TODO: if first block is text (trim lf start)
 						// TODO: if last block is text (trim lf end)
-						let _ = self.process_block(profile_vars, item_vars, output, block)?;
+						let _ = self.process_block(profile_vars, dotfile_vars, output, block)?;
 					}
 				} else {
 					for (elif, elif_nested) in elifs {
 						let matched =
-							match self.resolve_if_expr(elif.value(), profile_vars, item_vars) {
+							match self.resolve_if_expr(elif.value(), profile_vars, dotfile_vars) {
 								Ok(x) => x,
 								Err(builder) => {
 									return Err(builder.label_span(
@@ -139,7 +139,7 @@ impl<'a> Template<'a> {
 							// return if matching elif arm was found
 							for block in elif_nested {
 								let _ =
-									self.process_block(profile_vars, item_vars, output, block)?;
+									self.process_block(profile_vars, dotfile_vars, output, block)?;
 							}
 
 							return Ok(());
@@ -148,7 +148,8 @@ impl<'a> Template<'a> {
 
 					if let Some((_, els_nested)) = els {
 						for block in els_nested {
-							let _ = self.process_block(profile_vars, item_vars, output, block)?;
+							let _ =
+								self.process_block(profile_vars, dotfile_vars, output, block)?;
 						}
 					}
 				}
@@ -161,14 +162,14 @@ impl<'a> Template<'a> {
 		&self,
 		expr: &IfExpr,
 		profile_vars: Option<&UserVars>,
-		item_vars: Option<&UserVars>,
+		dotfile_vars: Option<&UserVars>,
 	) -> Result<bool, DiagnositicBuilder> {
 		match expr {
 			IfExpr::Compare { var, op, other } => {
-				let var = self.resolve_var(var, profile_vars, item_vars)?;
+				let var = self.resolve_var(var, profile_vars, dotfile_vars)?;
 				Ok(op.eval(&var, &self.session.source[other]))
 			}
-			IfExpr::Exists { var } => Ok(self.resolve_var(var, profile_vars, item_vars).is_ok()),
+			IfExpr::Exists { var } => Ok(self.resolve_var(var, profile_vars, dotfile_vars).is_ok()),
 		}
 	}
 
@@ -176,7 +177,7 @@ impl<'a> Template<'a> {
 		&self,
 		var: &Var,
 		profile_vars: Option<&UserVars>,
-		item_vars: Option<&UserVars>,
+		dotfile_vars: Option<&UserVars>,
 	) -> Result<String, DiagnositicBuilder> {
 		let name = &self.session.source[var.name];
 
@@ -192,8 +193,8 @@ impl<'a> Template<'a> {
 						return Ok(val.to_string());
 					}
 				}
-				VarEnv::Item => {
-					if let Some(Some(val)) = item_vars.map(|vars| vars.var(name)) {
+				VarEnv::Dotfile => {
+					if let Some(Some(val)) = dotfile_vars.map(|vars| vars.var(name)) {
 						return Ok(val.to_string());
 					}
 				}

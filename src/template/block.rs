@@ -53,7 +53,7 @@ impl Block {
 pub enum VarEnv {
 	Environment,
 	Profile,
-	Item,
+	Dotfile,
 }
 
 impl fmt::Display for VarEnv {
@@ -96,7 +96,7 @@ impl VarEnvSet {
 
 impl Default for VarEnvSet {
 	fn default() -> Self {
-		Self([Some(VarEnv::Item), Some(VarEnv::Profile), None])
+		Self([Some(VarEnv::Dotfile), Some(VarEnv::Profile), None])
 	}
 }
 

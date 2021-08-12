@@ -12,8 +12,8 @@ The following features are already implemented:
 - [x] Basic deployment process
 - [x] Basic templating support
 - [x] Reading from a profile file
-- [x] Depolying non template items
-- [x] Directories can be used as an item
+- [x] Depolying `dotfiles`
+- [x] Directories can be used as a `dotfile`
 - [x] Profiles can have another profile as a base
 - [x] Pre/Post deployment hooks
 - [x] Basic support for merge operations
@@ -58,7 +58,7 @@ PunktF searches for the source path in the following order:
 ```
 + profiles\
 	+ windows.pfp
-+ items\
++ dotfiles\
 	+ init.vim.win
 ```
 
@@ -78,9 +78,9 @@ It can be set with:
 	// Default: None
 	"extends": "base_profile_name",
 
-	// OPT: Variables for all items
+	// OPT: Variables for all `dotfiles`
 	// Default: None
-	"vars": [
+	"variables: [
 		{
 			"key": "RUSTC_PATH",
 			"value": "/usr/bin/rustc",
@@ -100,10 +100,10 @@ It can be set with:
 	// Default: None
 	"post_hooks": ["echo \"Bar\""],
 
-	// Items to be deployed
-	"items": [
+	// `dotfiles` to be deployed
+	"dotfiles": [
 		{
-			// Relative path in `items/`
+			// Relative path in `dotfiles/`
 			"path": "init.vim.win",
 
 			// OPT: Alternative deploy target (PATH: used instead of `root` + `file`, ALIAS: `root` + (alias instead of `file`))
@@ -115,7 +115,7 @@ It can be set with:
 
 			// OPT: Custom variables for the specific file (same as above)
 			// Default: None
-			"vars": [
+			"variables": [
 				...
 			],
 
@@ -127,7 +127,7 @@ It can be set with:
 			// Default: true
 			"template": false,
 
-			// OPT: Higher priority item is allowed to overwrite lower priority ones
+			// OPT: Higher priority `dotfile` is allowed to overwrite lower priority one
 			// Default: None
 			"priority": 2,
 		}
@@ -168,7 +168,7 @@ Prefix to determine where variables are looked for (can be combined: e.g. {{#$RU
 - None: First profile.variables then profile.file.variables
 - `$`: Only (system) ENVIRONMENT
 - `#`: Only profile.variables
-- `&`: Only profile.item.variables
+- `&`: Only profile.dotfile.variables
 
 
 Example:

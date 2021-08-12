@@ -82,7 +82,7 @@ fn parse_single_var_default() -> Result<()> {
 
 	let name = ByteSpan::new(2usize, content.len() - 2);
 	assert_eq!(&content[name], "OS");
-	let envs = VarEnvSet([Some(VarEnv::Item), Some(VarEnv::Profile), None]);
+	let envs = VarEnvSet([Some(VarEnv::Dotfile), Some(VarEnv::Profile), None]);
 	assert_eq!(block.kind(), &BlockKind::Var(Var { envs, name }));
 
 	Ok(())
@@ -131,7 +131,7 @@ fn parse_single_var_profile() -> Result<()> {
 }
 
 #[test]
-fn parse_single_var_item() -> Result<()> {
+fn parse_single_var_dotfile() -> Result<()> {
 	let content = r#"{{&ITEM}}"#;
 
 	let source = Source::anonymous(content);
@@ -145,7 +145,7 @@ fn parse_single_var_item() -> Result<()> {
 
 	let name = ByteSpan::new(3usize, content.len() - 2);
 	assert_eq!(&content[name], "ITEM");
-	let envs = VarEnvSet([Some(VarEnv::Item), None, None]);
+	let envs = VarEnvSet([Some(VarEnv::Dotfile), None, None]);
 	assert_eq!(block.kind(), &BlockKind::Var(Var { envs, name }));
 
 	Ok(())
@@ -168,7 +168,7 @@ fn parse_single_var_mixed() -> Result<()> {
 	assert_eq!(&content[name], "MIXED");
 	let envs = VarEnvSet([
 		Some(VarEnv::Environment),
-		Some(VarEnv::Item),
+		Some(VarEnv::Dotfile),
 		Some(VarEnv::Profile),
 	]);
 	assert_eq!(block.kind(), &BlockKind::Var(Var { envs, name }));
@@ -210,7 +210,7 @@ fn parse_single_if_eq() -> Result<()> {
 
 	let name = ByteSpan::new(8usize, 10usize);
 	assert_eq!(&content[name], "OS");
-	let envs = VarEnvSet([Some(VarEnv::Item), Some(VarEnv::Profile), None]);
+	let envs = VarEnvSet([Some(VarEnv::Dotfile), Some(VarEnv::Profile), None]);
 
 	let op = IfOp::Eq;
 
@@ -258,7 +258,7 @@ fn parse_single_if_neq() -> Result<()> {
 
 	let name = ByteSpan::new(8usize, 10usize);
 	assert_eq!(&content[name], "OS");
-	let envs = VarEnvSet([Some(VarEnv::Item), Some(VarEnv::Profile), None]);
+	let envs = VarEnvSet([Some(VarEnv::Dotfile), Some(VarEnv::Profile), None]);
 
 	let op = IfOp::NotEq;
 
@@ -507,7 +507,7 @@ fn parse_variables() -> Result<()> {
 			envs: VarEnvSet([
 				Some(VarEnv::Environment),
 				Some(VarEnv::Profile),
-				Some(VarEnv::Item)
+				Some(VarEnv::Dotfile)
 			]),
 			name: ByteSpan::new(3usize, 10usize),
 		}
@@ -516,7 +516,7 @@ fn parse_variables() -> Result<()> {
 	assert_eq!(
 		parse_var("&BAZ_1", 0)?,
 		Var {
-			envs: VarEnvSet([Some(VarEnv::Item), None, None]),
+			envs: VarEnvSet([Some(VarEnv::Dotfile), None, None]),
 			name: ByteSpan::new(1usize, 6usize),
 		}
 	);
@@ -527,7 +527,7 @@ fn parse_variables() -> Result<()> {
 			envs: VarEnvSet([
 				Some(VarEnv::Environment),
 				Some(VarEnv::Profile),
-				Some(VarEnv::Item)
+				Some(VarEnv::Dotfile)
 			]),
 			name: ByteSpan::new(13usize, 20usize),
 		}

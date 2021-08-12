@@ -466,7 +466,7 @@ fn parse_var(inner: &str, mut offset: usize) -> Result<Var> {
 			let env = match inner.as_bytes().get(idx) {
 				Some(b'$') => VarEnv::Environment,
 				Some(b'#') => VarEnv::Profile,
-				Some(b'&') => VarEnv::Item,
+				Some(b'&') => VarEnv::Dotfile,
 				_ => break,
 			};
 
