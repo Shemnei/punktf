@@ -472,12 +472,30 @@ where
 				}
 			};
 
-			let template = Template::parse(&content)
-				.with_context(|| format!("File: {}", exec_item.source_path().display()))?;
+			let template = match Template::parse(&content)
+				.with_context(|| format!("File: {}", exec_item.source_path().display()))
+			{
+				Ok(template) => template,
+				Err(_) => {
+					log::error!("[{}] Failed to parse template", exec_item.path().display());
+					exec_item
+						.add_to_builder(builder, ItemStatus::failed("Failed to parse template"));
+					return Ok(());
+				}
+			};
 
-			let content = template
+			let content = match template
 				.fill(profile.variables.as_ref(), exec_item.variables())
-				.with_context(|| format!("File: {}", exec_item.source_path().display()))?;
+				.with_context(|| format!("File: {}", exec_item.source_path().display()))
+			{
+				Ok(template) => template,
+				Err(_) => {
+					log::error!("[{}] Failed to fill template", exec_item.path().display());
+					exec_item
+						.add_to_builder(builder, ItemStatus::failed("Failed to fill template"));
+					return Ok(());
+				}
+			};
 
 			if !self.options.dry_run {
 				if let Err(err) = std::fs::write(&exec_item.deploy_path(), content.as_bytes()) {

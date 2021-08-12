@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use clap::{crate_authors, crate_description, crate_version, Clap};
-use color_eyre::eyre::Context;
 use color_eyre::owo_colors::OwoColorize;
 use color_eyre::Result;
 use log::debug;
@@ -121,9 +120,8 @@ fn handle_commands(opts: Opts) -> Result<()> {
 
 			let deployer = Executor::new(options, ask_user_merge);
 
-			let deployment = deployer
-				.deploy(opts.shared.source.0, profile)
-				.wrap_err("Failed to deploy");
+			let deployment: Result<Deployment, ()> =
+				Ok(deployer.deploy(opts.shared.source.0, profile).unwrap());
 
 			match deployment {
 				Ok(deployment) => {
@@ -131,7 +129,7 @@ fn handle_commands(opts: Opts) -> Result<()> {
 					log_deployment(deployment);
 				}
 				Err(err) => {
-					log::error!("Failed to deploy: {}", err);
+					log::error!("Failed to deploy: {:?}", err);
 				}
 			};
 		}
