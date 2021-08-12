@@ -6,26 +6,28 @@ use color_eyre::Report;
 
 use super::block::{Block, BlockHint, If, IfExpr, IfOp, Var, VarEnv, VarEnvSet};
 use super::diagnostic::{Diagnositic, DiagnositicBuilder, DiagnositicLevel};
-use super::session::{ParseState, Session};
+use super::session::Session;
+use super::source::Source;
 use super::span::{ByteSpan, Pos, Spanned};
 use super::Template;
 use crate::template::block::BlockKind;
 
-// TODO:
-// - give mutable source as param
-// - record error on source
-// - try to recover on next block opening/closing
-
 #[derive(Debug, Clone)]
 pub struct Parser<'a> {
-	session: Session<'a, ParseState>,
+	source: Source<'a>,
+	session: Session,
 	blocks: BlockIter<'a>,
 }
 
 impl<'a> Parser<'a> {
-	pub const fn new(session: Session<'a, ParseState>) -> Self {
-		let blocks = BlockIter::new(session.source.content);
-		Self { session, blocks }
+	pub const fn new(source: Source<'a>) -> Self {
+		let blocks = BlockIter::new(source.content);
+
+		Self {
+			source,
+			session: Session::new(),
+			blocks,
+		}
 	}
 
 	// TODO: return error struct instead of emitting here
@@ -39,10 +41,13 @@ impl<'a> Parser<'a> {
 			};
 		}
 
-		self.session.emit();
-		let session = self.session.try_finish()?;
+		self.session.emit(&self.source);
+		let _ = self.session.try_finish()?;
 
-		Ok(Template { session, blocks })
+		Ok(Template {
+			source: self.source,
+			blocks,
+		})
 	}
 
 	fn report_diagnostic(&mut self, diagnostic: Diagnositic) {
@@ -59,13 +64,13 @@ impl<'a> Parser<'a> {
 			Err(err) => return Some(Err(err)),
 		};
 
-		log::trace!("{:?}: {}", hint, &self.session.source[span]);
+		log::trace!("{:?}: {}", hint, &self.source[span]);
 
 		let block = match hint {
 			BlockHint::Text => Ok(self.parse_text(span)),
 			BlockHint::Comment => Ok(self.parse_comment(span)),
 			BlockHint::Escaped => Ok(self.parse_escaped(span)),
-			BlockHint::Variable => self
+			BlockHint::Var => self
 				.parse_variable(span)
 				.map(|var| Block::new(span, BlockKind::Var(var))),
 			BlockHint::Print => Ok(self.parse_print(span)),
@@ -107,7 +112,7 @@ impl<'a> Parser<'a> {
 
 	fn parse_variable(&self, span: ByteSpan) -> Result<Var, DiagnositicBuilder> {
 		let span_inner = span.offset_low(2).offset_high(-2);
-		let content_inner = &self.session.source[span_inner];
+		let content_inner = &self.source[span_inner];
 
 		// +2 for block opening
 		let offset = span.low().as_usize() + 2;
@@ -285,7 +290,7 @@ impl<'a> Parser<'a> {
 	}
 
 	fn parse_else(&self, span: ByteSpan) -> Result<ByteSpan, DiagnositicBuilder> {
-		if &self.session.source[span] != "{{@else}}" {
+		if &self.source[span] != "{{@else}}" {
 			Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
 				.message("expected a `else` block")
 				.primary_span(span))
@@ -295,7 +300,7 @@ impl<'a> Parser<'a> {
 	}
 
 	fn parse_if_end(&self, span: ByteSpan) -> Result<ByteSpan, DiagnositicBuilder> {
-		if &self.session.source[span] != "{{@fi}}" {
+		if &self.source[span] != "{{@fi}}" {
 			Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
 				.message("expected a `fi` block")
 				.primary_span(span))
@@ -306,7 +311,7 @@ impl<'a> Parser<'a> {
 
 	fn parse_if_expr(&self, span: ByteSpan) -> Result<IfExpr, DiagnositicBuilder> {
 		// {{VAR}} (!=|==) "OTHER" OR {{VAR}}
-		let content = &self.session.source[span];
+		let content = &self.source[span];
 
 		// read var
 		let var_block_start = content.find("{{").ok_or_else(|| {
@@ -652,6 +657,6 @@ impl<'a> Iterator for BlockIter<'a> {
 			return Some(Ok(span.span(BlockHint::IfEnd)));
 		}
 
-		Some(Ok(span.span(BlockHint::Variable)))
+		Some(Ok(span.span(BlockHint::Var)))
 	}
 }

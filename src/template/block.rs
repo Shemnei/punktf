@@ -7,7 +7,7 @@ pub enum BlockHint {
 	Text,
 	Comment,
 	Escaped,
-	Variable,
+	Var,
 	Print,
 	IfStart,
 	ElIf,
@@ -29,6 +29,19 @@ pub enum BlockKind {
 	Var(Var),
 	Print(ByteSpan),
 	If(If),
+}
+
+impl BlockKind {
+	pub const fn as_hint(&self) -> BlockHint {
+		match self {
+			BlockKind::Text => BlockHint::Text,
+			BlockKind::Comment => BlockHint::Comment,
+			BlockKind::Escaped(_) => BlockHint::Escaped,
+			BlockKind::Var(_) => BlockHint::Var,
+			BlockKind::Print(_) => BlockHint::Print,
+			BlockKind::If(_) => BlockHint::IfEnd,
+		}
+	}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

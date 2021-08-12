@@ -5,7 +5,6 @@ use pretty_assertions::assert_eq;
 
 use super::*;
 use crate::template::block::{Block, BlockKind, If, IfExpr, IfOp, Var, VarEnv, VarEnvSet};
-use crate::template::session::Session;
 use crate::template::source::Source;
 use crate::template::span::ByteSpan;
 
@@ -14,7 +13,7 @@ fn parse_single_text() -> Result<()> {
 	let content = r#"Hello World this is a text block"#;
 
 	let source = Source::anonymous(content);
-	let mut parser = Parser::new(Session::new(source));
+	let mut parser = Parser::new(source);
 	let block = parser
 		.next_top_level_block()
 		.expect("Found no block")
@@ -33,7 +32,7 @@ fn parse_single_comment() -> Result<()> {
 	let content = r#"{{!-- Hello World this is a comment block --}}"#;
 
 	let source = Source::anonymous(content);
-	let mut parser = Parser::new(Session::new(source));
+	let mut parser = Parser::new(source);
 	let block = parser
 		.next_top_level_block()
 		.expect("Found no block")
@@ -52,7 +51,7 @@ fn parse_single_escaped() -> Result<()> {
 	let content = r#"{{{ Hello World this is a comment block }}}"#;
 
 	let source = Source::anonymous(content);
-	let mut parser = Parser::new(Session::new(source));
+	let mut parser = Parser::new(source);
 	let block = parser
 		.next_top_level_block()
 		.expect("Found no block")
@@ -72,7 +71,7 @@ fn parse_single_var_default() -> Result<()> {
 	let content = r#"{{OS}}"#;
 
 	let source = Source::anonymous(content);
-	let mut parser = Parser::new(Session::new(source));
+	let mut parser = Parser::new(source);
 	let block = parser
 		.next_top_level_block()
 		.expect("Found no block")
@@ -93,7 +92,7 @@ fn parse_single_var_env() -> Result<()> {
 	let content = r#"{{$ENV}}"#;
 
 	let source = Source::anonymous(content);
-	let mut parser = Parser::new(Session::new(source));
+	let mut parser = Parser::new(source);
 	let block = parser
 		.next_top_level_block()
 		.expect("Found no block")
@@ -114,7 +113,7 @@ fn parse_single_var_profile() -> Result<()> {
 	let content = r#"{{#PROFILE}}"#;
 
 	let source = Source::anonymous(content);
-	let mut parser = Parser::new(Session::new(source));
+	let mut parser = Parser::new(source);
 	let block = parser
 		.next_top_level_block()
 		.expect("Found no block")
@@ -135,7 +134,7 @@ fn parse_single_var_dotfile() -> Result<()> {
 	let content = r#"{{&ITEM}}"#;
 
 	let source = Source::anonymous(content);
-	let mut parser = Parser::new(Session::new(source));
+	let mut parser = Parser::new(source);
 	let block = parser
 		.next_top_level_block()
 		.expect("Found no block")
@@ -156,7 +155,7 @@ fn parse_single_var_mixed() -> Result<()> {
 	let content = r#"{{$&#MIXED}}"#;
 
 	let source = Source::anonymous(content);
-	let mut parser = Parser::new(Session::new(source));
+	let mut parser = Parser::new(source);
 	let block = parser
 		.next_top_level_block()
 		.expect("Found no block")
@@ -182,7 +181,7 @@ fn parse_single_vars() -> Result<()> {
 	let content = r#"{{##OS}}"#;
 
 	let source = Source::anonymous(content);
-	let mut parser = Parser::new(Session::new(source));
+	let mut parser = Parser::new(source);
 	let block = parser
 		.next_top_level_block()
 		.ok_or(eyre!("No block found"))?;
@@ -197,7 +196,7 @@ fn parse_single_print() -> Result<()> {
 	let content = r#"{{@print FooBar}}"#;
 
 	let source = Source::anonymous(content);
-	let mut parser = Parser::new(Session::new(source));
+	let mut parser = Parser::new(source);
 	let block = parser
 		.next_top_level_block()
 		.expect("Found no block")
@@ -217,7 +216,7 @@ fn parse_single_if_eq() -> Result<()> {
 	let content = r#"{{@if {{OS}} == "windows"}}{{@fi}}"#;
 
 	let source = Source::anonymous(content);
-	let mut parser = Parser::new(Session::new(source));
+	let mut parser = Parser::new(source);
 	let block = parser
 		.next_top_level_block()
 		.expect("Found no block")
@@ -265,7 +264,7 @@ fn parse_single_if_neq() -> Result<()> {
 	let content = r#"{{@if {{OS}} != "windows"}}{{@fi}}"#;
 
 	let source = Source::anonymous(content);
-	let mut parser = Parser::new(Session::new(source));
+	let mut parser = Parser::new(source);
 	let block = parser
 		.next_top_level_block()
 		.expect("Found no block")
@@ -313,7 +312,7 @@ fn parse_single_if_exists() -> Result<()> {
 	let content = r#"{{@if {{$#EXISTS}}}}{{@fi}}"#;
 
 	let source = Source::anonymous(content);
-	let mut parser = Parser::new(Session::new(source));
+	let mut parser = Parser::new(source);
 	let block = parser
 		.next_top_level_block()
 		.expect("Found no block")
@@ -386,7 +385,7 @@ fn parse_comment() -> Result<()> {
 	let content = r#"{{!-- Hello World this {{}} is a comment {{{{{{ }}}--}}"#;
 
 	let source = Source::anonymous(content);
-	let mut parser = Parser::new(Session::new(source));
+	let mut parser = Parser::new(source);
 	let token = parser
 		.next_top_level_block()
 		.expect("Found no block")
@@ -405,7 +404,7 @@ fn parse_escaped() -> Result<()> {
 	let content = r#"{{{!-- Hello World this {{}} is a comment {{{{{{ }}--}}}"#;
 
 	let source = Source::anonymous(content);
-	let mut parser = Parser::new(Session::new(source));
+	let mut parser = Parser::new(source);
 	let token = parser
 		.next_top_level_block()
 		.expect("Found no block")
@@ -433,7 +432,7 @@ fn parse_if_cmp() -> Result<()> {
 		{{@fi}}"#;
 
 	let source = Source::anonymous(content);
-	let mut parser = Parser::new(Session::new(source));
+	let mut parser = Parser::new(source);
 	let token = parser
 		.next_top_level_block()
 		.expect("Found no block")
@@ -458,7 +457,7 @@ fn parse_if_cmp_nested() -> Result<()> {
 		{{@fi}}"#;
 
 	let source = Source::anonymous(content);
-	let mut parser = Parser::new(Session::new(source));
+	let mut parser = Parser::new(source);
 	let token = parser
 		.next_top_level_block()
 		.expect("Found no block")
@@ -478,7 +477,7 @@ fn parse_if_exists() -> Result<()> {
 		{{@fi}}"#;
 
 	let source = Source::anonymous(content);
-	let mut parser = Parser::new(Session::new(source));
+	let mut parser = Parser::new(source);
 	let token = parser
 		.next_top_level_block()
 		.expect("Found no block")
@@ -505,7 +504,7 @@ fn parse_if_mixed() -> Result<()> {
 {{@fi}}"#;
 
 	let source = Source::anonymous(content);
-	let mut parser = Parser::new(Session::new(source));
+	let mut parser = Parser::new(source);
 	let token = parser
 		.next_top_level_block()
 		.expect("Found no block")
@@ -522,7 +521,7 @@ fn parse_print() -> Result<()> {
 	let content = r#"{{@print FooBar}}"#;
 
 	let source = Source::anonymous(content);
-	let mut parser = Parser::new(Session::new(source));
+	let mut parser = Parser::new(source);
 	let token = parser
 		.next_top_level_block()
 		.expect("Found no block")

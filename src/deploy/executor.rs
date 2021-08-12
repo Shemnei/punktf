@@ -126,8 +126,6 @@ where
 
 	pub fn deploy(&self, source_path: PathBuf, mut profile: Profile) -> Result<Deployment> {
 		// TODO: decide when deployment failed
-		// TODO: check if it handles relative paths
-		// TODO: function to resolve path (e.g. `~`, ...) OR function to resolve templated paths
 
 		// General flow:
 		//	- get deployment path

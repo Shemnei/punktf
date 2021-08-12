@@ -11,13 +11,12 @@ set relativenumber
 set number
 set encoding={{SYS_ENCODING}}
 set colorcolumn=80
-set nowrap
-
 {{@if {{OS}} == "windows"}}
 set undodir='{{$APPDATA}}\nvim\vimdid'
 {{@else}}
 set undodir='{{$HOME}}/.config/nvim/vimdid'
-{{@fi}}"#;
+{{@fi}}
+set nowrap"#;
 
 use color_eyre::Result;
 use pretty_assertions::assert_eq;
@@ -46,10 +45,10 @@ set relativenumber
 set number
 set encoding=windows1252
 set colorcolumn=80
-set nowrap
 
+set undodir='C:\Users\Demo\Appdata\Local\nvim\vimdid'
 
-set undodir='C:\Users\Demo\Appdata\Local\nvim\vimdid'"#
+set nowrap"#
 	);
 
 	Ok(())
@@ -76,10 +75,10 @@ set relativenumber
 set number
 set encoding=utf-8
 set colorcolumn=80
-set nowrap
 
+set undodir='/home/Demo/.config/nvim/vimdid'
 
-set undodir='/home/Demo/.config/nvim/vimdid'"#
+set nowrap"#
 	);
 
 	Ok(())
