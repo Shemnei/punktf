@@ -146,8 +146,16 @@ where
 			.target
 			.clone()
 			.unwrap_or_else(crate::get_target_path);
-		let profiles_source_path = source_path.join("profiles");
-		let dotfiles_source_path = source_path.join("dotfiles");
+
+		let profiles_source_path = source_path
+			.join("profiles")
+			.canonicalize()
+			.with_context(|| "Failed to canonicalize profiles source path")?;
+
+		let dotfiles_source_path = source_path
+			.join("dotfiles")
+			.canonicalize()
+			.with_context(|| "Failed to canonicalize dotfiles source path")?;
 
 		let mut builder = Deployment::build();
 
@@ -188,7 +196,21 @@ where
 		dotfile: Dotfile,
 	) -> Result<()> {
 		let dotfile_deploy_path = resolve_deployment_path(target_path, &dotfile);
-		let dotfile_source_path = resolve_source_path(dotfiles_source_path, &dotfile);
+
+		let dotfile_source_path = match resolve_source_path(dotfiles_source_path, &dotfile) {
+			Ok(dotfile_source_path) => dotfile_source_path,
+			Err(err) => {
+				log::error!(
+					"[{}] Failed to resolve dotfile source path ({})",
+					dotfile.path.display(),
+					err,
+				);
+
+				builder.add_dotfile(dotfile_deploy_path, dotfile, err.into());
+
+				return Ok(());
+			}
+		};
 
 		log::debug!(
 			"[{}] `{}` | `{}`",
@@ -568,6 +590,6 @@ fn resolve_deployment_path(profile_target: &Path, dotfile: &Dotfile) -> PathBuf 
 	}
 }
 
-fn resolve_source_path(source_path: &Path, dotfile: &Dotfile) -> PathBuf {
-	source_path.join(&dotfile.path)
+fn resolve_source_path(source_path: &Path, dotfile: &Dotfile) -> std::io::Result<PathBuf> {
+	source_path.join(&dotfile.path).canonicalize()
 }
