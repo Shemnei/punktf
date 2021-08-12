@@ -7,19 +7,19 @@ type BytePosType = u32;
 pub struct BytePos(pub BytePosType);
 
 impl BytePos {
-	pub fn new(value: BytePosType) -> Self {
+	pub const fn new(value: BytePosType) -> Self {
 		Self(value)
 	}
 
-	pub fn from_usize(value: usize) -> Self {
+	pub const fn from_usize(value: usize) -> Self {
 		Self(value as BytePosType)
 	}
 
-	pub fn as_usize(&self) -> usize {
+	pub const fn as_usize(&self) -> usize {
 		self.0 as usize
 	}
 
-	pub fn into_inner(self) -> BytePosType {
+	pub const fn into_inner(self) -> BytePosType {
 		self.0
 	}
 }
@@ -32,7 +32,7 @@ impl fmt::Display for BytePos {
 
 impl From<usize> for BytePos {
 	fn from(value: usize) -> Self {
-		BytePos::from_usize(value)
+		Self::from_usize(value)
 	}
 }
 
@@ -86,7 +86,7 @@ impl ByteSpan {
 		Self { low, high }
 	}
 
-	pub fn span<T>(self, value: T) -> Spanned<T> {
+	pub const fn span<T>(self, value: T) -> Spanned<T> {
 		Spanned::new(self, value)
 	}
 
@@ -139,11 +139,11 @@ impl ByteSpan {
 		copy
 	}
 
-	pub fn low(&self) -> &BytePos {
+	pub const fn low(&self) -> &BytePos {
 		&self.low
 	}
 
-	pub fn high(&self) -> &BytePos {
+	pub const fn high(&self) -> &BytePos {
 		&self.high
 	}
 }
@@ -155,7 +155,7 @@ impl fmt::Display for ByteSpan {
 }
 
 impl Index<ByteSpan> for str {
-	type Output = str;
+	type Output = Self;
 
 	fn index(&self, index: ByteSpan) -> &Self::Output {
 		&self[index.low.as_usize()..index.high.as_usize()]
@@ -163,7 +163,7 @@ impl Index<ByteSpan> for str {
 }
 
 impl Index<&ByteSpan> for str {
-	type Output = str;
+	type Output = Self;
 
 	fn index(&self, index: &ByteSpan) -> &Self::Output {
 		&self[index.low.as_usize()..index.high.as_usize()]
@@ -176,26 +176,32 @@ pub struct Spanned<T> {
 }
 
 impl<T> Spanned<T> {
-	pub fn new(span: ByteSpan, value: T) -> Self {
+	pub const fn new(span: ByteSpan, value: T) -> Self {
 		Self { span, value }
 	}
 
-	pub fn span(&self) -> &ByteSpan {
+	pub const fn span(&self) -> &ByteSpan {
 		&self.span
 	}
 
-	pub fn value(&self) -> &T {
+	pub const fn value(&self) -> &T {
 		&self.value
 	}
 
+	// Destructors can not be run at compile time.
+	#[allow(clippy::missing_const_for_fn)]
 	pub fn into_span(self) -> ByteSpan {
 		self.span
 	}
 
+	// Destructors can not be run at compile time.
+	#[allow(clippy::missing_const_for_fn)]
 	pub fn into_value(self) -> T {
 		self.value
 	}
 
+	// Destructors can not be run at compile time.
+	#[allow(clippy::missing_const_for_fn)]
 	pub fn into_inner(self) -> (ByteSpan, T) {
 		(self.span, self.value)
 	}

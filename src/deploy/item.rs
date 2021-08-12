@@ -14,7 +14,7 @@ pub enum ItemStatus {
 }
 
 impl ItemStatus {
-	pub fn success() -> Self {
+	pub const fn success() -> Self {
 		Self::Success
 	}
 
@@ -30,11 +30,11 @@ impl ItemStatus {
 		self == &Self::Success
 	}
 
-	pub fn is_failed(&self) -> bool {
+	pub const fn is_failed(&self) -> bool {
 		matches!(self, &Self::Failed(_))
 	}
 
-	pub fn is_skipped(&self) -> bool {
+	pub const fn is_skipped(&self) -> bool {
 		matches!(self, &Self::Skipped(_))
 	}
 }
@@ -66,11 +66,11 @@ pub enum DeployedItemKind {
 }
 
 impl DeployedItemKind {
-	pub fn is_item(&self) -> bool {
+	pub const fn is_item(&self) -> bool {
 		matches!(self, Self::Item(_))
 	}
 
-	pub fn is_child(&self) -> bool {
+	pub const fn is_child(&self) -> bool {
 		matches!(self, Self::Child(_))
 	}
 }
@@ -82,11 +82,11 @@ pub struct DeployedItem {
 }
 
 impl DeployedItem {
-	pub fn status(&self) -> &ItemStatus {
+	pub const fn status(&self) -> &ItemStatus {
 		&self.status
 	}
 
-	pub fn kind(&self) -> &DeployedItemKind {
+	pub const fn kind(&self) -> &DeployedItemKind {
 		&self.kind
 	}
 }

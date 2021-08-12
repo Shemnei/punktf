@@ -48,14 +48,14 @@ impl<'a> ExecutorItem<'a> {
 		}
 	}
 
-	fn priority(&self) -> Option<Priority> {
+	const fn priority(&self) -> Option<Priority> {
 		match self {
 			Self::File { item, .. } => item.priority,
 			Self::Child { parent, .. } => parent.priority,
 		}
 	}
 
-	fn merge_mode(&self) -> Option<MergeMode> {
+	const fn merge_mode(&self) -> Option<MergeMode> {
 		match self {
 			Self::File { item, .. } => item.merge,
 			Self::Child { parent, .. } => parent.merge,
@@ -69,7 +69,7 @@ impl<'a> ExecutorItem<'a> {
 		}
 	}
 
-	fn variables(&self) -> Option<&UserVars> {
+	const fn variables(&self) -> Option<&UserVars> {
 		match self {
 			Self::File { item, .. } => item.variables.as_ref(),
 			Self::Child { parent, .. } => parent.variables.as_ref(),
@@ -92,7 +92,7 @@ impl<'a> ExecutorItem<'a> {
 	}
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ExecutorOptions {
 	pub dry_run: bool,
 }

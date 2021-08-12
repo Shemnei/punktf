@@ -1,5 +1,29 @@
 #![feature(exit_status_error)]
 #![allow(dead_code)]
+#![deny(
+    deprecated_in_future,
+    exported_private_dependencies,
+    future_incompatible,
+    missing_copy_implementations,
+    // TODO(doc): rustdoc::missing_crate_level_docs,
+    missing_debug_implementations,
+    // TODO(doc): enable missing_docs,
+    private_in_public,
+    rust_2018_compatibility,
+    rust_2018_idioms,
+    trivial_casts,
+    trivial_numeric_casts,
+    unsafe_code,
+    // TODO: would be nice in the future but not possible for now - unstable_features,
+    unused_import_braces,
+    unused_qualifications,
+
+	// clippy attributes
+	clippy::missing_const_for_fn,
+	clippy::redundant_pub_crate,
+	clippy::use_self
+)]
+#![cfg_attr(docsrs, feature(doc_cfg), feature(doc_alias))]
 
 pub mod deploy;
 pub mod hook;
@@ -69,7 +93,7 @@ impl Profile {
 
 	/// Merges everything from `other` into `self`.
 	/// Fields from `self` have precendence over `other`.
-	pub fn merge(&mut self, other: Profile) {
+	pub fn merge(&mut self, other: Self) {
 		let Profile {
 			extends,
 			target,
@@ -185,7 +209,7 @@ impl Default for MergeMode {
 pub struct Priority(u32);
 
 impl Priority {
-	pub fn new(priority: u32) -> Self {
+	pub const fn new(priority: u32) -> Self {
 		Self(priority)
 	}
 }

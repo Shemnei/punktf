@@ -12,7 +12,7 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-	pub fn new(s: &'a str) -> Self {
+	pub const fn new(s: &'a str) -> Self {
 		Self {
 			content: s,
 			blocks: BlockIter::new(s),
@@ -125,12 +125,12 @@ impl<'a> Parser<'a> {
 		Some(Ok(span.span(BlockHint::Variable)))
 	}
 
-	fn parse_comment(&self, span: ByteSpan) -> Block {
+	const fn parse_comment(&self, span: ByteSpan) -> Block {
 		// {{!-- ... --}}
 		Block::new(span, BlockKind::Comment)
 	}
 
-	fn parse_text(&self, span: ByteSpan) -> Block {
+	const fn parse_text(&self, span: ByteSpan) -> Block {
 		Block::new(span, BlockKind::Text)
 	}
 
@@ -478,7 +478,7 @@ struct BlockIter<'a> {
 }
 
 impl<'a> BlockIter<'a> {
-	fn new(content: &'a str) -> Self {
+	const fn new(content: &'a str) -> Self {
 		Self { content, index: 0 }
 	}
 }

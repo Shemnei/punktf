@@ -36,7 +36,7 @@ pub struct Block {
 }
 
 impl Block {
-	pub fn new(span: ByteSpan, kind: BlockKind) -> Self {
+	pub const fn new(span: ByteSpan, kind: BlockKind) -> Self {
 		Self { span, kind }
 	}
 }
@@ -52,7 +52,7 @@ pub enum VarEnv {
 pub struct VarEnvSet(pub [Option<VarEnv>; 3]);
 
 impl VarEnvSet {
-	pub fn empty() -> Self {
+	pub const fn empty() -> Self {
 		Self([None; 3])
 	}
 
@@ -75,7 +75,7 @@ impl VarEnvSet {
 		self.envs().count()
 	}
 
-	pub fn capacity(&self) -> usize {
+	pub const fn capacity(&self) -> usize {
 		self.0.len()
 	}
 }

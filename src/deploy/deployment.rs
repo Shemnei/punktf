@@ -16,7 +16,7 @@ pub enum DeploymentStatus {
 }
 
 impl DeploymentStatus {
-	pub fn success() -> Self {
+	pub const fn success() -> Self {
 		Self::Success
 	}
 
@@ -28,7 +28,7 @@ impl DeploymentStatus {
 		self == &Self::Success
 	}
 
-	pub fn is_failed(&self) -> bool {
+	pub const fn is_failed(&self) -> bool {
 		matches!(self, &Self::Failed(_))
 	}
 }
@@ -60,11 +60,11 @@ pub struct Deployment {
 }
 
 impl Deployment {
-	pub fn time_start(&self) -> &SystemTime {
+	pub const fn time_start(&self) -> &SystemTime {
 		&self.time_start
 	}
 
-	pub fn time_end(&self) -> &SystemTime {
+	pub const fn time_end(&self) -> &SystemTime {
 		&self.time_end
 	}
 
@@ -72,11 +72,11 @@ impl Deployment {
 		self.time_end.duration_since(self.time_start)
 	}
 
-	pub fn status(&self) -> &DeploymentStatus {
+	pub const fn status(&self) -> &DeploymentStatus {
 		&self.status
 	}
 
-	pub fn items(&self) -> &HashMap<PathBuf, DeployedItem> {
+	pub const fn items(&self) -> &HashMap<PathBuf, DeployedItem> {
 		&self.items
 	}
 
