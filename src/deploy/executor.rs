@@ -116,13 +116,12 @@ where
 		}
 	}
 
-	// TODO: remove err and just use builder.failed()???
 	pub fn deploy(&self, source_path: PathBuf, mut profile: Profile) -> Result<Deployment> {
 		// TODO: decide when deployment failed
 		// TODO: check if it handles relative paths
 		// TODO: function to resolve path (e.g. `~`, ...) OR function to resolve templated paths
 
-		// FLOW:
+		// General flow:
 		//	- get deployment path
 		//	- check if item already deployed
 		//	- YES:
@@ -158,6 +157,7 @@ where
 		let items = std::mem::take(&mut profile.items);
 
 		for item in items.into_iter() {
+			log::debug!("Deploying item at `{}`", item.path.display());
 			let _ = self.deploy_item(
 				&mut builder,
 				&items_source_path,
@@ -363,10 +363,17 @@ where
 	fn deploy_executor_item<'a>(
 		&self,
 		builder: &mut DeploymentBuilder,
-		_source_path: &Path,
+		source_path: &Path,
 		profile: &Profile,
 		exec_item: ExecutorItem<'a>,
 	) -> Result<()> {
+		if !exec_item.source_path().starts_with(source_path) {
+			log::warn!(
+				"[{}] Dotfile is not contained within the source `dotfiles` directory",
+				exec_item.path().display()
+			);
+		}
+
 		// Check if there is an already deployed item at `deploy_path`.
 		if let Some(other_priority) = builder.get_priority(exec_item.deploy_path()) {
 			// Previously deployed item has higher priority; Skip current item.
