@@ -193,6 +193,26 @@ fn parse_single_vars() -> Result<()> {
 }
 
 #[test]
+fn parse_single_print() -> Result<()> {
+	let content = r#"{{@print FooBar}}"#;
+
+	let source = Source::anonymous(content);
+	let mut parser = Parser::new(Session::new(source));
+	let block = parser
+		.next_top_level_block()
+		.expect("Found no block")
+		.expect("Encountered a parse error");
+
+	assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
+
+	let inner = ByteSpan::new(9usize, content.len() - 2);
+	assert_eq!(&content[inner], "FooBar");
+	assert_eq!(block.kind(), &BlockKind::Print(inner));
+
+	Ok(())
+}
+
+#[test]
 fn parse_single_if_eq() -> Result<()> {
 	let content = r#"{{@if {{OS}} == "windows"}}{{@fi}}"#;
 
@@ -336,8 +356,6 @@ fn find_blocks() {
 		{{@if {{}} }} }}
 		"#;
 
-	println!("{}", content);
-
 	let iter = BlockIter::new(content);
 
 	// Hello World
@@ -422,7 +440,7 @@ fn parse_if_cmp() -> Result<()> {
 		.expect("Encountered a parse error");
 
 	assert_eq!(token.span, ByteSpan::new(0usize, content.len()));
-	println!("{:#?}", &token.kind);
+	assert!(matches!(token.kind, BlockKind::If(_)));
 
 	Ok(())
 }
@@ -447,7 +465,7 @@ fn parse_if_cmp_nested() -> Result<()> {
 		.expect("Encountered a parse error");
 
 	assert_eq!(token.span, ByteSpan::new(0usize, content.len()));
-	println!("{:#?}", &token.kind);
+	assert!(matches!(token.kind, BlockKind::If(_)));
 
 	Ok(())
 }
@@ -467,7 +485,7 @@ fn parse_if_exists() -> Result<()> {
 		.expect("Encountered a parse error");
 
 	assert_eq!(token.span, ByteSpan::new(0usize, content.len()));
-	println!("{:#?}", &token.kind);
+	assert!(matches!(token.kind, BlockKind::If(_)));
 
 	Ok(())
 }
@@ -494,7 +512,24 @@ fn parse_if_mixed() -> Result<()> {
 		.expect("Encountered a parse error");
 
 	assert_eq!(token.span, ByteSpan::new(0usize, content.len()));
-	println!("{:#?}", &token.kind);
+	assert!(matches!(token.kind, BlockKind::If(_)));
+
+	Ok(())
+}
+
+#[test]
+fn parse_print() -> Result<()> {
+	let content = r#"{{@print FooBar}}"#;
+
+	let source = Source::anonymous(content);
+	let mut parser = Parser::new(Session::new(source));
+	let token = parser
+		.next_top_level_block()
+		.expect("Found no block")
+		.expect("Encountered a parse error");
+
+	assert_eq!(token.span, ByteSpan::new(0usize, content.len()));
+	assert!(matches!(token.kind, BlockKind::Print(_)));
 
 	Ok(())
 }
