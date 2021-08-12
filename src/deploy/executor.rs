@@ -6,8 +6,10 @@ use color_eyre::eyre::Context;
 use color_eyre::Result;
 
 use super::deployment::{Deployment, DeploymentBuilder};
-use crate::deploy::item::ItemStatus;
-use crate::{DeployTarget, Item, MergeMode, Profile};
+use crate::deploy::dotfile::DotfileStatus;
+use crate::template::source::Source;
+use crate::template::Template;
+use crate::{DeployTarget, Dotfile, MergeMode, Profile};
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExecutorOptions {
@@ -39,78 +41,83 @@ where
 
 		// FLOW:
 		//	- get deployment path
-		//	- check if item already deployed
+		//	- check if dotfile already deployed
 		//	- YES:
 		//		- compare priorities
-		//		- LOWER/SAME: continue next item
+		//		- LOWER/SAME: continue next dotfile
 		//		- HIGHER: skip file exists check
-		//	- check if item exists
+		//	- check if dotfile exists
 		//	- YES:
 		//		- check merge operation
 		//		- if merge operation == ASK
 		//			- Run merge_ask_fn
-		//			- FALSE: continue next item
+		//			- FALSE: continue next dotfile
 		//	- check if template
 		//	- YES: resolve template
-		//	- IF FILE: write item
-		//	- IF DIR: for each item in dir START AT TOP
+		//	- IF FILE: write dotfile
+		//	- IF DIR: for each dotfile in dir START AT TOP
+
+		let profiles_source_path = source_path.join("profiles");
+		let dofiles_source_path = source_path.join("dotfiles");
 
 		let mut builder = Deployment::build();
 
 		for hook in &profile.pre_hooks {
 			log::info!("Executing pre hook: `{:?}`", hook);
-			hook.execute().wrap_err("Failed to execute pre-hook")?;
+			hook.execute(&profiles_source_path)
+				.wrap_err("Failed to execute pre-hook")?;
 		}
 
-		let items = std::mem::take(&mut profile.items);
+		let dotfiles = std::mem::take(&mut profile.dotfiles);
 
-		for item in items.into_iter() {
-			let _ = self.deploy_item(&mut builder, &source_path, &profile, item)?;
+		for dotfile in dotfiles.into_iter() {
+			let _ = self.deploy_dotfile(&mut builder, &dofiles_source_path, &profile, dotfile)?;
 		}
 
 		for hook in &profile.post_hooks {
 			log::info!("Executing post-hook: `{:?}`", hook);
-			hook.execute().wrap_err("Failed to execute post-hook")?;
+			hook.execute(&profiles_source_path)
+				.wrap_err("Failed to execute post-hook")?;
 		}
 
 		Ok(builder.success())
 	}
 
-	fn deploy_item(
+	fn deploy_dotfile(
 		&self,
 		builder: &mut DeploymentBuilder,
-		source_path: &Path,
+		dotfiles_source_path: &Path,
 		profile: &Profile,
-		item: Item,
+		dotfile: Dotfile,
 	) -> Result<()> {
 		// TODO: cleanup
-		let item_deploy_path = resolve_deployment_path(
+		let dotfile_deploy_path = resolve_deployment_path(
 			&profile
 				.target
 				.clone()
 				.unwrap_or_else(crate::get_target_path),
-			&item,
+			&dotfile,
 		);
-		let item_source_path = resolve_source_path(source_path, &item);
+		let dotfile_source_path = resolve_source_path(dotfiles_source_path, &dotfile);
 
 		log::debug!(
 			"[{}] `{}` | `{}`",
-			item.path.display(),
-			item_source_path.display(),
-			item_deploy_path.display()
+			dotfile.path.display(),
+			dotfile_source_path.display(),
+			dotfile_deploy_path.display()
 		);
 
 		// TODO: for now dont follow symlinks
-		let metadata = match item_source_path.symlink_metadata() {
+		let metadata = match dotfile_source_path.symlink_metadata() {
 			Ok(metadata) => metadata,
 			Err(err) => {
-				log::warn!(
-					"[{}] Failed to get metadata for item (`{}`)",
-					item.path.display(),
+				log::error!(
+					"[{}] Failed to get metadata for dotfile (`{}`)",
+					dotfile.path.display(),
 					err
 				);
 
-				builder.add_item(item_deploy_path, item, err.into());
+				builder.add_dotfile(dotfile_deploy_path, dotfile, err.into());
 
 				return Ok(());
 			}
@@ -119,33 +126,33 @@ where
 		if metadata.is_file() {
 			self.deploy_file(
 				builder,
-				source_path,
+				dotfiles_source_path,
 				profile,
-				item,
-				item_source_path,
-				item_deploy_path,
+				dotfile,
+				dotfile_source_path,
+				dotfile_deploy_path,
 			)
 		} else if metadata.is_dir() {
 			self.deploy_dir(
 				builder,
-				source_path,
+				dotfiles_source_path,
 				profile,
-				item,
-				item_source_path,
-				item_deploy_path,
+				dotfile,
+				dotfile_source_path,
+				dotfile_deploy_path,
 			)
 		} else {
-			log::warn!(
-				"[{}] Unsupported item type (`{:?}`)",
-				item.path.display(),
+			log::error!(
+				"[{}] Unsupported dotfile type (`{:?}`)",
+				dotfile.path.display(),
 				metadata.file_type()
 			);
 
-			builder.add_item(
-				item_deploy_path,
-				item,
-				ItemStatus::failed(format!(
-					"Unsupported item type `{:?}`",
+			builder.add_dotfile(
+				dotfile_deploy_path,
+				dotfile,
+				DotfileStatus::failed(format!(
+					"Unsupported dotfile type `{:?}`",
 					metadata.file_type()
 				)),
 			);
@@ -159,7 +166,7 @@ where
 		builder: &mut DeploymentBuilder,
 		source_path: &Path,
 		profile: &Profile,
-		directory: Item,
+		directory: Dotfile,
 		directory_source_path: PathBuf,
 		directory_deploy_path: PathBuf,
 	) -> Result<()> {
@@ -176,13 +183,13 @@ where
 		match std::fs::create_dir_all(&directory_deploy_path) {
 			Ok(_) => {}
 			Err(err) => {
-				log::warn!(
+				log::error!(
 					"[{}] Failed to create directories (`{}`)",
 					directory.path.display(),
 					err
 				);
 
-				builder.add_item(directory_deploy_path, directory, err.into());
+				builder.add_dotfile(directory_deploy_path, directory, err.into());
 
 				return Ok(());
 			}
@@ -191,13 +198,13 @@ where
 		let dents = match directory_source_path.read_dir() {
 			Ok(read_dir) => read_dir,
 			Err(err) => {
-				log::warn!(
+				log::error!(
 					"[{}] Failed to read directory (`{}`)",
 					directory.path.display(),
 					err
 				);
 
-				builder.add_item(directory_deploy_path, directory, err.into());
+				builder.add_dotfile(directory_deploy_path, directory, err.into());
 
 				return Ok(());
 			}
@@ -206,7 +213,7 @@ where
 		backlog.push_back(dents);
 
 		while !backlog.is_empty() {
-			for dent in backlog.pop_front().expect("Backlog to have an item") {
+			for dent in backlog.pop_front().expect("Backlog to have an dotfile") {
 				let dent = match dent {
 					Ok(dent) => dent,
 					Err(err) => {
@@ -222,7 +229,7 @@ where
 					Ok(path) => path,
 					Err(_) => {
 						// TODO: handle better
-						log::warn!(
+						log::error!(
 							"[{}] Failed resolve child path (`{}`)",
 							directory.path.display(),
 							dent.path().display(),
@@ -238,7 +245,7 @@ where
 				let metadata = match dent.metadata() {
 					Ok(metadata) => metadata,
 					Err(err) => {
-						log::warn!(
+						log::error!(
 							"[{}] Failed to get metadata for child (`{}`)",
 							child_path.display(),
 							err
@@ -270,7 +277,7 @@ where
 					let dents = match child_source_path.read_dir() {
 						Ok(read_dir) => read_dir,
 						Err(err) => {
-							log::warn!(
+							log::error!(
 								"[{}] Failed to read directory (`{}`)",
 								child_path.display(),
 								err
@@ -288,8 +295,8 @@ where
 
 					backlog.push_back(dents);
 				} else {
-					log::warn!(
-						"[{}] Unsupported item type (`{:?}`)",
+					log::error!(
+						"[{}] Unsupported dotfile type (`{:?}`)",
 						child_path.display(),
 						metadata.file_type()
 					);
@@ -297,8 +304,8 @@ where
 					builder.add_child(
 						child_deploy_path,
 						directory_deploy_path.clone(),
-						ItemStatus::failed(format!(
-							"Unsupported item type `{:?}`",
+						DotfileStatus::failed(format!(
+							"Unsupported dotfile type `{:?}`",
 							metadata.file_type()
 						)),
 					);
@@ -315,8 +322,8 @@ where
 		&self,
 		builder: &mut DeploymentBuilder,
 		_source_path: &Path,
-		_profile: &Profile,
-		directory: &Item,
+		profile: &Profile,
+		directory: &Dotfile,
 		_directory_source_path: &Path,
 		directory_deploy_path: &Path,
 		// relative path in source
@@ -324,19 +331,19 @@ where
 		child_source_path: PathBuf,
 		child_deploy_path: PathBuf,
 	) -> Result<()> {
-		// Check if there is an already deployed item at `deploy_path`.
+		// Check if there is an already deployed dotfile at `deploy_path`.
 		if let Some(other_priority) = builder.get_priority(&child_deploy_path) {
-			// Previously deployed item has higher priority; Skip current item.
+			// Previously deployed dotfile has higher priority; Skip current dotfile.
 			if other_priority > directory.priority {
 				log::info!(
-					"[{}] Item with higher priority is already deployed",
+					"[{}] Dotfile with higher priority is already deployed",
 					child_path.display()
 				);
 
 				builder.add_child(
 					child_deploy_path,
 					directory_deploy_path.to_path_buf(),
-					ItemStatus::skipped("Item with higher priority is already deployed"),
+					DotfileStatus::skipped("Dotfile with higher priority is already deployed"),
 				);
 
 				return Ok(());
@@ -344,26 +351,26 @@ where
 		}
 
 		if child_deploy_path.exists() {
-			// No previously deployed item at `deploy_path`. Check for merge.
+			// No previously deployed dotfile at `deploy_path`. Check for merge.
 
 			log::debug!(
-				"[{}] Item already exists (`{}`)",
+				"[{}] Dotfile already exists (`{}`)",
 				child_path.display(),
 				child_deploy_path.display()
 			);
 
 			match directory.merge.unwrap_or_default() {
 				MergeMode::Overwrite => {
-					log::info!("[{}] Overwritting existing item", child_path.display())
+					log::info!("[{}] Overwritting existing dotfile", child_path.display())
 				}
 				MergeMode::Keep => {
-					log::info!("[{}] Skipping existing item", child_path.display());
+					log::info!("[{}] Skipping existing dotfile", child_path.display());
 
 					builder.add_child(
 						child_deploy_path,
 						directory_deploy_path.to_path_buf(),
-						ItemStatus::skipped(format!(
-							"Item already exists and merge mode is `{:?}`",
+						DotfileStatus::skipped(format!(
+							"Dotfile already exists and merge mode is `{:?}`",
 							MergeMode::Keep,
 						)),
 					);
@@ -381,7 +388,9 @@ where
 						builder.add_child(
 							child_deploy_path,
 							directory_deploy_path.to_path_buf(),
-							ItemStatus::skipped("Item already exists and merge ask was denied"),
+							DotfileStatus::skipped(
+								"Dotfile already exists and merge ask was denied",
+							),
 						);
 
 						return Ok(());
@@ -394,7 +403,7 @@ where
 			match std::fs::create_dir_all(parent) {
 				Ok(_) => {}
 				Err(err) => {
-					log::warn!(
+					log::error!(
 						"[{}] Failed to create directories (`{}`)",
 						child_path.display(),
 						err
@@ -411,24 +420,30 @@ where
 			}
 		}
 
-		if directory.template_or_default() {
-			if !self.options.dry_run {
-				let content = match std::fs::read(&child_source_path) {
-					Ok(content) => content,
-					Err(err) => {
-						log::info!("[{}] Failed to read source content", child_path.display());
-						builder.add_child(
-							child_deploy_path,
-							directory_deploy_path.to_path_buf(),
-							err.into(),
-						);
-						return Ok(());
-					}
-				};
+		if directory.is_template() {
+			let content = match std::fs::read_to_string(&child_source_path) {
+				Ok(content) => content,
+				Err(err) => {
+					log::error!("[{}] Failed to read source content", child_path.display());
+					builder.add_child(
+						child_deploy_path,
+						directory_deploy_path.to_path_buf(),
+						err.into(),
+					);
+					return Ok(());
+				}
+			};
 
-				// TODO: do template transform
-				if let Err(err) = std::fs::write(&child_deploy_path, content) {
-					log::info!("[{}] Failed to write content", child_path.display());
+			let source = Source::file(&child_source_path, &content);
+			let template = Template::parse(source)
+				.with_context(|| format!("File: {}", child_source_path.display()))?;
+			let content = template
+				.resolve(profile.variables.as_ref(), directory.variables.as_ref())
+				.with_context(|| format!("File: {}", child_source_path.display()))?;
+
+			if !self.options.dry_run {
+				if let Err(err) = std::fs::write(&child_deploy_path, content.as_bytes()) {
+					log::error!("[{}] Failed to write content", child_path.display());
 					builder.add_child(
 						child_deploy_path,
 						directory_deploy_path.to_path_buf(),
@@ -442,7 +457,7 @@ where
 			#[allow(clippy::collapsible_else_if)]
 			if !self.options.dry_run {
 				if let Err(err) = std::fs::copy(&child_source_path, &child_deploy_path) {
-					log::info!("[{}] Failed to copy item", child_path.display());
+					log::error!("[{}] Failed to copy dotfile", child_path.display());
 					builder.add_child(
 						child_deploy_path,
 						directory_deploy_path.to_path_buf(),
@@ -456,10 +471,10 @@ where
 		builder.add_child(
 			child_deploy_path,
 			directory_deploy_path.to_path_buf(),
-			ItemStatus::Success,
+			DotfileStatus::Success,
 		);
 
-		log::info!("[{}] Item successfully deployed", child_path.display());
+		log::info!("[{}] Dotfile successfully deployed", child_path.display());
 
 		Ok(())
 	}
@@ -468,24 +483,24 @@ where
 		&self,
 		builder: &mut DeploymentBuilder,
 		_source_path: &Path,
-		_profile: &Profile,
-		file: Item,
+		profile: &Profile,
+		file: Dotfile,
 		file_source_path: PathBuf,
 		file_deploy_path: PathBuf,
 	) -> Result<()> {
-		// Check if there is an already deployed item at `deploy_path`.
+		// Check if there is an already deployed dotfile at `deploy_path`.
 		if let Some(other_priority) = builder.get_priority(&file_deploy_path) {
-			// Previously deployed item has higher priority; Skip current item.
+			// Previously deployed dotfile has higher priority; Skip current dotfile.
 			if other_priority > file.priority {
 				log::info!(
-					"[{}] Item with higher priority is already deployed",
+					"[{}] Dotfile with higher priority is already deployed",
 					file.path.display()
 				);
 
-				builder.add_item(
+				builder.add_dotfile(
 					file_deploy_path,
 					file,
-					ItemStatus::skipped("Item with higher priority is already deployed"),
+					DotfileStatus::skipped("Dotfile with higher priority is already deployed"),
 				);
 
 				return Ok(());
@@ -493,26 +508,26 @@ where
 		}
 
 		if file_deploy_path.exists() {
-			// No previously deployed item at `deploy_path`. Check for merge.
+			// No previously deployed dotfile at `deploy_path`. Check for merge.
 
 			log::debug!(
-				"[{}] Item already exists (`{}`)",
+				"[{}] Dotfile already exists (`{}`)",
 				file.path.display(),
 				file_deploy_path.display()
 			);
 
 			match file.merge.unwrap_or_default() {
 				MergeMode::Overwrite => {
-					log::info!("[{}] Overwritting existing item", file.path.display())
+					log::info!("[{}] Overwritting existing dotfile", file.path.display())
 				}
 				MergeMode::Keep => {
-					log::info!("[{}] Skipping existing item", file.path.display());
+					log::info!("[{}] Skipping existing dotfile", file.path.display());
 
-					builder.add_item(
+					builder.add_dotfile(
 						file_deploy_path,
 						file,
-						ItemStatus::skipped(format!(
-							"Item already exists and merge mode is `{:?}`",
+						DotfileStatus::skipped(format!(
+							"Dotfile already exists and merge mode is `{:?}`",
 							MergeMode::Keep,
 						)),
 					);
@@ -527,10 +542,12 @@ where
 					{
 						log::info!("[{}] Merge was denied", file.path.display());
 
-						builder.add_item(
+						builder.add_dotfile(
 							file_deploy_path,
 							file,
-							ItemStatus::skipped("Item already exists and merge ask was denied"),
+							DotfileStatus::skipped(
+								"Dotfile already exists and merge ask was denied",
+							),
 						);
 
 						return Ok(());
@@ -543,34 +560,41 @@ where
 			match std::fs::create_dir_all(parent) {
 				Ok(_) => {}
 				Err(err) => {
-					log::warn!(
+					log::error!(
 						"[{}] Failed to create directories (`{}`)",
 						file.path.display(),
 						err
 					);
 
-					builder.add_item(file_deploy_path, file, err.into());
+					builder.add_dotfile(file_deploy_path, file, err.into());
 
 					return Ok(());
 				}
 			}
 		}
 
-		if file.template_or_default() {
-			if !self.options.dry_run {
-				let content = match std::fs::read(&file_source_path) {
-					Ok(content) => content,
-					Err(err) => {
-						log::info!("[{}] Failed to read source content", file.path.display());
-						builder.add_item(file_deploy_path, file, err.into());
-						return Ok(());
-					}
-				};
+		if file.is_template() {
+			let content = match std::fs::read_to_string(&file_source_path) {
+				Ok(content) => content,
+				Err(err) => {
+					log::error!("[{}] Failed to read source content", file.path.display());
+					builder.add_dotfile(file_deploy_path, file, err.into());
+					return Ok(());
+				}
+			};
 
+			let source = Source::file(&file_source_path, &content);
+			let template = Template::parse(source)
+				.with_context(|| format!("File: {}", file_source_path.display()))?;
+			let content = template
+				.resolve(profile.variables.as_ref(), file.variables.as_ref())
+				.with_context(|| format!("File: {}", file_source_path.display()))?;
+
+			if !self.options.dry_run {
 				// TODO: do template transform
-				if let Err(err) = std::fs::write(&file_deploy_path, content) {
-					log::info!("[{}] Failed to write content", file.path.display());
-					builder.add_item(file_deploy_path, file, err.into());
+				if let Err(err) = std::fs::write(&file_deploy_path, content.as_bytes()) {
+					log::error!("[{}] Failed to write content", file.path.display());
+					builder.add_dotfile(file_deploy_path, file, err.into());
 					return Ok(());
 				}
 			}
@@ -579,28 +603,28 @@ where
 			#[allow(clippy::collapsible_else_if)]
 			if !self.options.dry_run {
 				if let Err(err) = std::fs::copy(&file_source_path, &file_deploy_path) {
-					log::info!("[{}] Failed to copy item", file.path.display());
-					builder.add_item(file_deploy_path, file, err.into());
+					log::error!("[{}] Failed to copy dotfile", file.path.display());
+					builder.add_dotfile(file_deploy_path, file, err.into());
 					return Ok(());
 				}
 			}
 		}
 
-		log::info!("[{}] Item successfully deployed", file.path.display());
-		builder.add_item(file_deploy_path, file, ItemStatus::Success);
+		log::info!("[{}] Dotfile successfully deployed", file.path.display());
+		builder.add_dotfile(file_deploy_path, file, DotfileStatus::Success);
 
 		Ok(())
 	}
 }
 
-fn resolve_deployment_path(profile_target: &Path, item: &Item) -> PathBuf {
-	match &item.target {
+fn resolve_deployment_path(profile_target: &Path, dotfile: &Dotfile) -> PathBuf {
+	match &dotfile.target {
 		Some(DeployTarget::Alias(alias)) => profile_target.join(alias),
 		Some(DeployTarget::Path(path)) => path.clone(),
-		None => profile_target.join(&item.path),
+		None => profile_target.join(&dotfile.path),
 	}
 }
 
-fn resolve_source_path(source_path: &Path, item: &Item) -> PathBuf {
-	source_path.join(&item.path)
+fn resolve_source_path(source_path: &Path, dotfile: &Dotfile) -> PathBuf {
+	source_path.join(&dotfile.path)
 }

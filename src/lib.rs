@@ -1,8 +1,11 @@
 #![feature(exit_status_error)]
+#![feature(option_get_or_insert_default)]
+#![feature(map_first_last)]
 #![allow(dead_code)]
 
 pub mod deploy;
 pub mod hook;
+pub mod template;
 pub mod variables;
 
 use std::collections::HashSet;
@@ -19,15 +22,15 @@ use crate::hook::Hook;
 pub struct Profile {
 	/// Defines the base profile. All settings from the base are merged with the
 	/// current profile. The settings from the current profile take precendence.
-	/// Items are merged on the item level (not specific item settings level).
+	/// Dotfiles are merged on the dotfile level (not specific dotfile settings level).
 	extends: Option<String>,
 
-	/// Variables of the profile. Each item will have this environment.
+	/// Variables of the profile. Each dotfile will have this environment.
 	#[serde(skip_serializing_if = "Option::is_none")]
 	variables: Option<UserVars>,
 
-	/// Target root path of the deployment. Will be used as file stem for the items
-	/// when not overwritten by [Item::target].
+	/// Target root path of the deployment. Will be used as file stem for the dotfiles
+	/// when not overwritten by [Dotfile::target].
 	target: Option<PathBuf>,
 
 	/// Hook will be executed once before the deployment begins. If the hook fails
@@ -39,9 +42,9 @@ pub struct Profile {
 	#[serde(skip_serializing_if = "Vec::is_empty", default)]
 	post_hooks: Vec<Hook>,
 
-	/// Items which will be deployed.
+	/// Dotfiles which will be deployed.
 	#[serde(skip_serializing_if = "Vec::is_empty", default)]
-	items: Vec<Item>,
+	dotfiles: Vec<Dotfile>,
 }
 
 impl Profile {
@@ -74,7 +77,7 @@ impl Profile {
 			target,
 			pre_hooks,
 			post_hooks,
-			items,
+			dotfiles,
 			variables,
 		} = other;
 
@@ -95,51 +98,51 @@ impl Profile {
 		self.pre_hooks.extend(pre_hooks.into_iter());
 		self.post_hooks.extend(post_hooks.into_iter());
 
-		let self_item_paths = self
-			.items
+		let self_dotfile_paths = self
+			.dotfiles
 			.iter()
-			.map(|item| &item.path)
+			.map(|dotfile| &dotfile.path)
 			.collect::<HashSet<_>>();
-		let items = items
+		let dotfiles = dotfiles
 			.into_iter()
-			.filter(|item| !self_item_paths.contains(&item.path))
+			.filter(|dotfile| !self_dotfile_paths.contains(&dotfile.path))
 			.collect::<Vec<_>>();
-		self.items.extend(items);
+		self.dotfiles.extend(dotfiles);
 	}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Item {
+pub struct Dotfile {
 	/// Relative path inside the `source` folder.
 	path: PathBuf,
 
-	/// Priority of the item. Items with higher priority as others are allowed
-	/// to overwrite an item deployed in this deployment.
+	/// Priority of the dotfile. Dotfiles with higher priority as others are allowed
+	/// to overwrite an dotfile deployed in this deployment.
 	#[serde(skip_serializing_if = "Option::is_none")]
 	priority: Option<Priority>,
 
-	/// Variables for the item. If a key is not found here, [Profile::env]
+	/// Variables for the dotfile. If a key is not found here, [Profile::env]
 	/// will be searched.
 	#[serde(skip_serializing_if = "Option::is_none")]
 	variables: Option<UserVars>,
 
-	/// Deployment target for the item. If not given it will be [Profile::target] + [Item::path]`.
+	/// Deployment target for the dotfile. If not given it will be [Profile::target] + [Dotfile::path]`.
 	#[serde(skip_serializing_if = "Option::is_none")]
 	target: Option<DeployTarget>,
 
-	/// Merge operation for already existing items.
+	/// Merge operation for already existing dotfiles.
 	#[serde(skip_serializing_if = "Option::is_none")]
 	merge: Option<MergeMode>,
 
-	/// Indicates if the item should be treated as a template. If this is `false`
+	/// Indicates if the dotfile should be treated as a template. If this is `false`
 	/// no template processing will be done.
 	#[serde(skip_serializing_if = "Option::is_none")]
 	template: Option<bool>,
 }
 
-impl Item {
-	pub fn template_or_default(&self) -> bool {
-		self.template.unwrap_or(false)
+impl Dotfile {
+	pub fn is_template(&self) -> bool {
+		self.template.unwrap_or(true)
 	}
 }
 
@@ -154,10 +157,10 @@ pub enum DeployTarget {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MergeMode {
-	/// Overwrites the existing item.
+	/// Overwrites the existing dotfile.
 	Overwrite,
 
-	/// Keeps the existing item.
+	/// Keeps the existing dotfile.
 	Keep,
 
 	/// Asks the user for input to decide what to do.
@@ -263,9 +266,9 @@ mod tests {
 		profile_vars.insert(String::from("RUSTC_VERSION"), String::from("XX.YY"));
 		profile_vars.insert(String::from("RUSTC_PATH"), String::from("/usr/bin/rustc"));
 
-		let mut item_vars = HashMap::new();
-		item_vars.insert(String::from("RUSTC_VERSION"), String::from("55.22"));
-		item_vars.insert(String::from("USERNAME"), String::from("demo"));
+		let mut dotfile_vars = HashMap::new();
+		dotfile_vars.insert(String::from("RUSTC_VERSION"), String::from("55.22"));
+		dotfile_vars.insert(String::from("USERNAME"), String::from("demo"));
 
 		let profile = Profile {
 			extends: None,
@@ -275,8 +278,8 @@ mod tests {
 			target: Some(PathBuf::from("/home/demo/.config")),
 			pre_hooks: vec![Hook::new("echo \"Foo\"")],
 			post_hooks: vec![Hook::new("profiles/test.sh")],
-			items: vec![
-				Item {
+			dotfiles: vec![
+				Dotfile {
 					path: PathBuf::from("init.vim.ubuntu"),
 					priority: Some(Priority::new(2)),
 					variables: None,
@@ -284,10 +287,12 @@ mod tests {
 					merge: Some(MergeMode::Overwrite),
 					template: None,
 				},
-				Item {
+				Dotfile {
 					path: PathBuf::from(".bashrc"),
 					priority: None,
-					variables: Some(UserVars { inner: item_vars }),
+					variables: Some(UserVars {
+						inner: dotfile_vars,
+					}),
 					target: Some(DeployTarget::Path(PathBuf::from("/home/demo/.bashrc"))),
 					merge: Some(MergeMode::Overwrite),
 					template: Some(false),

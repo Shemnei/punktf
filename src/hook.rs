@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 use std::io::{BufRead as _, BufReader};
+use std::path::Path;
 use std::process::{Command, Stdio};
 
 use color_eyre::eyre::{eyre, Result};
@@ -48,9 +49,10 @@ impl Hook {
 		Self(command.into())
 	}
 
-	pub fn execute(&self) -> Result<()> {
+	pub fn execute(&self, cwd: &Path) -> Result<()> {
 		let mut child = self
 			.prepare_command()?
+			.current_dir(cwd)
 			.stdout(Stdio::piped())
 			.stderr(Stdio::piped())
 			.spawn()?;

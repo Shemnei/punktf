@@ -1,5 +1,5 @@
 .PHONY: default buildd buildr build check test clippy checkfmt lint run clean
-.PHONY: install cic
+.PHONY: install cic todos
 
 # Is set to the directory which contains the Makefile regardless from where
 # the make command is called.
@@ -41,3 +41,7 @@ install:
 # utility
 # can i commit
 cic: test lint
+
+# searches for things which need to be improved
+todos:
+	rg "(TODO|print(!|ln!)|unwrap\()"
