@@ -6,7 +6,6 @@ use std::str::FromStr;
 use clap::{crate_authors, crate_description, crate_version, Clap};
 use color_eyre::owo_colors::OwoColorize;
 use color_eyre::Result;
-use log::debug;
 use punktf::deploy::deployment::{Deployment, DeploymentStatus};
 use punktf::deploy::dotfile::DotfileStatus;
 use punktf::deploy::executor::{Executor, ExecutorOptions};
@@ -99,7 +98,7 @@ fn main() -> Result<()> {
 	)
 	.init();
 
-	debug!("Parsed Opts: {:#?}", opts);
+	log::debug!("Parsed Opts: {:#?}", opts);
 
 	handle_commands(opts)
 }
@@ -111,8 +110,8 @@ fn handle_commands(opts: Opts) -> Result<()> {
 
 			let profile: Profile = resolve_profile(&profile_path, &cmd.profile)?;
 
-			debug!("Profile: {:#?}", profile);
-			debug!("{}", serde_json::to_string_pretty(&profile).unwrap());
+			log::debug!("Profile: {:#?}", profile);
+			log::debug!("{}", serde_json::to_string_pretty(&profile).unwrap());
 
 			let options = ExecutorOptions {
 				dry_run: cmd.dry_run,

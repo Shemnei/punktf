@@ -317,7 +317,7 @@ where
 				Ok(dent) => dent,
 				Err(err) => {
 					// TODO: handle better
-					log::warn!("Failed to get directory entry: {}", err.to_string());
+					log::error!("Failed to get directory entry: {}", err.to_string());
 					continue;
 				}
 			};
@@ -328,7 +328,7 @@ where
 				Ok(path) => path,
 				Err(_) => {
 					// TODO: handle better
-					log::warn!(
+					log::error!(
 						"[{}] Failed resolve child path (`{}`)",
 						directory.path.display(),
 						dent.path().display(),
@@ -344,7 +344,7 @@ where
 			let metadata = match dent.metadata() {
 				Ok(metadata) => metadata,
 				Err(err) => {
-					log::warn!(
+					log::error!(
 						"[{}] Failed to get metadata for child (`{}`)",
 						child_path.display(),
 						err
@@ -371,7 +371,7 @@ where
 			} else if metadata.is_dir() {
 				// TODO: decide if empty directory should be kept
 			} else {
-				log::warn!(
+				log::error!(
 					"[{}] Unsupported dotfile type (`{:?}`)",
 					child_path.display(),
 					metadata.file_type()
