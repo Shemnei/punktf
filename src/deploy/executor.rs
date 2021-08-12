@@ -214,7 +214,7 @@ where
 				builder.add_dotfile(
 					dotfile_deploy_path,
 					dotfile,
-					DotfileStatus::failed(format!("Failed to resolve source path: {}", err)),
+					DotfileStatus::failed(format!("Failed to resolve source path - {}", err)),
 				);
 
 				return Ok(());
@@ -242,7 +242,7 @@ where
 				builder.add_dotfile(
 					dotfile_deploy_path,
 					dotfile,
-					DotfileStatus::failed(format!("Failed to read metadata: {}", err)),
+					DotfileStatus::failed(format!("Failed to read metadata - {}", err)),
 				);
 
 				return Ok(());
@@ -318,7 +318,7 @@ where
 				builder.add_dotfile(
 					directory_deploy_path,
 					directory,
-					DotfileStatus::failed(format!("Failed to create directory: {}", err)),
+					DotfileStatus::failed(format!("Failed to create directory - {}", err)),
 				);
 
 				return Ok(());
@@ -367,7 +367,7 @@ where
 					builder.add_child(
 						child_deploy_path,
 						directory_deploy_path.clone(),
-						DotfileStatus::failed(format!("Failed to read metadata: {}", err)),
+						DotfileStatus::failed(format!("Failed to read metadata - {}", err)),
 					);
 
 					continue;
@@ -495,7 +495,7 @@ where
 							exec_dotfile.add_to_builder(
 								builder,
 								DotfileStatus::failed(format!(
-									"Failed to execute merge ask function: {}",
+									"Failed to execute merge ask function - {}",
 									err.to_string()
 								)),
 							);
@@ -533,7 +533,7 @@ where
 					exec_dotfile.add_to_builder(
 						builder,
 						DotfileStatus::failed(format!(
-							"Failed to create parent directories: {}",
+							"Failed to create parent directories - {}",
 							err
 						)),
 					);
@@ -554,7 +554,7 @@ where
 
 					exec_dotfile.add_to_builder(
 						builder,
-						DotfileStatus::failed(format!("Failed to read content: {}", err)),
+						DotfileStatus::failed(format!("Failed to read content - {}", err)),
 					);
 
 					return Ok(());
@@ -575,7 +575,7 @@ where
 
 					exec_dotfile.add_to_builder(
 						builder,
-						DotfileStatus::failed(format!("Failed to parse template: {}", err)),
+						DotfileStatus::failed(format!("Failed to parse template - {}", err)),
 					);
 
 					return Ok(());
@@ -595,7 +595,7 @@ where
 
 					exec_dotfile.add_to_builder(
 						builder,
-						DotfileStatus::failed(format!("Failed to fill template: {}", err)),
+						DotfileStatus::failed(format!("Failed to fill template - {}", err)),
 					);
 
 					return Ok(());
@@ -611,7 +611,7 @@ where
 
 					exec_dotfile.add_to_builder(
 						builder,
-						DotfileStatus::failed(format!("Failed to write content: {}", err)),
+						DotfileStatus::failed(format!("Failed to write content - {}", err)),
 					);
 
 					return Ok(());
@@ -628,7 +628,7 @@ where
 
 					exec_dotfile.add_to_builder(
 						builder,
-						DotfileStatus::failed(format!("Failed to copy: {}", err)),
+						DotfileStatus::failed(format!("Failed to copy - {}", err)),
 					);
 
 					return Ok(());
