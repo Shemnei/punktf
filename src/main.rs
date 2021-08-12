@@ -107,7 +107,11 @@ fn handle_commands(opts: Opts) -> Result<()> {
 			let profile: Profile = resolve_profile(&profile_path, &cmd.profile)?;
 
 			log::debug!("Profile: {:#?}", profile);
-			log::debug!("{}", serde_json::to_string_pretty(&profile).unwrap());
+			log::debug!(
+				"{}",
+				serde_json::to_string_pretty(&profile)
+					.unwrap_or_else(|_| String::from("Failed to format profile"))
+			);
 
 			let options = ExecutorOptions {
 				dry_run: cmd.dry_run,
@@ -115,8 +119,7 @@ fn handle_commands(opts: Opts) -> Result<()> {
 
 			let deployer = Executor::new(options, ask_user_merge);
 
-			let deployment: Result<Deployment, ()> =
-				Ok(deployer.deploy(opts.shared.source.0, profile).unwrap());
+			let deployment = deployer.deploy(opts.shared.source.0, profile);
 
 			match deployment {
 				Ok(deployment) => {
