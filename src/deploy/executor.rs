@@ -111,7 +111,7 @@ where
 		let metadata = match item_source_path.symlink_metadata() {
 			Ok(metadata) => metadata,
 			Err(err) => {
-				log::warn!(
+				log::error!(
 					"[{}] Failed to get metadata for item (`{}`)",
 					item.path.display(),
 					err
@@ -142,7 +142,7 @@ where
 				item_deploy_path,
 			)
 		} else {
-			log::warn!(
+			log::error!(
 				"[{}] Unsupported item type (`{:?}`)",
 				item.path.display(),
 				metadata.file_type()
@@ -183,7 +183,7 @@ where
 		match std::fs::create_dir_all(&directory_deploy_path) {
 			Ok(_) => {}
 			Err(err) => {
-				log::warn!(
+				log::error!(
 					"[{}] Failed to create directories (`{}`)",
 					directory.path.display(),
 					err
@@ -198,7 +198,7 @@ where
 		let dents = match directory_source_path.read_dir() {
 			Ok(read_dir) => read_dir,
 			Err(err) => {
-				log::warn!(
+				log::error!(
 					"[{}] Failed to read directory (`{}`)",
 					directory.path.display(),
 					err
@@ -229,7 +229,7 @@ where
 					Ok(path) => path,
 					Err(_) => {
 						// TODO: handle better
-						log::warn!(
+						log::error!(
 							"[{}] Failed resolve child path (`{}`)",
 							directory.path.display(),
 							dent.path().display(),
@@ -245,7 +245,7 @@ where
 				let metadata = match dent.metadata() {
 					Ok(metadata) => metadata,
 					Err(err) => {
-						log::warn!(
+						log::error!(
 							"[{}] Failed to get metadata for child (`{}`)",
 							child_path.display(),
 							err
@@ -277,7 +277,7 @@ where
 					let dents = match child_source_path.read_dir() {
 						Ok(read_dir) => read_dir,
 						Err(err) => {
-							log::warn!(
+							log::error!(
 								"[{}] Failed to read directory (`{}`)",
 								child_path.display(),
 								err
@@ -295,7 +295,7 @@ where
 
 					backlog.push_back(dents);
 				} else {
-					log::warn!(
+					log::error!(
 						"[{}] Unsupported item type (`{:?}`)",
 						child_path.display(),
 						metadata.file_type()
@@ -401,7 +401,7 @@ where
 			match std::fs::create_dir_all(parent) {
 				Ok(_) => {}
 				Err(err) => {
-					log::warn!(
+					log::error!(
 						"[{}] Failed to create directories (`{}`)",
 						child_path.display(),
 						err
@@ -422,7 +422,7 @@ where
 			let content = match std::fs::read_to_string(&child_source_path) {
 				Ok(content) => content,
 				Err(err) => {
-					log::info!("[{}] Failed to read source content", child_path.display());
+					log::error!("[{}] Failed to read source content", child_path.display());
 					builder.add_child(
 						child_deploy_path,
 						directory_deploy_path.to_path_buf(),
@@ -441,7 +441,7 @@ where
 
 			if !self.options.dry_run {
 				if let Err(err) = std::fs::write(&child_deploy_path, content.as_bytes()) {
-					log::info!("[{}] Failed to write content", child_path.display());
+					log::error!("[{}] Failed to write content", child_path.display());
 					builder.add_child(
 						child_deploy_path,
 						directory_deploy_path.to_path_buf(),
@@ -455,7 +455,7 @@ where
 			#[allow(clippy::collapsible_else_if)]
 			if !self.options.dry_run {
 				if let Err(err) = std::fs::copy(&child_source_path, &child_deploy_path) {
-					log::info!("[{}] Failed to copy item", child_path.display());
+					log::error!("[{}] Failed to copy item", child_path.display());
 					builder.add_child(
 						child_deploy_path,
 						directory_deploy_path.to_path_buf(),
@@ -556,7 +556,7 @@ where
 			match std::fs::create_dir_all(parent) {
 				Ok(_) => {}
 				Err(err) => {
-					log::warn!(
+					log::error!(
 						"[{}] Failed to create directories (`{}`)",
 						file.path.display(),
 						err
@@ -573,7 +573,7 @@ where
 			let content = match std::fs::read_to_string(&file_source_path) {
 				Ok(content) => content,
 				Err(err) => {
-					log::info!("[{}] Failed to read source content", file.path.display());
+					log::error!("[{}] Failed to read source content", file.path.display());
 					builder.add_item(file_deploy_path, file, err.into());
 					return Ok(());
 				}
@@ -589,7 +589,7 @@ where
 			if !self.options.dry_run {
 				// TODO: do template transform
 				if let Err(err) = std::fs::write(&file_deploy_path, content.as_bytes()) {
-					log::info!("[{}] Failed to write content", file.path.display());
+					log::error!("[{}] Failed to write content", file.path.display());
 					builder.add_item(file_deploy_path, file, err.into());
 					return Ok(());
 				}
@@ -599,7 +599,7 @@ where
 			#[allow(clippy::collapsible_else_if)]
 			if !self.options.dry_run {
 				if let Err(err) = std::fs::copy(&file_source_path, &file_deploy_path) {
-					log::info!("[{}] Failed to copy item", file.path.display());
+					log::error!("[{}] Failed to copy item", file.path.display());
 					builder.add_item(file_deploy_path, file, err.into());
 					return Ok(());
 				}
