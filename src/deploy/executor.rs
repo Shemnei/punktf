@@ -80,17 +80,22 @@ impl<'a> ExecutorDotfile<'a> {
 	fn add_to_builder<S: Into<DotfileStatus>>(self, builder: &mut DeploymentBuilder, status: S) {
 		let status = status.into();
 
+		let resolved_deploy_path = self
+			.deploy_path()
+			.canonicalize()
+			.unwrap_or(self.deploy_path().to_path_buf());
+
 		match self {
-			Self::File {
-				dotfile,
-				deploy_path,
-				..
-			} => builder.add_dotfile(deploy_path, dotfile, status),
+			Self::File { dotfile, .. } => {
+				builder.add_dotfile(resolved_deploy_path, dotfile, status)
+			}
 			Self::Child {
-				parent_deploy_path,
-				deploy_path,
-				..
-			} => builder.add_child(deploy_path, parent_deploy_path.to_path_buf(), status),
+				parent_deploy_path, ..
+			} => builder.add_child(
+				resolved_deploy_path,
+				parent_deploy_path.to_path_buf(),
+				status,
+			),
 		};
 	}
 }
@@ -395,7 +400,9 @@ where
 	) -> Result<()> {
 		if !exec_dotfile.source_path().starts_with(source_path) {
 			log::warn!(
-				"[{}] Dotfile is not contained within the source `dotfiles` directory",
+				"[{}] Dotfile is not contained within the source `dotfiles` directory. This item \
+				 will probably also be deployed \"above\" (in the directory tree) the target \
+				 directory.",
 				exec_dotfile.path().display()
 			);
 		}
