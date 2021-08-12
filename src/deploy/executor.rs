@@ -211,7 +211,11 @@ where
 					err,
 				);
 
-				builder.add_dotfile(dotfile_deploy_path, dotfile, err.into());
+				builder.add_dotfile(
+					dotfile_deploy_path,
+					dotfile,
+					DotfileStatus::failed(format!("Failed to resolve source path: {}", err)),
+				);
 
 				return Ok(());
 			}
@@ -224,7 +228,8 @@ where
 			dotfile_deploy_path.display()
 		);
 
-		// TODO: for now dont follow symlinks
+		// For now dont follow symlinks (`metadata()` would get the metadata of the target of a
+		// link).
 		let metadata = match dotfile_source_path.symlink_metadata() {
 			Ok(metadata) => metadata,
 			Err(err) => {
@@ -234,7 +239,11 @@ where
 					err
 				);
 
-				builder.add_dotfile(dotfile_deploy_path, dotfile, err.into());
+				builder.add_dotfile(
+					dotfile_deploy_path,
+					dotfile,
+					DotfileStatus::failed(format!("Failed to read metadata: {}", err)),
+				);
 
 				return Ok(());
 			}
@@ -306,7 +315,11 @@ where
 					err
 				);
 
-				builder.add_dotfile(directory_deploy_path, directory, err.into());
+				builder.add_dotfile(
+					directory_deploy_path,
+					directory,
+					DotfileStatus::failed(format!("Failed to create directory: {}", err)),
+				);
 
 				return Ok(());
 			}
@@ -340,7 +353,8 @@ where
 
 			let child_deploy_path = directory_deploy_path.join(child_path);
 
-			// TODO: for now dont follow symlinks
+			// For now dont follow symlinks (`metadata()` would get the metadata of the target of a
+			// link).
 			let metadata = match dent.metadata() {
 				Ok(metadata) => metadata,
 				Err(err) => {
@@ -350,7 +364,11 @@ where
 						err
 					);
 
-					builder.add_child(child_deploy_path, directory_deploy_path.clone(), err.into());
+					builder.add_child(
+						child_deploy_path,
+						directory_deploy_path.clone(),
+						DotfileStatus::failed(format!("Failed to read metadata: {}", err)),
+					);
 
 					continue;
 				}
@@ -460,12 +478,33 @@ where
 				MergeMode::Ask => {
 					log::info!("[{}] Asking for action", exec_dotfile.path().display());
 
-					if !((self.merge_ask_fn)(
+					let should_deploy = match (self.merge_ask_fn)(
 						exec_dotfile.source_path(),
 						exec_dotfile.deploy_path(),
 					)
-					.wrap_err("Error evaluating user response")?)
+					.wrap_err("Error evaluating user response")
 					{
+						Ok(should_deploy) => should_deploy,
+						Err(err) => {
+							log::error!(
+								"[{}] Failed to execute ask function (`{}`)",
+								exec_dotfile.path().display(),
+								err
+							);
+
+							exec_dotfile.add_to_builder(
+								builder,
+								DotfileStatus::failed(format!(
+									"Failed to execute merge ask function: {}",
+									err.to_string()
+								)),
+							);
+
+							return Ok(());
+						}
+					};
+
+					if !should_deploy {
 						log::info!("[{}] Merge was denied", exec_dotfile.path().display());
 
 						exec_dotfile.add_to_builder(
@@ -491,7 +530,13 @@ where
 						err
 					);
 
-					exec_dotfile.add_to_builder(builder, err);
+					exec_dotfile.add_to_builder(
+						builder,
+						DotfileStatus::failed(format!(
+							"Failed to create parent directories: {}",
+							err
+						)),
+					);
 
 					return Ok(());
 				}
@@ -507,7 +552,10 @@ where
 						exec_dotfile.path().display()
 					);
 
-					exec_dotfile.add_to_builder(builder, err);
+					exec_dotfile.add_to_builder(
+						builder,
+						DotfileStatus::failed(format!("Failed to read content: {}", err)),
+					);
 
 					return Ok(());
 				}
@@ -519,14 +567,16 @@ where
 				.with_context(|| format!("File: {}", exec_dotfile.source_path().display()))
 			{
 				Ok(template) => template,
-				Err(_) => {
+				Err(err) => {
 					log::error!(
 						"[{}] Failed to parse template",
 						exec_dotfile.path().display()
 					);
 
-					exec_dotfile
-						.add_to_builder(builder, DotfileStatus::failed("Failed to parse template"));
+					exec_dotfile.add_to_builder(
+						builder,
+						DotfileStatus::failed(format!("Failed to parse template: {}", err)),
+					);
 
 					return Ok(());
 				}
@@ -537,14 +587,16 @@ where
 				.with_context(|| format!("File: {}", exec_dotfile.source_path().display()))
 			{
 				Ok(template) => template,
-				Err(_) => {
+				Err(err) => {
 					log::error!(
 						"[{}] Failed to fill template",
 						exec_dotfile.path().display()
 					);
 
-					exec_dotfile
-						.add_to_builder(builder, DotfileStatus::failed("Failed to fill template"));
+					exec_dotfile.add_to_builder(
+						builder,
+						DotfileStatus::failed(format!("Failed to fill template: {}", err)),
+					);
 
 					return Ok(());
 				}
@@ -557,7 +609,10 @@ where
 						exec_dotfile.path().display()
 					);
 
-					exec_dotfile.add_to_builder(builder, err);
+					exec_dotfile.add_to_builder(
+						builder,
+						DotfileStatus::failed(format!("Failed to write content: {}", err)),
+					);
 
 					return Ok(());
 				}
@@ -571,7 +626,10 @@ where
 				{
 					log::info!("[{}] Failed to copy dotfile", exec_dotfile.path().display());
 
-					exec_dotfile.add_to_builder(builder, err);
+					exec_dotfile.add_to_builder(
+						builder,
+						DotfileStatus::failed(format!("Failed to copy: {}", err)),
+					);
 
 					return Ok(());
 				}
