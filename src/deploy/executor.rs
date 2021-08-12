@@ -7,6 +7,7 @@ use color_eyre::Result;
 
 use super::deployment::{Deployment, DeploymentBuilder};
 use crate::deploy::item::ItemStatus;
+use crate::template::source::Source;
 use crate::template::Template;
 use crate::{DeployTarget, Item, MergeMode, Profile};
 
@@ -431,10 +432,11 @@ where
 				}
 			};
 
-			let template = Template::parse(&content)
+			let source = Source::file(&child_source_path, &content);
+			let template = Template::parse(source)
 				.with_context(|| format!("File: {}", child_source_path.display()))?;
 			let content = template
-				.fill(profile.variables.as_ref(), directory.variables.as_ref())
+				.resolve(profile.variables.as_ref(), directory.variables.as_ref())
 				.with_context(|| format!("File: {}", child_source_path.display()))?;
 
 			if !self.options.dry_run {
@@ -577,10 +579,11 @@ where
 				}
 			};
 
-			let template = Template::parse(&content)
+			let source = Source::file(&file_source_path, &content);
+			let template = Template::parse(source)
 				.with_context(|| format!("File: {}", file_source_path.display()))?;
 			let content = template
-				.fill(profile.variables.as_ref(), file.variables.as_ref())
+				.resolve(profile.variables.as_ref(), file.variables.as_ref())
 				.with_context(|| format!("File: {}", file_source_path.display()))?;
 
 			if !self.options.dry_run {

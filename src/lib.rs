@@ -1,4 +1,6 @@
 #![feature(exit_status_error)]
+#![feature(option_get_or_insert_default)]
+#![feature(map_first_last)]
 #![allow(dead_code)]
 
 pub mod deploy;

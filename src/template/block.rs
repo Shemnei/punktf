@@ -1,3 +1,5 @@
+use std::fmt;
+
 use super::span::{ByteSpan, Spanned};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -54,6 +56,12 @@ pub enum VarEnv {
 	Item,
 }
 
+impl fmt::Display for VarEnv {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		fmt::Debug::fmt(&self, f)
+	}
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct VarEnvSet(pub [Option<VarEnv>; 3]);
 
@@ -89,6 +97,12 @@ impl VarEnvSet {
 impl Default for VarEnvSet {
 	fn default() -> Self {
 		Self([Some(VarEnv::Item), Some(VarEnv::Profile), None])
+	}
+}
+
+impl fmt::Display for VarEnvSet {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_list().entries(self.envs()).finish()
 	}
 }
 
