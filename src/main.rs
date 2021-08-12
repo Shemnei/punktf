@@ -78,10 +78,6 @@ struct Deploy {
 	dry_run: bool,
 }
 
-// TODO: target path as cli arg
-// TODO: cleanup/improve stdout output
-// TODO: option to output deployment struct to file
-
 fn main() -> Result<()> {
 	let _ = color_eyre::install()?;
 
