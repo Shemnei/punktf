@@ -83,7 +83,7 @@ impl<'a> ExecutorDotfile<'a> {
 		let resolved_deploy_path = self
 			.deploy_path()
 			.canonicalize()
-			.unwrap_or(self.deploy_path().to_path_buf());
+			.unwrap_or_else(|_| self.deploy_path().to_path_buf());
 
 		match self {
 			Self::File { dotfile, .. } => {
