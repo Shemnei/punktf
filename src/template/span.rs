@@ -1,73 +1,90 @@
 use std::fmt;
-use std::ops::{Deref, DerefMut, Index};
+use std::ops::{Deref, Index};
 
-type BytePosType = u32;
+// COPYRIGHT
+//
+// Copied from <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_span/src/lib.rs#L1768>.
+/// A general position which allows convertion from and to [`usize`] and [`u32`].
+pub trait Pos {
+	fn from_usize(value: usize) -> Self;
+	fn from_u32(value: u32) -> Self;
+	fn as_usize(&self) -> usize;
+	fn as_u32(&self) -> u32;
+}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct BytePos(pub BytePosType);
+// COPYRIGHT
+//
+// Copied from <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_span/src/lib.rs#L1775> with slight adaptations.
+macro_rules! pos {
+    (
+        $(
+            $(#[$attr:meta])*
+            $vis:vis struct $ident:ident($inner_vis:vis $inner_ty:ty);
+        )*
+    ) => {
+        $(
+            $(#[$attr])*
+            $vis struct $ident($inner_vis $inner_ty);
 
-impl BytePos {
-	pub const fn new(value: BytePosType) -> Self {
-		Self(value)
-	}
+			impl $ident {
+				pub const fn new(value: $inner_ty) -> Self {
+					Self(value)
+				}
+			}
 
-	pub const fn from_usize(value: usize) -> Self {
-		Self(value as BytePosType)
-	}
+			impl Pos for $ident {
+				fn from_usize(value: usize) -> Self {
+					Self(value as $inner_ty)
+				}
 
-	pub const fn as_usize(&self) -> usize {
-		self.0 as usize
-	}
+				fn from_u32(value: u32) -> Self {
+					Self(value)
+				}
 
-	pub const fn into_inner(self) -> BytePosType {
-		self.0
+				fn as_usize(&self) -> usize {
+					self.0 as usize
+				}
+
+				fn as_u32(&self) -> u32 {
+					self.0
+				}
+			}
+
+			impl ::std::convert::From<usize> for $ident {
+				fn from(value: usize) -> Self {
+					Self::from_usize(value)
+				}
+			}
+
+			impl ::std::convert::From<u32> for $ident {
+				fn from(value: u32) -> Self {
+					Self::from_u32(value)
+				}
+			}
+
+			impl ::std::fmt::Display for $ident {
+				fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+					::std::fmt::Display::fmt(&self.0, f)
+				}
+			}
+		)*
 	}
 }
 
-impl fmt::Display for BytePos {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		fmt::Display::fmt(&self.0, f)
-	}
+pos! {
+	/// A position of a byte.
+	#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+	pub struct BytePos(pub u32);
+
+	/// A position of a character.
+	#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+	pub struct CharPos(pub u32);
 }
 
-impl From<usize> for BytePos {
-	fn from(value: usize) -> Self {
-		Self::from_usize(value)
-	}
-}
-
-impl From<BytePosType> for BytePos {
-	fn from(value: BytePosType) -> Self {
-		Self(value)
-	}
-}
-
-impl From<BytePos> for usize {
-	fn from(value: BytePos) -> Self {
-		value.as_usize()
-	}
-}
-
-impl From<BytePos> for BytePosType {
-	fn from(value: BytePos) -> Self {
-		value.0
-	}
-}
-
-impl Deref for BytePos {
-	type Target = BytePosType;
-
-	fn deref(&self) -> &Self::Target {
-		&self.0
-	}
-}
-
-impl DerefMut for BytePos {
-	fn deref_mut(&mut self) -> &mut Self::Target {
-		&mut self.0
-	}
-}
-
+// COPYRIGHT
+//
+// Inspired by <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_span/src/lib.rs#L419>.
+/// A span with a start position ([low](`ByteSpan::low`)) and an end position ([high](`ByteSpan::high`)).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ByteSpan {
 	pub low: BytePos,
@@ -115,7 +132,7 @@ impl ByteSpan {
 		let amount = amount.into();
 
 		let mut copy = *self;
-		copy.low.0 = (copy.low.0 as i32 + amount) as BytePosType;
+		copy.low.0 = (copy.low.0 as i32 + amount) as u32;
 
 		copy
 	}
@@ -124,7 +141,7 @@ impl ByteSpan {
 		let amount = amount.into();
 
 		let mut copy = *self;
-		copy.high.0 = (copy.high.0 as i32 + amount) as BytePosType;
+		copy.high.0 = (copy.high.0 as i32 + amount) as u32;
 
 		copy
 	}
@@ -133,8 +150,8 @@ impl ByteSpan {
 		let amount = amount.into();
 
 		let mut copy = *self;
-		copy.low.0 = (copy.low.0 as i32 + amount) as BytePosType;
-		copy.high.0 = (copy.high.0 as i32 + amount) as BytePosType;
+		copy.low.0 = (copy.low.0 as i32 + amount) as u32;
+		copy.high.0 = (copy.high.0 as i32 + amount) as u32;
 
 		copy
 	}

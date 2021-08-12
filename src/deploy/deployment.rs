@@ -6,8 +6,8 @@ use std::time::{Duration, SystemTime, SystemTimeError};
 
 use serde::{Deserialize, Serialize};
 
-use super::item::{DeployedItem, DeployedItemKind, ItemStatus};
-use crate::{Item, Priority};
+use super::dotfile::{DeployedDotfile, DeployedDotfileKind, DotfileStatus};
+use crate::{Dotfile, Priority};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DeploymentStatus {
@@ -56,7 +56,7 @@ pub struct Deployment {
 	time_start: SystemTime,
 	time_end: SystemTime,
 	status: DeploymentStatus,
-	items: HashMap<PathBuf, DeployedItem>,
+	dotfiles: HashMap<PathBuf, DeployedDotfile>,
 }
 
 impl Deployment {
@@ -76,8 +76,8 @@ impl Deployment {
 		&self.status
 	}
 
-	pub const fn items(&self) -> &HashMap<PathBuf, DeployedItem> {
-		&self.items
+	pub const fn dotfiles(&self) -> &HashMap<PathBuf, DeployedDotfile> {
+		&self.dotfiles
 	}
 
 	pub fn build() -> DeploymentBuilder {
@@ -89,26 +89,36 @@ impl Deployment {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeploymentBuilder {
 	time_start: SystemTime,
-	items: HashMap<PathBuf, DeployedItem>,
+	dotfiles: HashMap<PathBuf, DeployedDotfile>,
 }
 
 impl DeploymentBuilder {
-	pub fn add_item(&mut self, path: PathBuf, item: Item, status: ItemStatus) -> &mut Self {
-		self.items.insert(
+	pub fn add_dotfile(
+		&mut self,
+		path: PathBuf,
+		dotfile: Dotfile,
+		status: DotfileStatus,
+	) -> &mut Self {
+		self.dotfiles.insert(
 			path,
-			DeployedItem {
-				kind: DeployedItemKind::Item(item),
+			DeployedDotfile {
+				kind: DeployedDotfileKind::Dotfile(dotfile),
 				status,
 			},
 		);
 		self
 	}
 
-	pub fn add_child(&mut self, path: PathBuf, parent: PathBuf, status: ItemStatus) -> &mut Self {
-		self.items.insert(
+	pub fn add_child(
+		&mut self,
+		path: PathBuf,
+		parent: PathBuf,
+		status: DotfileStatus,
+	) -> &mut Self {
+		self.dotfiles.insert(
 			path,
-			DeployedItem {
-				kind: DeployedItemKind::Child(parent),
+			DeployedDotfile {
+				kind: DeployedDotfileKind::Child(parent),
 				status,
 			},
 		);
@@ -116,23 +126,25 @@ impl DeploymentBuilder {
 	}
 
 	pub fn contains<P: AsRef<Path>>(&self, path: P) -> bool {
-		self.items.contains_key(path.as_ref())
+		self.dotfiles.contains_key(path.as_ref())
 	}
 
-	pub fn get_item<P: AsRef<Path>>(&self, path: P) -> Option<&Item> {
-		let mut value = self.items.get(path.as_ref())?;
+	pub fn get_dotfile<P: AsRef<Path>>(&self, path: P) -> Option<&Dotfile> {
+		let mut value = self.dotfiles.get(path.as_ref())?;
 
 		loop {
 			match &value.kind {
-				DeployedItemKind::Item(item) => return Some(item),
-				DeployedItemKind::Child(parent_path) => value = self.items.get(parent_path)?,
+				DeployedDotfileKind::Dotfile(dotfile) => return Some(dotfile),
+				DeployedDotfileKind::Child(parent_path) => {
+					value = self.dotfiles.get(parent_path)?
+				}
 			}
 		}
 	}
 
-	/// Only gets the item if all items in the chain are deployed
-	pub fn get_deployed_item<P: AsRef<Path>>(&self, path: P) -> Option<&Item> {
-		let mut value = self.items.get(path.as_ref())?;
+	/// Only gets the dotfile if all dotfiles in the chain are deployed
+	pub fn get_deployed_dotfile<P: AsRef<Path>>(&self, path: P) -> Option<&Dotfile> {
+		let mut value = self.dotfiles.get(path.as_ref())?;
 
 		loop {
 			if !value.status.is_success() {
@@ -140,20 +152,23 @@ impl DeploymentBuilder {
 			}
 
 			match &value.kind {
-				DeployedItemKind::Item(item) => return Some(item),
-				DeployedItemKind::Child(parent_path) => value = self.items.get(parent_path)?,
+				DeployedDotfileKind::Dotfile(dotfile) => return Some(dotfile),
+				DeployedDotfileKind::Child(parent_path) => {
+					value = self.dotfiles.get(parent_path)?
+				}
 			}
 		}
 	}
 
 	pub fn get_priority<P: AsRef<Path>>(&self, path: P) -> Option<Option<Priority>> {
-		self.get_deployed_item(path).map(|item| item.priority)
+		self.get_deployed_dotfile(path)
+			.map(|dotfile| dotfile.priority)
 	}
 
 	pub fn is_deployed<P: AsRef<Path>>(&self, path: P) -> Option<bool> {
-		self.items
+		self.dotfiles
 			.get(path.as_ref())
-			.map(|item| item.status.is_success())
+			.map(|dotfile| dotfile.status.is_success())
 	}
 
 	pub fn success(self) -> Deployment {
@@ -161,7 +176,7 @@ impl DeploymentBuilder {
 			time_start: self.time_start,
 			time_end: SystemTime::now(),
 			status: DeploymentStatus::Success,
-			items: self.items,
+			dotfiles: self.dotfiles,
 		}
 	}
 
@@ -170,7 +185,7 @@ impl DeploymentBuilder {
 			time_start: self.time_start,
 			time_end: SystemTime::now(),
 			status: DeploymentStatus::Failed(reason.into()),
-			items: self.items,
+			dotfiles: self.dotfiles,
 		}
 	}
 }
@@ -179,7 +194,7 @@ impl Default for DeploymentBuilder {
 	fn default() -> Self {
 		Self {
 			time_start: SystemTime::now(),
-			items: HashMap::new(),
+			dotfiles: HashMap::new(),
 		}
 	}
 }

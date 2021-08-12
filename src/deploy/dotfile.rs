@@ -4,16 +4,16 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::Item;
+use crate::Dotfile;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ItemStatus {
+pub enum DotfileStatus {
 	Success,
 	Failed(Cow<'static, str>),
 	Skipped(Cow<'static, str>),
 }
 
-impl ItemStatus {
+impl DotfileStatus {
 	pub const fn success() -> Self {
 		Self::Success
 	}
@@ -39,7 +39,7 @@ impl ItemStatus {
 	}
 }
 
-impl fmt::Display for ItemStatus {
+impl fmt::Display for DotfileStatus {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
 			Self::Success => f.write_str("Success"),
@@ -49,7 +49,7 @@ impl fmt::Display for ItemStatus {
 	}
 }
 
-impl<E> From<E> for ItemStatus
+impl<E> From<E> for DotfileStatus
 where
 	E: std::error::Error,
 {
@@ -59,15 +59,15 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum DeployedItemKind {
-	Item(Item),
-	// PathBuf is `parent` items path. The parent should always be of type `Item(_)`.
+pub enum DeployedDotfileKind {
+	Dotfile(Dotfile),
+	// PathBuf is `parent` dotfile path. The parent should always be of type `Dotfile(_)`.
 	Child(PathBuf),
 }
 
-impl DeployedItemKind {
-	pub const fn is_item(&self) -> bool {
-		matches!(self, Self::Item(_))
+impl DeployedDotfileKind {
+	pub const fn is_dotfile(&self) -> bool {
+		matches!(self, Self::Dotfile(_))
 	}
 
 	pub const fn is_child(&self) -> bool {
@@ -76,17 +76,17 @@ impl DeployedItemKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DeployedItem {
-	pub status: ItemStatus,
-	pub kind: DeployedItemKind,
+pub struct DeployedDotfile {
+	pub status: DotfileStatus,
+	pub kind: DeployedDotfileKind,
 }
 
-impl DeployedItem {
-	pub const fn status(&self) -> &ItemStatus {
+impl DeployedDotfile {
+	pub const fn status(&self) -> &DotfileStatus {
 		&self.status
 	}
 
-	pub const fn kind(&self) -> &DeployedItemKind {
+	pub const fn kind(&self) -> &DeployedDotfileKind {
 		&self.kind
 	}
 }

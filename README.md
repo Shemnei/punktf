@@ -1,6 +1,6 @@
 # PunktF - A cross-platform multi-target dotfiles manager
 
-[![MIT License](https://img.shields.io/crates/l/punktf)](https://choosealicense.com/licenses/mit/) [![Continuous integration](https://github.com/Shemnei/punktf/workflows/Continuous%20Integration/badge.svg)](https://github.com/Shemnei/punktf/actions) [![Crates.io](https://img.shields.io/crates/v/punktf)](https://crates.io/crates/punktf)
+[![MIT License](https://img.shields.io/github/license/Shemnei/punktf)](https://choosealicense.com/licenses/mit/) [![GitHub Issues](https://img.shields.io/github/issues/Shemnei/punktf)](https://github.com/Shemnei/punktf/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc) [![Continuous integration](https://github.com/Shemnei/punktf/workflows/Continuous%20Integration/badge.svg)](https://github.com/Shemnei/punktf/actions) [![Crates.io](https://img.shields.io/crates/v/punktf)](https://crates.io/crates/punktf) [![Homebrew](https://img.shields.io/badge/dynamic/json.svg?url=https://raw.githubusercontent.com/michidk/homebrew-tools/main/Info/punktf.json&query=$.versions.stable&label=homebrew)](https://github.com/michidk/homebrew-tools/blob/main/Formula/punktf.rb) [![AUR](https://img.shields.io/aur/version/punktf)](https://aur.archlinux.org/packages/punktf) [![Chocolatey](https://img.shields.io/chocolatey/v/git?include_prereleases)](https://community.chocolatey.org/packages/punktf)
 
 ## DISCLAIMER
 
@@ -12,8 +12,8 @@ The following features are already implemented:
 - [x] Basic deployment process
 - [x] Basic templating support
 - [x] Reading from a profile file
-- [x] Depolying non template items
-- [x] Directories can be used as an item
+- [x] Depolying `dotfiles`
+- [x] Directories can be used as a `dotfile`
 - [x] Profiles can have another profile as a base
 - [x] Pre/Post deployment hooks
 - [x] Basic support for merge operations
@@ -33,6 +33,32 @@ Features:
 - [ ] Use hadlebar-like instructions to insert variables and more
 - [ ] Define pre- and post-hooks to customize the behaviour with custom commands
 - [ ] Handles file permissions and line endings (CRLF vs LF)
+
+## Installation
+
+### Homebrew
+Install [punktf](https://github.com/michidk/homebrew-tools/blob/main/Formula/punktf.rb) using Homebrew on Linux.
+```sh
+brew tap michidk/tools
+brew install punktf
+```
+
+### AUR
+Install [punktf](https://aur.archlinux.org/packages/punktf) using aur on Arch Linux.
+To install it use your favorite aur capable package manager (e.g. [yay](https://github.com/Jguer/yay), [pikaur](https://github.com/actionless/pikaur)).
+```sh
+# yay
+yay punktf
+
+# pikaur
+pikaur -S punktf
+```
+
+### Chocolatey
+Install [punktf](https://community.chocolatey.org/packages/punktf) using Chocolatey on Windows.
+```powershell
+choco install punktf --pre
+```
 
 ## Commands
 
@@ -58,7 +84,7 @@ PunktF searches for the source path in the following order:
 ```
 + profiles\
 	+ windows.pfp
-+ items\
++ dotfiles\
 	+ init.vim.win
 ```
 
@@ -78,7 +104,7 @@ It can be set with:
 	// Default: None
 	"extends": "base_profile_name",
 
-	// OPT: Variables for all items
+	// OPT: Variables for all `dotfiles`
 	// Default: None
 	"variables": [
 		{
@@ -100,10 +126,10 @@ It can be set with:
 	// Default: None
 	"post_hooks": ["echo \"Bar\""],
 
-	// Items to be deployed
-	"items": [
+	// `dotfiles` to be deployed
+	"dotfiles": [
 		{
-			// Relative path in `items/`
+			// Relative path in `dotfiles/`
 			"path": "init.vim.win",
 
 			// OPT: Alternative deploy target (PATH: used instead of `root` + `file`, ALIAS: `root` + (alias instead of `file`))
@@ -127,7 +153,7 @@ It can be set with:
 			// Default: true
 			"template": false,
 
-			// OPT: Higher priority item is allowed to overwrite lower priority ones
+			// OPT: Higher priority `dotfile` is allowed to overwrite lower priority one
 			// Default: None
 			"priority": 2,
 		}
@@ -145,7 +171,7 @@ parser and will not be transferred to the output.
 
 Example:
 
-```python
+```handlebars
 {{!-- Inserts the current os name and prints it when executed --}}
 print("{{OS}}")
 ```
@@ -157,7 +183,7 @@ escaped block. Everything within it will get copied over without modification.
 
 Example:
 
-```text
+```handlebars
 {{{ This is escaped ... I can use {{ without worry. I can even use }} and is still fine }}}
 ```
 
@@ -168,12 +194,12 @@ Prefix to determine where variables are looked for (can be combined: e.g. {{#$RU
 - None: First profile.variables then profile.file.variables
 - `$`: Only (system) ENVIRONMENT
 - `#`: Only profile.variables
-- `&`: Only profile.item.variables
+- `&`: Only profile.dotfile.variables
 
 
 Example:
 
-```python
+```handlebars
 rustc = {{RUSTC_PATH}}
 ```
 
@@ -181,17 +207,20 @@ rustc = {{RUSTC_PATH}}
 
 Supported are only if expressions with the following structure:
 
-`{{VAR}} (==|!=) "LITERAL"`
+- Check if value of `VAR` is (not) equal to `LITERAL`: `{{VAR}} (==|!=) "LITERAL"`
+- Check if a value for `VAR` exists: `{{VAR}}`
 
 
 Example:
 
-```python
-{{@if {{OS}} == "windows"}}
-	print("running on windows")
-{{@elif {{OS}} == "linux"}}
-	print("running on linux")
-{{@else}}
-	print("NOT running on windows/linux")
+```handlebars
+{{@if {{OS}}}}
+	{{@if {{OS}} == "windows"}}
+		print("running on windows")
+	{{@elif {{OS}} == "linux"}}
+		print("running on linux")
+	{{@else}}
+		print("NOT running on windows/linux")
+	{{@fi}}
 {{@fi}}
 ```

@@ -1,3 +1,5 @@
+use std::fmt;
+
 use super::span::{ByteSpan, Spanned};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -39,13 +41,27 @@ impl Block {
 	pub const fn new(span: ByteSpan, kind: BlockKind) -> Self {
 		Self { span, kind }
 	}
+
+	pub const fn span(&self) -> &ByteSpan {
+		&self.span
+	}
+
+	pub const fn kind(&self) -> &BlockKind {
+		&self.kind
+	}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum VarEnv {
 	Environment,
 	Profile,
-	Item,
+	Dotfile,
+}
+
+impl fmt::Display for VarEnv {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		fmt::Debug::fmt(&self, f)
+	}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -82,7 +98,13 @@ impl VarEnvSet {
 
 impl Default for VarEnvSet {
 	fn default() -> Self {
-		Self([Some(VarEnv::Item), Some(VarEnv::Profile), None])
+		Self([Some(VarEnv::Dotfile), Some(VarEnv::Profile), None])
+	}
+}
+
+impl fmt::Display for VarEnvSet {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_list().entries(self.envs()).finish()
 	}
 }
 
@@ -116,8 +138,7 @@ impl IfOp {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct IfExpr {
-	pub var: Var,
-	pub op: IfOp,
-	pub other: ByteSpan,
+pub enum IfExpr {
+	Compare { var: Var, op: IfOp, other: ByteSpan },
+	Exists { var: Var },
 }

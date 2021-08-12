@@ -44,4 +44,4 @@ cic: test lint
 
 # searches for things which need to be improved
 todos:
-	rg "(TODO|print|unwrap\()" src/
+	rg "(TODO|print(!|ln!)|unwrap\()"

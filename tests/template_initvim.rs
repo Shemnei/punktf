@@ -21,19 +21,21 @@ set undodir='{{$HOME}}/.config/nvim/vimdid'
 
 use color_eyre::Result;
 use pretty_assertions::assert_eq;
+use punktf::template::source::Source;
 use punktf::template::Template;
 use punktf::variables::UserVars;
 
 #[test]
 fn parse_initvim_win() -> Result<()> {
-	let template = Template::parse(TEMPLATE)?;
+	let source = Source::anonymous(TEMPLATE);
+	let template = Template::parse(source)?;
 
 	let vars = UserVars::from_items(vec![("OS", "windows"), ("SYS_ENCODING", "windows1252")]);
 
 	// set temporary env variable
 	std::env::set_var("APPDATA", "C:\\Users\\Demo\\Appdata\\Local");
 
-	let output = template.fill(Some(&vars), None)?;
+	let output = template.resolve(Some(&vars), None)?;
 
 	assert_eq!(
 		output.trim(),
@@ -55,14 +57,15 @@ set undodir='C:\Users\Demo\Appdata\Local\nvim\vimdid'"#
 
 #[test]
 fn template_initvim_linux() -> Result<()> {
-	let template = Template::parse(TEMPLATE)?;
+	let source = Source::anonymous(TEMPLATE);
+	let template = Template::parse(source)?;
 
 	let vars = UserVars::from_items(vec![("OS", "linux"), ("SYS_ENCODING", "utf-8")]);
 
 	// set temporary env variable
 	std::env::set_var("HOME", "/home/Demo");
 
-	let output = template.fill(Some(&vars), None)?;
+	let output = template.resolve(Some(&vars), None)?;
 
 	assert_eq!(
 		output.trim(),

@@ -8,8 +8,8 @@ use color_eyre::owo_colors::OwoColorize;
 use color_eyre::Result;
 use log::debug;
 use punktf::deploy::deployment::{Deployment, DeploymentStatus};
+use punktf::deploy::dotfile::DotfileStatus;
 use punktf::deploy::executor::{Executor, ExecutorOptions};
-use punktf::deploy::item::ItemStatus;
 use punktf::{resolve_profile, Profile};
 
 // Used so that it defaults to current_dir if no value is given.
@@ -177,13 +177,13 @@ fn log_deployment(deployment: Deployment) {
 
 	let mut files_success = 0;
 	for (idx, (path, _)) in deployment
-		.items()
+		.dotfiles()
 		.iter()
 		.filter(|(_, v)| v.status().is_success())
 		.enumerate()
 	{
 		if idx == 0 {
-			out.push_str(&format!("ITEMS ({})", "SUCCESS".green()));
+			out.push_str(&format!("Dotfiles ({})", "SUCCESS".green()));
 		}
 
 		out.push_str(&format!("\n\t{}", path.display().bright_black()));
@@ -197,10 +197,10 @@ fn log_deployment(deployment: Deployment) {
 
 	let mut files_skipped = 0;
 	for (idx, (path, reason)) in deployment
-		.items()
+		.dotfiles()
 		.iter()
 		.filter_map(|(k, v)| {
-			if let ItemStatus::Skipped(reason) = v.status() {
+			if let DotfileStatus::Skipped(reason) = v.status() {
 				Some((k, reason))
 			} else {
 				None
@@ -209,7 +209,7 @@ fn log_deployment(deployment: Deployment) {
 		.enumerate()
 	{
 		if idx == 0 {
-			out.push_str(&format!("\nITEMS ({})", "SKIPPED".yellow()));
+			out.push_str(&format!("Dotfiles ({})", "SKIPPED".yellow()));
 		}
 
 		out.push_str(&format!(
@@ -227,10 +227,10 @@ fn log_deployment(deployment: Deployment) {
 
 	let mut files_failed = 0;
 	for (idx, (path, reason)) in deployment
-		.items()
+		.dotfiles()
 		.iter()
 		.filter_map(|(k, v)| {
-			if let ItemStatus::Failed(reason) = v.status() {
+			if let DotfileStatus::Failed(reason) = v.status() {
 				Some((k, reason))
 			} else {
 				None
@@ -239,7 +239,7 @@ fn log_deployment(deployment: Deployment) {
 		.enumerate()
 	{
 		if idx == 0 {
-			out.push_str(&format!("ITEMS ({})", "FAILED".red()));
+			out.push_str(&format!("Dotfiles ({})", "FAILED".red()));
 		}
 
 		out.push_str(&format!(
