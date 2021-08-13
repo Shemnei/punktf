@@ -58,9 +58,17 @@ struct Opts {
 
 #[derive(Debug, Clap)]
 struct Shared {
+	/// The source directory where the profiles and dotfiles are located.
 	#[clap(short, long, env = "PUNKTF_SOURCE", default_value)]
 	source: SourcePath,
 
+	/// Runs with specified level of verbosity which affects the log level.
+	///
+	/// The level can be set by repeating the flag `n` times (e.g. `-vv` for 2).
+	/// Levels:
+	///		0 - `Info`;
+	///		1 - `Debug`;
+	///		2 - `Trace`.
 	#[clap(short, long, parse(from_occurrences))]
 	verbose: u8,
 }
@@ -70,10 +78,19 @@ enum Command {
 	Deploy(Deploy),
 }
 
+/// Deploys a profile.
 #[derive(Debug, Clap)]
 struct Deploy {
+	/// Name of the profile to deploy.
+	///
+	/// The name should be the file name of the profile without an extension (e.g.
+	/// `profiles/arch.json` should be given as `arch`).
 	profile: String,
 
+	/// Deploys the profile but without actually coping/creating the files.
+	///
+	/// This can be used to test and get an overview over the changes which would
+	/// be applied when run without this flag.
 	#[clap(short, long)]
 	dry_run: bool,
 }
