@@ -8,7 +8,7 @@ use crate::deploy::dotfile::DotfileStatus;
 use crate::template::source::Source;
 use crate::template::Template;
 use crate::variables::UserVars;
-use crate::{DeployTarget, Dotfile, MergeMode, Priority, Profile};
+use crate::{Dotfile, MergeMode, Priority, Profile};
 
 enum ExecutorDotfile<'a> {
 	File {
@@ -296,12 +296,16 @@ where
 		directory_source_path: PathBuf,
 		directory_deploy_path: PathBuf,
 	) -> Result<()> {
-		// if no specific target path is set for the directory, use the root
+		// If no specific target path is set for the directory, use the root
 		// target path as target. This will dump all children in the top level
 		// path.
-		let directory_deploy_path = match directory.target {
-			None => target_path.to_path_buf(),
-			Some(_) => directory_deploy_path,
+		let directory_deploy_path = if directory.rename.is_some() {
+			directory_deploy_path
+		} else {
+			directory
+				.overwrite_target
+				.clone()
+				.unwrap_or_else(|| target_path.to_path_buf())
 		};
 
 		match std::fs::create_dir_all(&directory_deploy_path) {
@@ -646,11 +650,11 @@ where
 }
 
 fn resolve_deployment_path(profile_target: &Path, dotfile: &Dotfile) -> PathBuf {
-	match &dotfile.target {
-		Some(DeployTarget::Alias(alias)) => profile_target.join(alias),
-		Some(DeployTarget::Path(path)) => path.clone(),
-		None => profile_target.join(&dotfile.path),
-	}
+	dotfile
+		.overwrite_target
+		.as_deref()
+		.unwrap_or(profile_target)
+		.join(dotfile.rename.as_ref().unwrap_or(&dotfile.path))
 }
 
 fn resolve_source_path(source_path: &Path, dotfile: &Dotfile) -> std::io::Result<PathBuf> {

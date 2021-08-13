@@ -149,6 +149,17 @@ pub struct Dotfile {
 	/// Relative path inside the `source` folder.
 	path: PathBuf,
 
+	/// Alternative name for the dotfile. This name will be used instead of [`Dotfile::path`] when
+	/// deploying. If this is set and the dotfile is a folder, it will be deployed under the given
+	/// name and not in the root source directory.
+	#[serde(skip_serializing_if = "Option::is_none", default)]
+	rename: Option<PathBuf>,
+
+	/// Alternative deploy target path. This will be used instead of [`Profile::target`] when
+	/// deploying.
+	#[serde(skip_serializing_if = "Option::is_none", default)]
+	overwrite_target: Option<PathBuf>,
+
 	/// Priority of the dotfile. Dotfiles with higher priority as others are allowed
 	/// to overwrite an dotfile deployed in this deployment.
 	#[serde(skip_serializing_if = "Option::is_none", default)]
@@ -159,11 +170,7 @@ pub struct Dotfile {
 	#[serde(skip_serializing_if = "Option::is_none", default)]
 	variables: Option<UserVars>,
 
-	/// Deployment target for the dotfile. If not given it will be [Profile::target] + [Dotfile::path]`.
-	#[serde(skip_serializing_if = "Option::is_none", default)]
-	target: Option<DeployTarget>,
-
-	/// Merge operation for already existing dotfiles.
+	/// Merge operation for already existing dotfiles with the same priority.
 	#[serde(skip_serializing_if = "Option::is_none", default)]
 	merge: Option<MergeMode>,
 
@@ -177,15 +184,6 @@ impl Dotfile {
 	pub fn is_template(&self) -> bool {
 		self.template.unwrap_or(true)
 	}
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum DeployTarget {
-	/// Target will be deployed under [Profile::target] + Alias.
-	Alias(PathBuf),
-
-	/// Target will be deployed under the given path.
-	Path(PathBuf),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -314,19 +312,21 @@ mod tests {
 			dotfiles: vec![
 				Dotfile {
 					path: PathBuf::from("init.vim.ubuntu"),
+					rename: Some(PathBuf::from("init.vim")),
+					overwrite_target: None,
 					priority: Some(Priority::new(2)),
 					variables: None,
-					target: Some(DeployTarget::Alias(PathBuf::from("init.vim"))),
 					merge: Some(MergeMode::Overwrite),
 					template: None,
 				},
 				Dotfile {
 					path: PathBuf::from(".bashrc"),
+					rename: None,
+					overwrite_target: Some(PathBuf::from("/home/demo")),
 					priority: None,
 					variables: Some(UserVars {
 						inner: dotfile_vars,
 					}),
-					target: Some(DeployTarget::Path(PathBuf::from("/home/demo/.bashrc"))),
 					merge: Some(MergeMode::Overwrite),
 					template: Some(false),
 				},
