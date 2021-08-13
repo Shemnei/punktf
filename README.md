@@ -128,64 +128,7 @@ All properties are explained [in the wiki](https://github.com/Shemnei/punktf/wik
 
 ## Templates
 
-### Comments
-
-Comments can be inserted with `{{!-- ... --}}`. They will be ignored by the template
-parser and will not be transferred to the output.
-
-Example:
-
-```handlebars
-{{!-- Inserts the current os name and prints it when executed --}}
-print("{{OS}}")
-```
-
-### Escaping
-
-If `{{` or `}}` need to used outside of a template block, put them inside an
-escaped block. Everything within it will get copied over without modification.
-
-Example:
-
-```handlebars
-{{{ This is escaped ... I can use {{ without worry. I can even use }} and is still fine }}}
-```
-
-### Variables
-
-Prefix to determine where variables are looked for (can be combined: e.g. {{#$RUSTC_PATH}}):
-
-- None: First profile.variables then profile.file.variables
-- `$`: Only (system) ENVIRONMENT
-- `#`: Only profile.variables
-- `&`: Only profile.dotfile.variables
-
-Example:
-
-```handlebars
-rustc = {{RUSTC_PATH}}
-```
-
-### Conditionals
-
-Supported are only if expressions with the following structure:
-
-- Check if value of `VAR` is (not) equal to `LITERAL`: `{{VAR}} (==|!=) "LITERAL"`
-- Check if a value for `VAR` exists: `{{VAR}}`
-
-Example:
-
-```handlebars
-{{@if {{OS}}}}
-	{{@if {{OS}} == "windows"}}
-		print("running on windows")
-	{{@elif {{OS}} == "linux"}}
-		print("running on linux")
-	{{@else}}
-		print("NOT running on windows/linux")
-	{{@fi}}
-{{@fi}}
-```
+Please refer to the [wiki](https://github.com/Shemnei/punktf/wiki/Templating) for the templating syntax.
 
 ## Dotfile Repositories using punktf
 
