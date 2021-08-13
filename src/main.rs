@@ -13,6 +13,7 @@ use punktf::{resolve_profile, Profile};
 
 const PUNKTF_SOURCE_ENVVAR: &str = "PUNKTF_SOURCE";
 const PUNKTF_TARGET_ENVVAR: &str = "PUNKTF_TARGET";
+const PUNKTF_DEFAULT_PROFILE_ENVVAR: &str = "PUNKTF_PROFILE";
 
 fn get_target_path() -> PathBuf {
 	std::env::var_os(PUNKTF_TARGET_ENVVAR)
@@ -103,6 +104,7 @@ struct Deploy {
 	///
 	/// The name should be the file name of the profile without an extension (e.g.
 	/// `profiles/arch.json` should be given as `arch`).
+	#[clap(env = PUNKTF_DEFAULT_PROFILE_ENVVAR)]
 	profile: String,
 
 	/// Alternative deployment target path.
