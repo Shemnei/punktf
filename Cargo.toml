@@ -28,6 +28,7 @@ serde_yaml = "0.8.17"
 thiserror = "1.0.26"
 walkdir = "2.3.2"
 unicode-width = "0.1.8"
+cfg-if = "1.0.0"
 
 [dev-dependencies]
 pretty_assertions = "0.7.2"

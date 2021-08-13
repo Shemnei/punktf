@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 /// Variables that replace values it templates
 pub trait Variables {
-	fn var<K: AsRef<str>>(&self, key: K) -> Option<Cow<'_, String>>;
+	fn var<K: AsRef<str>>(&self, key: K) -> Option<Cow<'_, str>>;
 }
 
 /// User defined variables
@@ -16,11 +16,13 @@ pub struct UserVars {
 }
 
 impl Variables for UserVars {
-	fn var<K>(&self, key: K) -> Option<Cow<'_, String>>
+	fn var<K>(&self, key: K) -> Option<Cow<'_, str>>
 	where
 		K: AsRef<str>,
 	{
-		self.inner.get(key.as_ref()).map(Cow::Borrowed)
+		self.inner
+			.get(key.as_ref())
+			.map(|value| Cow::Borrowed(value.as_ref()))
 	}
 }
 
@@ -50,18 +52,5 @@ impl UserVars {
 				.filter(|(key, _)| !self.inner.contains_key(key))
 				.collect::<HashMap<_, _>>(),
 		);
-	}
-}
-
-/// Variables whose values come from the systems environment
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct SystemEnv;
-
-impl Variables for SystemEnv {
-	fn var<K>(&self, key: K) -> Option<Cow<'_, String>>
-	where
-		K: AsRef<str>,
-	{
-		std::env::var(key.as_ref()).ok().map(Cow::Owned)
 	}
 }

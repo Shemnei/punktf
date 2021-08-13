@@ -6,6 +6,74 @@ use super::Template;
 use crate::template::diagnostic::{Diagnositic, DiagnositicBuilder, DiagnositicLevel};
 use crate::variables::{UserVars, Variables};
 
+macro_rules! arch {
+	() => {{
+		cfg_if::cfg_if! {
+			if #[cfg(target_arch = "x86")] {
+				"x86"
+			} else if #[cfg(target_arch = "x86_64")] {
+				"x86_64"
+			} else if #[cfg(target_arch = "mips")] {
+				"mips"
+			} else if #[cfg(target_arch = "powerpc")] {
+				"powerpc"
+			} else if #[cfg(target_arch = "powerpc64")] {
+				"powerpc64"
+			} else if #[cfg(target_arch = "arm")] {
+				"arm"
+			} else if #[cfg(target_arch = "aarch64")] {
+				"aarch64"
+			} else {
+				"unknown"
+			}
+		}
+	}};
+}
+
+macro_rules! os {
+	() => {{
+		cfg_if::cfg_if! {
+			if #[cfg(target_os = "windows")] {
+				"windows"
+			} else if #[cfg(target_os = "macos")] {
+				"macos"
+			} else if #[cfg(target_os = "ios")] {
+				"ios"
+			} else if #[cfg(target_os = "linux")] {
+				"linux"
+			} else if #[cfg(target_os = "android")] {
+				"android"
+			} else if #[cfg(target_os = "freebsd")] {
+				"freebsd"
+			} else if #[cfg(target_os = "dragonfly")] {
+				"dragonfly"
+			} else if #[cfg(target_os = "openbsd")] {
+				"openbsd"
+			} else if #[cfg(target_os = "netbsd")] {
+				"netbsd"
+			} else {
+				"unknown"
+			}
+		}
+	}};
+}
+
+macro_rules! family {
+	() => {{
+		cfg_if::cfg_if! {
+			if #[cfg(target_family = "unix")] {
+				"unix"
+			} else if #[cfg(target_os = "windows")] {
+				"windows"
+			} else if #[cfg(target_os = "wasm")] {
+				"wasm"
+			} else {
+				"unknown"
+			}
+		}
+	}};
+}
+
 pub struct Resolver<'a> {
 	template: &'a Template<'a>,
 	profile_vars: Option<&'a UserVars>,
@@ -143,18 +211,28 @@ impl<'a> Resolver<'a> {
 		for env in var.envs.envs() {
 			match env {
 				VarEnv::Environment => {
-					if let Ok(val) = std::env::var(name) {
-						return Ok(val);
-					}
+					match (name, std::env::var(name)) {
+						("PUNKTF_ARCH", Err(std::env::VarError::NotPresent)) => {
+							return Ok(arch!().into())
+						}
+						("PUNKTF_OS", Err(std::env::VarError::NotPresent)) => {
+							return Ok(os!().into())
+						}
+						("PUNKTF_FAMILY", Err(std::env::VarError::NotPresent)) => {
+							return Ok(family!().into())
+						}
+						(_, Ok(val)) => return Ok(val),
+						(_, Err(_)) => continue,
+					};
 				}
 				VarEnv::Profile => {
 					if let Some(Some(val)) = self.profile_vars.map(|vars| vars.var(name)) {
-						return Ok(val.to_string());
+						return Ok(val.into());
 					}
 				}
 				VarEnv::Dotfile => {
 					if let Some(Some(val)) = self.dotfile_vars.map(|vars| vars.var(name)) {
-						return Ok(val.to_string());
+						return Ok(val.into());
 					}
 				}
 			};
