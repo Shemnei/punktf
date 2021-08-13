@@ -119,7 +119,8 @@ target: "C:\\Users\\Demo"
 dotfiles:
   - path: "base"
   - path: "windows/alacritty.yml"
-    overwrite_target: "C:\\Users\\Demo\\AppData\\Local\\alacritty.yml"
+    target:
+    	Path: "C:\\Users\\Demo\\AppData\\Local\\alacritty.yml"
     merge: Ask
 ```
 
