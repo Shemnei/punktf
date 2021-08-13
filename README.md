@@ -1,167 +1,123 @@
-# PunktF - A cross-platform multi-target dotfiles manager
+# punktf - A cross-platform multi-target dotfiles manager
 [![MIT License](https://img.shields.io/crates/l/punktf)](https://choosealicense.com/licenses/mit/) [![GitHub Issues](https://img.shields.io/github/issues/Shemnei/punktf)](https://github.com/Shemnei/punktf/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc) [![Continuous integration](https://github.com/Shemnei/punktf/workflows/Continuous%20Integration/badge.svg)](https://github.com/Shemnei/punktf/actions) [![Crates.io](https://img.shields.io/crates/v/punktf)](https://crates.io/crates/punktf) [![Homebrew](https://img.shields.io/badge/dynamic/json.svg?url=https://raw.githubusercontent.com/michidk/homebrew-tools/main/Info/punktf.json&query=$.versions.stable&label=homebrew)](https://github.com/michidk/homebrew-tools/blob/main/Formula/punktf.rb) [![AUR](https://img.shields.io/aur/version/punktf)](https://aur.archlinux.org/packages/punktf) [![Chocolatey](https://img.shields.io/chocolatey/v/punktf?include_prereleases)](https://community.chocolatey.org/packages/punktf)
-
-## DISCLAIMER
-
-This crate is sill under development and not all features are currently implemented.
-Layouts and formats can and will change while in development.
-
-The following features are already implemented:
-
-- [x] Basic deployment process
-- [x] Basic templating support
-- [x] Reading from a profile file
-- [x] Depolying `dotfiles`
-- [x] Directories can be used as a `dotfile`
-- [x] Profiles can have another profile as a base
-- [x] Pre/Post deployment hooks
-- [x] Basic support for merge operations
-
-Before you try this tool, please make sure to save/backup your existing setup.
-While in deployment there are likely bugs which can and will mess up your
-existing setup.
 
 ## Yet another dotfile manager?!
 
-Well yes, but hear me out. This project was driven by the personal need of having to manage several dotfiles for different machines/targets. You want the same experience everywhere: On your work Windows machine along with an Ubuntu WSL instance, your Debian server and your private Arch installation. This tool fixes that problem while beeing cross-platform and blazingly fast.
+Well, yes, but hear me out: This project was driven by the personal need of having to manage several dotfiles for different machines/targets. You want the same experience everywhere: On your Windows workstation along with an Ubuntu WSL instance, your Debian server and your private Arch installation. This tool fixes that problem while being cross-platform and blazingly fast. You won't need multiple sets of dotfile configurations ever again!
 
 Features:
-- [ ] Merge mutliple layers of dotfiles
-- [ ] Create profiles for different targets
-- [ ] Use instructions to compile your dotfiles/templates conditionally
-- [ ] Use hadlebar-like instructions to insert variables and more
-- [ ] Define pre- and post-hooks to customize the behaviour with custom commands
-- [ ] Handles file permissions and line endings (CRLF vs LF)
+
+- Compile and deploy your dotfiles with one command across different platforms
+- Use handlebar-like instructions to insert variables and compile sections conditionally
+- Define pre- and post-hooks to customize the behavior with your own commands
+- Create multiple profiles for different targets
+- Works on Windows and Linux
 
 ## Installation
 
 ### Homebrew
-Install [punktf](https://github.com/michidk/homebrew-tools/blob/main/Formula/punktf.rb) using Homebrew on Linux.
+
+Install [punktf using Homebrew](https://github.com/michidk/homebrew-tools/blob/main/Formula/punktf.rb) on Linux:
+
 ```sh
 brew tap michidk/tools
 brew install punktf
 ```
 
 ### AUR
-Install [punktf](https://aur.archlinux.org/packages/punktf) using aur on Arch Linux.
-To install it use your favorite aur capable package manager (e.g. [yay](https://github.com/Jguer/yay), [pikaur](https://github.com/actionless/pikaur)).
-```sh
-# yay
-yay punktf
 
-# pikaur
-pikaur -S punktf
+Install [punktf using Chocolatey](https://aur.archlinux.org/packages/punktf) on Arch Linux.
+To install it use your favorite aur capable package manager (e.g. [yay](https://github.com/Jguer/yay), [pikaur](https://github.com/actionless/pikaur)):
+
+```sh
+yay punktf # using yay
+```
+
+or
+
+```sh
+pikaur -S punktf #
 ```
 
 ### Chocolatey
-Install [punktf](https://community.chocolatey.org/packages/punktf) using Chocolatey on Windows.
-```powershell
+
+Install [punktf using Chocolatey](https://community.chocolatey.org/packages/punktf) on Windows:
+
+```sh
 choco install punktf --pre
 ```
 
-## Commands
+## Usage
 
-```shell
-# deploy (dry-run)
-punktf deploy windows --dry-run
+### Commands
+
+To deploy a profile, use the `deploy` subcommand:
+
+```sh
+# deploy 'windows' profile
+punktf deploy windows
 
 # deploy (custom source folder)
-punktf --source /home/demo deploy windows
-
-# deploy (custom home folder)
-PUNKTF_SOURCE=/home/demo punktf deploy windows
+punktf --source /home/demo/mydotfiles deploy windows
 ```
 
-## PunktF Source
+Adding the `-h`/`--help` flag to a given subcommand, will print usage instructions.
 
-PunktF searches for the source path in the following order:
+### Source Folder
 
-1) CLI argument given with `-s/--source`
-2) Environment variable `PUNKTF_SOURCE`
-3) Current working directory of the shell
+The punktf source folder, is the folder containing the dotfiles and punktf profiles. We recommend setting the `PUNKTF_SOURCE` environment variable, so that the dotfiles can be compiled using `punktf deploy <profile>`.
 
-```
+punktf searches for the source folder in the following order:
+
+1. CLI argument given with `-s`/`--source`
+2. Environment variable `PUNKTF_SOURCE`
+3. Current working directory of the shell
+
+The source folder should contain two sub-folders:
+
+* `profiles\`: Contains the punktf profile definitions (`.yaml` or `.json`)
+* `dotfiles\`: Contains folders and the actual dotfiles
+
+Example punktf source folder structure:
+
+```ls
 + profiles\
-	+ windows.pfp
+	+ windows.yaml
+	+ base.yaml
+	+ arch.json
 + dotfiles\
+	+ .gitconfig
 	+ init.vim.win
+	+ linux\
+		+ .bashrc
 ```
 
-## PunktF Target
+### Target
 
 Determines where `punktf` will deploy files too.
 It can be set with:
 
-1) Variable `target` in profile file
-2) Environment variable `PUNKTF_TARGET`
+1. Variable `target` in the punktf profile file
+2. Environment variable `PUNKTF_TARGET`
 
-## PunktF profile (either json or yaml)
+### Profiles
 
-```json5
-{
-	// OPT: Other profile which will be used as base for this one
-	// Default: None
-	"extends": "base_profile_name",
+Profiles define which dotfiles should be used. They can be a `.json` or `.yaml` file.
 
-	// OPT: Variables for all `dotfiles`
-	// Default: None
-	"variables: [
-		{
-			"key": "RUSTC_PATH",
-			"value": "/usr/bin/rustc",
-		}
-		//, ...
-	],
+Example punktf profile:
 
-	// OPT: Target path of config dir; used when no specific deploy_location was given
-	// Default: `PUNKTF_TARGET`
-	"target": "/home/demo/.config",
+```yaml
+variables:
+  OS: "windows"
 
-	// OPT: Hooks which are executed once before the deployment.
-	// Default: None
-	"pre_hooks": ["echo \"Foo\""],
-
-	// OPT: Hooks which are executed once after the deployment.
-	// Default: None
-	"post_hooks": ["echo \"Bar\""],
-
-	// `dotfiles` to be deployed
-	"dotfiles": [
-		{
-			// Relative path in `dotfiles/`
-			"path": "init.vim.win",
-
-			// OPT: Alternative deploy target (PATH: used instead of `root` + `file`, ALIAS: `root` + (alias instead of `file`))
-			// Default: None
-			"target": {
-				"kind": "alias",
-				"value": "init.vim",
-			},
-
-			// OPT: Custom variables for the specific file (same as above)
-			// Default: None
-			"variables": [
-				...
-			],
-
-			// OPT: Merge operation/kind (like: Ask, Keep, Overwrite)
-			// Default: Overwrite
-			"merge": "Overwrite",
-
-			// OPT: Wether this file is a template or not (skips template actions (replace, ..) if not)
-			// Default: true
-			"template": false,
-
-			// OPT: Higher priority `dotfile` is allowed to overwrite lower priority one
-			// Default: None
-			"priority": 2,
-		}
-		//, ...
-	]
-}
+items:
+  - path: "base"
+  - path: "windows"
 ```
 
-## Template Format
+All properties are explained [in the wiki](https://github.com/Shemnei/punktf/wiki/Profiles).
+
+## Templates
 
 ### Comments
 
@@ -175,7 +131,7 @@ Example:
 print("{{OS}}")
 ```
 
-### Escaped
+### Escaping
 
 If `{{` or `}}` need to used outside of a template block, put them inside an
 escaped block. Everything within it will get copied over without modification.
@@ -195,7 +151,6 @@ Prefix to determine where variables are looked for (can be combined: e.g. {{#$RU
 - `#`: Only profile.variables
 - `&`: Only profile.dotfile.variables
 
-
 Example:
 
 ```handlebars
@@ -208,7 +163,6 @@ Supported are only if expressions with the following structure:
 
 - Check if value of `VAR` is (not) equal to `LITERAL`: `{{VAR}} (==|!=) "LITERAL"`
 - Check if a value for `VAR` exists: `{{VAR}}`
-
 
 Example:
 
