@@ -81,15 +81,19 @@ The source folder should contain two sub-folders:
 Example punktf source folder structure:
 
 ```ls
-+ profiles\
++ profiles
 	+ windows.yaml
 	+ base.yaml
 	+ arch.json
-+ dotfiles\
++ dotfiles
 	+ .gitconfig
 	+ init.vim.win
-	+ linux\
+	+ base
+		+ demo.txt
+	+ linux
 		+ .bashrc
+	+ windows
+		+ alacritty.yml
 ```
 
 ### Target
@@ -110,9 +114,13 @@ Example punktf profile:
 variables:
   OS: "windows"
 
-items:
+target: "C:\\Users\\Demo"
+
+dotfiles:
   - path: "base"
-  - path: "windows"
+  - path: "windows/alacritty.yml"
+    overwrite_target: "C:\\Users\\Demo\\AppData\\Local\\alacritty.yml"
+    merge: Ask
 ```
 
 All properties are explained [in the wiki](https://github.com/Shemnei/punktf/wiki/Profiles).
