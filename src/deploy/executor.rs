@@ -145,10 +145,7 @@ where
 		//	- IF FILE: write dotfile
 		//	- IF DIR: for each dotfile in dir START AT TOP
 
-		let target_path = &profile
-			.target
-			.clone()
-			.unwrap_or_else(crate::get_target_path);
+		let target_path = &profile.target.clone().expect("No target path set");
 
 		let profiles_source_path = source_path
 			.join("profiles")

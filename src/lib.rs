@@ -142,6 +142,14 @@ impl Profile {
 			.collect::<Vec<_>>();
 		self.dotfiles.extend(dotfiles);
 	}
+
+	pub fn target(&self) -> Option<&Path> {
+		self.target.as_deref()
+	}
+
+	pub fn set_target(&mut self, target: Option<PathBuf>) {
+		self.target = target;
+	}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -213,15 +221,6 @@ impl Priority {
 	pub const fn new(priority: u32) -> Self {
 		Self(priority)
 	}
-}
-
-fn get_target_path() -> PathBuf {
-	std::env::var_os("PUNKTF_TARGET")
-		.expect(
-			"No environment variable `PUNKTF_TARGET` set. Either set this variable or use the \
-			 profile variable `target`.",
-		)
-		.into()
 }
 
 fn find_profile_path(profile_path: &Path, name: &str) -> Result<PathBuf> {
