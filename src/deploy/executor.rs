@@ -20,7 +20,7 @@ enum ExecutorDotfile<'a> {
 		parent: &'a Dotfile,
 		parent_source_path: &'a Path,
 		parent_deploy_path: &'a Path,
-		// relative path in source
+		// relative path in source (equivalent to `Dotfile::path`)
 		path: PathBuf,
 		source_path: PathBuf,
 		deploy_path: PathBuf,
@@ -289,7 +289,7 @@ where
 	fn deploy_dir(
 		&self,
 		builder: &mut DeploymentBuilder,
-		source_path: &Path,
+		dotfiles_source_path: &Path,
 		target_path: &Path,
 		profile: &Profile,
 		directory: Dotfile,
@@ -331,8 +331,12 @@ where
 			let dent = match dent {
 				Ok(dent) => dent,
 				Err(err) => {
-					// TODO: handle better
-					log::error!("Failed to get directory entry: {}", err.to_string());
+					log::error!(
+						"[{}] Failed to get directory entry: {}",
+						directory.path.display(),
+						err.to_string()
+					);
+
 					continue;
 				}
 			};
@@ -342,7 +346,6 @@ where
 			let child_path = match child_source_path.strip_prefix(&directory_source_path) {
 				Ok(path) => path,
 				Err(_) => {
-					// TODO: handle better
 					log::error!(
 						"[{}] Failed resolve child path (`{}`)",
 						directory.path.display(),
@@ -355,7 +358,7 @@ where
 
 			let child_deploy_path = directory_deploy_path.join(child_path);
 
-			// For now dont follow symlinks (`metadata()` would get the metadata of the target of a
+			// For now don't follow symlinks (`metadata()` would get the metadata of the target of a
 			// link).
 			let metadata = match dent.metadata() {
 				Ok(metadata) => metadata,
@@ -386,8 +389,12 @@ where
 					deploy_path: child_deploy_path,
 				};
 
-				let _ =
-					self.deploy_executor_dotfile(builder, source_path, profile, exec_dotfile)?;
+				let _ = self.deploy_executor_dotfile(
+					builder,
+					dotfiles_source_path,
+					profile,
+					exec_dotfile,
+				)?;
 			} else if metadata.is_dir() {
 				// TODO: decide if empty directory should be kept
 			} else {
@@ -414,11 +421,11 @@ where
 	fn deploy_executor_dotfile<'a>(
 		&self,
 		builder: &mut DeploymentBuilder,
-		source_path: &Path,
+		dotfiles_source_path: &Path,
 		profile: &Profile,
 		exec_dotfile: ExecutorDotfile<'a>,
 	) -> Result<()> {
-		if !exec_dotfile.source_path().starts_with(source_path) {
+		if !exec_dotfile.source_path().starts_with(dotfiles_source_path) {
 			log::warn!(
 				"[{}] Dotfile is not contained within the source `dotfiles` directory. This item \
 				 will probably also be deployed \"above\" (in the directory tree) the target \
