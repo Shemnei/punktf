@@ -164,7 +164,7 @@ where
 
 		for hook in &profile.post_hooks {
 			log::info!("Executing post-hook: `{:?}`", hook);
-			hook.execute(&source.profiles())
+			hook.execute(source.profiles())
 				.wrap_err("Failed to execute post-hook")?;
 		}
 
