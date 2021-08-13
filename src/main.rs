@@ -9,7 +9,7 @@ use color_eyre::Result;
 use punktf::deploy::deployment::{Deployment, DeploymentStatus};
 use punktf::deploy::dotfile::DotfileStatus;
 use punktf::deploy::executor::{Executor, ExecutorOptions};
-use punktf::{resolve_profile, Profile};
+use punktf::{resolve_profile, Profile, PunktfSource};
 
 const PUNKTF_SOURCE_ENVVAR: &str = "PUNKTF_SOURCE";
 const PUNKTF_TARGET_ENVVAR: &str = "PUNKTF_TARGET";
@@ -46,6 +46,12 @@ impl Default for SourcePath {
 impl fmt::Display for SourcePath {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		fmt::Display::fmt(&self.0.display(), f)
+	}
+}
+
+impl From<SourcePath> for PathBuf {
+	fn from(value: SourcePath) -> Self {
+		value.0
 	}
 }
 
@@ -146,9 +152,9 @@ fn main() -> Result<()> {
 fn handle_commands(opts: Opts) -> Result<()> {
 	match opts.command {
 		Command::Deploy(cmd) => {
-			let profile_path = opts.shared.source.join("profiles");
+			let ptf_src = PunktfSource::from_root(opts.shared.source.into())?;
 
-			let mut profile: Profile = resolve_profile(&profile_path, &cmd.profile)?;
+			let mut profile: Profile = resolve_profile(&ptf_src.profiles(), &cmd.profile)?;
 
 			log::debug!("Profile: {:#?}", profile);
 			log::debug!(
@@ -181,7 +187,7 @@ fn handle_commands(opts: Opts) -> Result<()> {
 
 			let deployer = Executor::new(options, ask_user_merge);
 
-			let deployment = deployer.deploy(opts.shared.source.0, profile);
+			let deployment = deployer.deploy(ptf_src, profile);
 
 			match deployment {
 				Ok(deployment) => {

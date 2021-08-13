@@ -8,7 +8,7 @@ use crate::deploy::dotfile::DotfileStatus;
 use crate::template::source::Source;
 use crate::template::Template;
 use crate::variables::UserVars;
-use crate::{Dotfile, MergeMode, Priority, Profile};
+use crate::{Dotfile, MergeMode, Priority, Profile, PunktfSource};
 
 enum ExecutorDotfile<'a> {
 	File {
@@ -124,7 +124,7 @@ where
 		}
 	}
 
-	pub fn deploy(&self, source_path: PathBuf, mut profile: Profile) -> Result<Deployment> {
+	pub fn deploy(&self, source: PunktfSource, mut profile: Profile) -> Result<Deployment> {
 		// TODO: decide when deployment failed
 
 		// General flow:
@@ -147,21 +147,11 @@ where
 
 		let target_path = &profile.target.clone().expect("No target path set");
 
-		let profiles_source_path = source_path
-			.join("profiles")
-			.canonicalize()
-			.with_context(|| "Failed to canonicalize profiles source path")?;
-
-		let dotfiles_source_path = source_path
-			.join("dotfiles")
-			.canonicalize()
-			.with_context(|| "Failed to canonicalize dotfiles source path")?;
-
 		let mut builder = Deployment::build();
 
 		for hook in &profile.pre_hooks {
 			log::info!("Executing pre hook: `{:?}`", hook);
-			hook.execute(&profiles_source_path)
+			hook.execute(source.profiles())
 				.wrap_err("Failed to execute pre-hook")?;
 		}
 
@@ -169,18 +159,12 @@ where
 
 		for dotfile in dotfiles.into_iter() {
 			log::debug!("Deploying dotfile `{}`", dotfile.path.display());
-			let _ = self.deploy_dotfile(
-				&mut builder,
-				&dotfiles_source_path,
-				target_path,
-				&profile,
-				dotfile,
-			)?;
+			let _ = self.deploy_dotfile(&mut builder, &source, target_path, &profile, dotfile)?;
 		}
 
 		for hook in &profile.post_hooks {
 			log::info!("Executing post-hook: `{:?}`", hook);
-			hook.execute(&profiles_source_path)
+			hook.execute(&source.profiles())
 				.wrap_err("Failed to execute post-hook")?;
 		}
 
@@ -190,14 +174,14 @@ where
 	fn deploy_dotfile(
 		&self,
 		builder: &mut DeploymentBuilder,
-		dotfiles_source_path: &Path,
+		source: &PunktfSource,
 		target_path: &Path,
 		profile: &Profile,
 		dotfile: Dotfile,
 	) -> Result<()> {
 		let dotfile_deploy_path = resolve_deployment_path(target_path, &dotfile);
 
-		let dotfile_source_path = match resolve_source_path(dotfiles_source_path, &dotfile) {
+		let dotfile_source_path = match resolve_source_path(source.dotfiles(), &dotfile) {
 			Ok(dotfile_source_path) => dotfile_source_path,
 			Err(err) => {
 				log::error!(
@@ -251,11 +235,11 @@ where
 				deploy_path: dotfile_deploy_path,
 			};
 
-			self.deploy_executor_dotfile(builder, dotfiles_source_path, profile, exec_dotfile)
+			self.deploy_executor_dotfile(builder, source, profile, exec_dotfile)
 		} else if metadata.is_dir() {
 			self.deploy_dir(
 				builder,
-				dotfiles_source_path,
+				source,
 				target_path,
 				profile,
 				dotfile,
@@ -286,7 +270,7 @@ where
 	fn deploy_dir(
 		&self,
 		builder: &mut DeploymentBuilder,
-		dotfiles_source_path: &Path,
+		source: &PunktfSource,
 		target_path: &Path,
 		profile: &Profile,
 		directory: Dotfile,
@@ -386,12 +370,7 @@ where
 					deploy_path: child_deploy_path,
 				};
 
-				let _ = self.deploy_executor_dotfile(
-					builder,
-					dotfiles_source_path,
-					profile,
-					exec_dotfile,
-				)?;
+				let _ = self.deploy_executor_dotfile(builder, source, profile, exec_dotfile)?;
 			} else if metadata.is_dir() {
 				// TODO: decide if empty directory should be kept
 			} else {
@@ -418,11 +397,11 @@ where
 	fn deploy_executor_dotfile<'a>(
 		&self,
 		builder: &mut DeploymentBuilder,
-		dotfiles_source_path: &Path,
+		source: &PunktfSource,
 		profile: &Profile,
 		exec_dotfile: ExecutorDotfile<'a>,
 	) -> Result<()> {
-		if !exec_dotfile.source_path().starts_with(dotfiles_source_path) {
+		if !exec_dotfile.source_path().starts_with(source.dotfiles()) {
 			log::warn!(
 				"[{}] Dotfile is not contained within the source `dotfiles` directory. This item \
 				 will probably also be deployed \"above\" (in the directory tree) the target \

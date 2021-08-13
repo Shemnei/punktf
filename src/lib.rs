@@ -1,6 +1,7 @@
 #![feature(exit_status_error)]
 #![feature(option_get_or_insert_default)]
 #![feature(map_first_last)]
+#![feature(path_try_exists)]
 #![allow(dead_code)]
 #![deny(
     deprecated_in_future,
@@ -42,6 +43,46 @@ use serde::{Deserialize, Serialize};
 use variables::UserVars;
 
 use crate::hook::Hook;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PunktfSource {
+	root: PathBuf,
+	profiles: PathBuf,
+	dotfiles: PathBuf,
+}
+
+impl PunktfSource {
+	pub fn from_root(root: PathBuf) -> std::io::Result<Self> {
+		let _ = root.try_exists()?;
+		let root = root.canonicalize()?;
+
+		let profiles = root.join("profiles");
+		let _ = profiles.try_exists()?;
+		let profiles = profiles.canonicalize()?;
+
+		let dotfiles = root.join("dotfiles");
+		let _ = dotfiles.try_exists()?;
+		let dotfiles = dotfiles.canonicalize()?;
+
+		Ok(Self {
+			root,
+			profiles,
+			dotfiles,
+		})
+	}
+
+	pub fn root(&self) -> &Path {
+		&self.root
+	}
+
+	pub fn profiles(&self) -> &Path {
+		&self.profiles
+	}
+
+	pub fn dotfiles(&self) -> &Path {
+		&self.dotfiles
+	}
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Profile {
