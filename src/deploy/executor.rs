@@ -289,22 +289,24 @@ where
 				.unwrap_or_else(|| target_path.to_path_buf())
 		};
 
-		match std::fs::create_dir_all(&directory_deploy_path) {
-			Ok(_) => {}
-			Err(err) => {
-				log::error!(
-					"[{}] Failed to create directories (`{}`)",
-					directory.path.display(),
-					err
-				);
+		if !self.options.dry_run {
+			match std::fs::create_dir_all(&directory_deploy_path) {
+				Ok(_) => {}
+				Err(err) => {
+					log::error!(
+						"[{}] Failed to create directories (`{}`)",
+						directory.path.display(),
+						err
+					);
 
-				builder.add_dotfile(
-					directory_deploy_path,
-					directory,
-					DotfileStatus::failed(format!("Failed to create directory - {}", err)),
-				);
+					builder.add_dotfile(
+						directory_deploy_path,
+						directory,
+						DotfileStatus::failed(format!("Failed to create directory - {}", err)),
+					);
 
-				return Ok(());
+					return Ok(());
+				}
 			}
 		}
 
@@ -506,24 +508,26 @@ where
 		}
 
 		if let Some(parent) = exec_dotfile.deploy_path().parent() {
-			match std::fs::create_dir_all(parent) {
-				Ok(_) => {}
-				Err(err) => {
-					log::error!(
-						"[{}] Failed to create directories (`{}`)",
-						exec_dotfile.path().display(),
-						err
-					);
-
-					exec_dotfile.add_to_builder(
-						builder,
-						DotfileStatus::failed(format!(
-							"Failed to create parent directories - {}",
+			if !self.options.dry_run {
+				match std::fs::create_dir_all(parent) {
+					Ok(_) => {}
+					Err(err) => {
+						log::error!(
+							"[{}] Failed to create directories (`{}`)",
+							exec_dotfile.path().display(),
 							err
-						)),
-					);
+						);
 
-					return Ok(());
+						exec_dotfile.add_to_builder(
+							builder,
+							DotfileStatus::failed(format!(
+								"Failed to create parent directories - {}",
+								err
+							)),
+						);
+
+						return Ok(());
+					}
 				}
 			}
 		}

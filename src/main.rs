@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use clap::{crate_authors, crate_description, crate_version, Clap};
+use color_eyre::eyre::eyre;
 use color_eyre::owo_colors::OwoColorize;
 use color_eyre::Result;
 use punktf::deploy::deployment::{Deployment, DeploymentStatus};
@@ -192,16 +193,25 @@ fn handle_commands(opts: Opts) -> Result<()> {
 			match deployment {
 				Ok(deployment) => {
 					log::debug!("{:#?}", deployment);
-					log_deployment(deployment);
+					log_deployment(&deployment);
+
+					if deployment
+						.dotfiles()
+						.iter()
+						.any(|(_, dotfile)| dotfile.status().is_failed())
+					{
+						Err(eyre!("Some dotfiles failed to deploy"))
+					} else {
+						Ok(())
+					}
 				}
 				Err(err) => {
 					log::error!("Failed to deploy: {:?}", err);
+					Err(err)
 				}
-			};
+			}
 		}
 	}
-
-	Ok(())
 }
 
 fn ask_user_merge(source_path: &Path, deploy_path: &Path) -> Result<bool> {
@@ -238,7 +248,7 @@ fn ask_user_merge(source_path: &Path, deploy_path: &Path) -> Result<bool> {
 	}
 }
 
-fn log_deployment(deployment: Deployment) {
+fn log_deployment(deployment: &Deployment) {
 	let mut out = String::new();
 
 	let mut files_success = 0;
