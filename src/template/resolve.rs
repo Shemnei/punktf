@@ -212,13 +212,13 @@ impl<'a> Resolver<'a> {
 			match env {
 				VarEnv::Environment => {
 					match (name, std::env::var(name)) {
-						("PUNKTF_ARCH", Err(std::env::VarError::NotPresent)) => {
+						("PUNKTF_TARGET_ARCH", Err(std::env::VarError::NotPresent)) => {
 							return Ok(arch!().into())
 						}
-						("PUNKTF_OS", Err(std::env::VarError::NotPresent)) => {
+						("PUNKTF_TARGET_OS", Err(std::env::VarError::NotPresent)) => {
 							return Ok(os!().into())
 						}
-						("PUNKTF_FAMILY", Err(std::env::VarError::NotPresent)) => {
+						("PUNKTF_TARGET_FAMILY", Err(std::env::VarError::NotPresent)) => {
 							return Ok(family!().into())
 						}
 						(_, Ok(val)) => return Ok(val),
