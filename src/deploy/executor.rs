@@ -591,6 +591,8 @@ where
 				}
 			};
 
+			log::trace!("[{}] Resolved:\n{}", exec_dotfile.path().display(), content);
+
 			if !self.options.dry_run {
 				if let Err(err) = std::fs::write(&exec_dotfile.deploy_path(), content.as_bytes()) {
 					log::info!(
