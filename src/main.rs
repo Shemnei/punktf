@@ -154,7 +154,7 @@ fn handle_commands(opts: Opts) -> Result<()> {
 		Command::Deploy(cmd) => {
 			let ptf_src = PunktfSource::from_root(opts.shared.source.into())?;
 
-			let mut profile: Profile = resolve_profile(&ptf_src.profiles(), &cmd.profile)?;
+			let mut profile: Profile = resolve_profile(ptf_src.profiles(), &cmd.profile)?;
 
 			log::debug!("Profile: {:#?}", profile);
 			log::debug!(
