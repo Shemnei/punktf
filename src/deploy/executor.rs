@@ -154,7 +154,7 @@ where
 		let mut builder = Deployment::build();
 
 		for hook in profile.pre_hooks() {
-			log::info!("Executing pre hook: `{:?}`", hook);
+			log::info!("Executing pre-hook: `{:?}`", hook);
 			hook.execute(source.profiles())
 				.wrap_err("Failed to execute pre-hook")?;
 		}
@@ -195,7 +195,7 @@ where
 				builder.add_dotfile(
 					dotfile_deploy_path,
 					dotfile,
-					DotfileStatus::failed(format!("Failed to resolve source path - {}", err)),
+					DotfileStatus::failed(format!("Failed to resolve source path: {}", err)),
 				);
 
 				return Ok(());
@@ -215,7 +215,7 @@ where
 			Ok(metadata) => metadata,
 			Err(err) => {
 				log::error!(
-					"[{}] Failed to get metadata for dotfile (`{}`)",
+					"{}: Failed to get metadata for dotfile ({})",
 					dotfile.path.display(),
 					err
 				);
@@ -223,7 +223,7 @@ where
 				builder.add_dotfile(
 					dotfile_deploy_path,
 					dotfile,
-					DotfileStatus::failed(format!("Failed to read metadata - {}", err)),
+					DotfileStatus::failed(format!("Failed to read metadata: {}", err)),
 				);
 
 				return Ok(());
@@ -250,7 +250,7 @@ where
 			)
 		} else {
 			log::error!(
-				"[{}] Unsupported dotfile type (`{:?}`)",
+				"{}: Unsupported dotfile type ({:?})",
 				dotfile.path.display(),
 				metadata.file_type()
 			);
@@ -259,7 +259,7 @@ where
 				dotfile_deploy_path,
 				dotfile,
 				DotfileStatus::failed(format!(
-					"Unsupported dotfile type `{:?}`",
+					"Unsupported dotfile type: {:?}",
 					metadata.file_type()
 				)),
 			);
@@ -296,7 +296,7 @@ where
 				Ok(_) => {}
 				Err(err) => {
 					log::error!(
-						"[{}] Failed to create directories (`{}`)",
+						"{}: Failed to create directories ({})",
 						directory.path.display(),
 						err
 					);
@@ -304,7 +304,7 @@ where
 					builder.add_dotfile(
 						directory_deploy_path,
 						directory,
-						DotfileStatus::failed(format!("Failed to create directory - {}", err)),
+						DotfileStatus::failed(format!("Failed to create directory: {}", err)),
 					);
 
 					return Ok(());
@@ -317,7 +317,7 @@ where
 				Ok(dent) => dent,
 				Err(err) => {
 					log::error!(
-						"[{}] Failed to get directory entry: {}",
+						"{}: Failed to get directory entry ({})",
 						directory.path.display(),
 						err.to_string()
 					);
@@ -332,7 +332,7 @@ where
 				Ok(path) => path,
 				Err(_) => {
 					log::error!(
-						"[{}] Failed resolve child path (`{}`)",
+						"{}: Failed resolve child path ({})",
 						directory.path.display(),
 						dent.path().display(),
 					);
@@ -349,7 +349,7 @@ where
 				Ok(metadata) => metadata,
 				Err(err) => {
 					log::error!(
-						"[{}] Failed to get metadata for child (`{}`)",
+						"{}: Failed to get metadata for child ({})",
 						child_path.display(),
 						err
 					);
@@ -357,7 +357,7 @@ where
 					builder.add_child(
 						child_deploy_path,
 						directory_deploy_path.clone(),
-						DotfileStatus::failed(format!("Failed to read metadata - {}", err)),
+						DotfileStatus::failed(format!("Failed to read metadata: {}", err)),
 					);
 
 					continue;
@@ -379,7 +379,7 @@ where
 				// TODO: decide if empty directory should be kept
 			} else {
 				log::error!(
-					"[{}] Unsupported dotfile type (`{:?}`)",
+					"{}: Unsupported dotfile type ({:?})",
 					child_path.display(),
 					metadata.file_type()
 				);
@@ -388,7 +388,7 @@ where
 					child_deploy_path,
 					directory_deploy_path.clone(),
 					DotfileStatus::failed(format!(
-						"Unsupported dotfile type `{:?}`",
+						"Unsupported dotfile type {:?}",
 						metadata.file_type()
 					)),
 				);
@@ -407,7 +407,7 @@ where
 	) -> Result<()> {
 		if !exec_dotfile.source_path().starts_with(source.dotfiles()) {
 			log::warn!(
-				"[{}] Dotfile is not contained within the source `dotfiles` directory. This item \
+				"{}: Dotfile is not contained within the source `dotfiles` directory. This item \
 				 will probably also be deployed \"above\" (in the directory tree) the target \
 				 directory.",
 				exec_dotfile.path().display()
@@ -419,7 +419,7 @@ where
 			// Previously deployed dotfile has higher priority; Skip current dotfile.
 			if other_priority > exec_dotfile.priority() {
 				log::info!(
-					"[{}] Dotfile with higher priority is already deployed",
+					"{}: Dotfile with higher priority is already deployed",
 					exec_dotfile.path().display()
 				);
 
@@ -436,7 +436,7 @@ where
 			// No previously deployed dotfile at `deploy_path`. Check for merge.
 
 			log::debug!(
-				"[{}] Dotfile already exists (`{}`)",
+				"{}: Dotfile already exists ({})",
 				exec_dotfile.path().display(),
 				exec_dotfile.deploy_path().display()
 			);
@@ -444,20 +444,20 @@ where
 			match exec_dotfile.merge_mode().unwrap_or_default() {
 				MergeMode::Overwrite => {
 					log::info!(
-						"[{}] Overwritting existing dotfile",
+						"{}: Overwritting existing dotfile",
 						exec_dotfile.path().display()
 					)
 				}
 				MergeMode::Keep => {
 					log::info!(
-						"[{}] Skipping existing dotfile",
+						"{}: Skipping existing dotfile",
 						exec_dotfile.path().display()
 					);
 
 					exec_dotfile.add_to_builder(
 						builder,
 						DotfileStatus::skipped(format!(
-							"Dotfile already exists and merge mode is `{:?}`",
+							"Dotfile already exists and merge mode is {:?}",
 							MergeMode::Keep,
 						)),
 					);
@@ -465,7 +465,7 @@ where
 					return Ok(());
 				}
 				MergeMode::Ask => {
-					log::info!("[{}] Asking for action", exec_dotfile.path().display());
+					log::info!("{}: Asking for action", exec_dotfile.path().display());
 
 					let should_deploy = match (self.merge_ask_fn)(
 						exec_dotfile.source_path(),
@@ -476,7 +476,7 @@ where
 						Ok(should_deploy) => should_deploy,
 						Err(err) => {
 							log::error!(
-								"[{}] Failed to execute ask function (`{}`)",
+								"{}: Failed to execute ask function ({})",
 								exec_dotfile.path().display(),
 								err
 							);
@@ -484,7 +484,7 @@ where
 							exec_dotfile.add_to_builder(
 								builder,
 								DotfileStatus::failed(format!(
-									"Failed to execute merge ask function - {}",
+									"Failed to execute merge ask function: {}",
 									err.to_string()
 								)),
 							);
@@ -494,7 +494,7 @@ where
 					};
 
 					if !should_deploy {
-						log::info!("[{}] Merge was denied", exec_dotfile.path().display());
+						log::info!("{}: Merge was denied", exec_dotfile.path().display());
 
 						exec_dotfile.add_to_builder(
 							builder,
@@ -515,7 +515,7 @@ where
 					Ok(_) => {}
 					Err(err) => {
 						log::error!(
-							"[{}] Failed to create directories (`{}`)",
+							"{}: Failed to create directories ({})",
 							exec_dotfile.path().display(),
 							err
 						);
@@ -523,7 +523,7 @@ where
 						exec_dotfile.add_to_builder(
 							builder,
 							DotfileStatus::failed(format!(
-								"Failed to create parent directories - {}",
+								"Failed to create parent directories: {}",
 								err
 							)),
 						);
@@ -539,13 +539,13 @@ where
 				Ok(content) => content,
 				Err(err) => {
 					log::info!(
-						"[{}] Failed to read source content",
+						"{}: Failed to read source content",
 						exec_dotfile.path().display()
 					);
 
 					exec_dotfile.add_to_builder(
 						builder,
-						DotfileStatus::failed(format!("Failed to read content - {}", err)),
+						DotfileStatus::failed(format!("Failed to read content: {}", err)),
 					);
 
 					return Ok(());
@@ -560,13 +560,13 @@ where
 				Ok(template) => template,
 				Err(err) => {
 					log::error!(
-						"[{}] Failed to parse template",
+						"{}: Failed to parse template",
 						exec_dotfile.path().display()
 					);
 
 					exec_dotfile.add_to_builder(
 						builder,
-						DotfileStatus::failed(format!("Failed to parse template - {}", err)),
+						DotfileStatus::failed(format!("Failed to parse template: {}", err)),
 					);
 
 					return Ok(());
@@ -580,31 +580,31 @@ where
 				Ok(template) => template,
 				Err(err) => {
 					log::error!(
-						"[{}] Failed to fill template",
+						"{}: Failed to resolve template",
 						exec_dotfile.path().display()
 					);
 
 					exec_dotfile.add_to_builder(
 						builder,
-						DotfileStatus::failed(format!("Failed to fill template - {}", err)),
+						DotfileStatus::failed(format!("Failed to resolve template: {}", err)),
 					);
 
 					return Ok(());
 				}
 			};
 
-			log::trace!("[{}] Resolved:\n{}", exec_dotfile.path().display(), content);
+			log::trace!("{}: Resolved:\n{}", exec_dotfile.path().display(), content);
 
 			if !self.options.dry_run {
 				if let Err(err) = std::fs::write(&exec_dotfile.deploy_path(), content.as_bytes()) {
 					log::info!(
-						"[{}] Failed to write content",
+						"{}: Failed to write content",
 						exec_dotfile.path().display()
 					);
 
 					exec_dotfile.add_to_builder(
 						builder,
-						DotfileStatus::failed(format!("Failed to write content - {}", err)),
+						DotfileStatus::failed(format!("Failed to write content: {}", err)),
 					);
 
 					return Ok(());
@@ -617,11 +617,11 @@ where
 				if let Err(err) =
 					std::fs::copy(&exec_dotfile.source_path(), &exec_dotfile.deploy_path())
 				{
-					log::info!("[{}] Failed to copy dotfile", exec_dotfile.path().display());
+					log::info!("{}: Failed to copy dotfile", exec_dotfile.path().display());
 
 					exec_dotfile.add_to_builder(
 						builder,
-						DotfileStatus::failed(format!("Failed to copy - {}", err)),
+						DotfileStatus::failed(format!("Failed to copy: {}", err)),
 					);
 
 					return Ok(());
@@ -630,7 +630,7 @@ where
 		}
 
 		log::info!(
-			"[{}] Dotfile successfully deployed",
+			"{}: Dotfile successfully deployed",
 			exec_dotfile.path().display()
 		);
 

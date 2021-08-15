@@ -142,7 +142,7 @@ where
 				self.output.push_str(&self.resolve_var(var)?);
 			}
 			BlockKind::Print(inner) => {
-				log::info!("[Print] {}", &self.template.source[inner]);
+				log::info!("Print: {}", &self.template.source[inner]);
 			}
 			BlockKind::If(If {
 				head,

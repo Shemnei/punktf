@@ -151,7 +151,7 @@ fn main() -> Result<()> {
 	)
 	.init();
 
-	log::debug!("Parsed Opts: {:#?}", opts);
+	log::debug!("Parsed Opts:\n{:#?}", opts);
 
 	handle_commands(opts)
 }
@@ -189,7 +189,7 @@ fn handle_commands(opts: Opts) -> Result<()> {
 
 			let profile = builder.finish();
 
-			log::debug!("Profile: {:#?}", profile);
+			log::debug!("Profile:\n{:#?}", profile);
 
 			let options = ExecutorOptions {
 				dry_run: cmd.dry_run,
@@ -201,7 +201,7 @@ fn handle_commands(opts: Opts) -> Result<()> {
 
 			match deployment {
 				Ok(deployment) => {
-					log::debug!("{:#?}", deployment);
+					log::debug!("Deployment:\n{:#?}", deployment);
 					log_deployment(&deployment);
 
 					if deployment

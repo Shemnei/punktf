@@ -589,7 +589,7 @@ impl<'a> Iterator for BlockIter<'a> {
 				}
 				let span = span.with_high(self.index);
 
-				log::debug!("SPAN: {}/{}", span, err);
+				log::debug!("Span: {}/{}", span, err);
 
 				return Some(Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
 					.message("failed to parse block")
