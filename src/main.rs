@@ -10,7 +10,8 @@ use color_eyre::Result;
 use punktf::deploy::deployment::{Deployment, DeploymentStatus};
 use punktf::deploy::dotfile::DotfileStatus;
 use punktf::deploy::executor::{Executor, ExecutorOptions};
-use punktf::{resolve_profile, Profile, PunktfSource};
+use punktf::profile::{resolve_profile, LayeredProfile, SimpleProfile};
+use punktf::PunktfSource;
 
 const PUNKTF_SOURCE_ENVVAR: &str = "PUNKTF_SOURCE";
 const PUNKTF_TARGET_ENVVAR: &str = "PUNKTF_TARGET";
@@ -85,7 +86,12 @@ struct Opts {
 #[derive(Debug, Clap)]
 struct Shared {
 	/// The source directory where the profiles and dotfiles are located.
-	#[clap(short, long, env = PUNKTF_SOURCE_ENVVAR, default_value)]
+	#[clap(short, long, env = PUNKTF_SOURCE_ENVVAR)]
+	// The below is necessary for as `clap` will act different when debugging vs
+	// releasing. This will either cause `cargo test` or `cargo install` to fail.
+	// clap = "3.0.0-beta.2"
+	#[cfg_attr(debug_assertions, clap(default_value))]
+	#[cfg_attr(not(debug_assertions), clap(default_value_t))]
 	source: SourcePath,
 
 	/// Runs with specified level of verbosity which affects the log level.
@@ -155,32 +161,35 @@ fn handle_commands(opts: Opts) -> Result<()> {
 		Command::Deploy(cmd) => {
 			let ptf_src = PunktfSource::from_root(opts.shared.source.into())?;
 
-			let mut profile: Profile = resolve_profile(ptf_src.profiles(), &cmd.profile)?;
+			let mut builder = LayeredProfile::build();
 
-			log::debug!("Profile: {:#?}", profile);
-			log::debug!(
-				"{}",
-				serde_json::to_string_pretty(&profile)
-					.unwrap_or_else(|_| String::from("Failed to format profile"))
+			// Add target cli argument to top
+			let target_cli_profile = SimpleProfile {
+				target: cmd.target,
+				..Default::default()
+			};
+			builder.add(String::from("target_cli_argument"), target_cli_profile);
+
+			resolve_profile(
+				&mut builder,
+				&ptf_src,
+				&cmd.profile,
+				&mut Default::default(),
+			)?;
+
+			// Add target environment variable to bottom
+			let target_env_profile = SimpleProfile {
+				target: Some(get_target_path()),
+				..Default::default()
+			};
+			builder.add(
+				String::from("target_environment_variable"),
+				target_env_profile,
 			);
 
-			// resolve deployment target
-			let deployment_target = cmd
-				.target
-				.or_else(|| profile.target().map(|path| path.to_path_buf()))
-				.unwrap_or_else(get_target_path);
+			let profile = builder.finish();
 
-			if profile.target() != Some(&deployment_target) {
-				log::debug!(
-					"Updating deployment target: {:?} -> {}",
-					profile.target().map(|path| path.display()),
-					deployment_target.display()
-				);
-
-				profile.set_target(Some(deployment_target));
-
-				log::debug!("Profile (Updated): {:#?}", profile);
-			}
+			log::debug!("Profile: {:#?}", profile);
 
 			let options = ExecutorOptions {
 				dry_run: cmd.dry_run,
@@ -188,7 +197,7 @@ fn handle_commands(opts: Opts) -> Result<()> {
 
 			let deployer = Executor::new(options, ask_user_merge);
 
-			let deployment = deployer.deploy(ptf_src, profile);
+			let deployment = deployer.deploy(ptf_src, &profile);
 
 			match deployment {
 				Ok(deployment) => {

@@ -5,10 +5,11 @@ use color_eyre::Result;
 
 use super::deployment::{Deployment, DeploymentBuilder};
 use crate::deploy::dotfile::DotfileStatus;
+use crate::profile::LayeredProfile;
 use crate::template::source::Source;
 use crate::template::Template;
 use crate::variables::UserVars;
-use crate::{Dotfile, MergeMode, Priority, Profile, PunktfSource};
+use crate::{Dotfile, MergeMode, Priority, PunktfSource};
 
 enum ExecutorDotfile<'a> {
 	File {
@@ -124,7 +125,7 @@ where
 		}
 	}
 
-	pub fn deploy(&self, source: PunktfSource, mut profile: Profile) -> Result<Deployment> {
+	pub fn deploy(&self, source: PunktfSource, profile: &LayeredProfile) -> Result<Deployment> {
 		// TODO: decide when deployment failed
 
 		// General flow:
@@ -145,24 +146,25 @@ where
 		//	- IF FILE: write dotfile
 		//	- IF DIR: for each dotfile in dir START AT TOP
 
-		let target_path = &profile.target.clone().expect("No target path set");
+		let target_path = &profile
+			.target_path()
+			.expect("No target path set")
+			.to_path_buf();
 
 		let mut builder = Deployment::build();
 
-		for hook in &profile.pre_hooks {
+		for hook in profile.pre_hooks() {
 			log::info!("Executing pre hook: `{:?}`", hook);
 			hook.execute(source.profiles())
 				.wrap_err("Failed to execute pre-hook")?;
 		}
 
-		let dotfiles = std::mem::take(&mut profile.dotfiles);
-
-		for dotfile in dotfiles.into_iter() {
+		for dotfile in profile.dotfiles().cloned() {
 			log::debug!("Deploying dotfile `{}`", dotfile.path.display());
-			let _ = self.deploy_dotfile(&mut builder, &source, target_path, &profile, dotfile)?;
+			let _ = self.deploy_dotfile(&mut builder, &source, target_path, profile, dotfile)?;
 		}
 
-		for hook in &profile.post_hooks {
+		for hook in profile.post_hooks() {
 			log::info!("Executing post-hook: `{:?}`", hook);
 			hook.execute(source.profiles())
 				.wrap_err("Failed to execute post-hook")?;
@@ -176,7 +178,7 @@ where
 		builder: &mut DeploymentBuilder,
 		source: &PunktfSource,
 		target_path: &Path,
-		profile: &Profile,
+		profile: &LayeredProfile,
 		dotfile: Dotfile,
 	) -> Result<()> {
 		let dotfile_deploy_path = resolve_deployment_path(target_path, &dotfile);
@@ -272,7 +274,7 @@ where
 		builder: &mut DeploymentBuilder,
 		source: &PunktfSource,
 		target_path: &Path,
-		profile: &Profile,
+		profile: &LayeredProfile,
 		directory: Dotfile,
 		directory_source_path: PathBuf,
 		directory_deploy_path: PathBuf,
@@ -400,7 +402,7 @@ where
 		&self,
 		builder: &mut DeploymentBuilder,
 		source: &PunktfSource,
-		profile: &Profile,
+		profile: &LayeredProfile,
 		exec_dotfile: ExecutorDotfile<'a>,
 	) -> Result<()> {
 		if !exec_dotfile.source_path().starts_with(source.dotfiles()) {
@@ -572,7 +574,7 @@ where
 			};
 
 			let content = match template
-				.resolve(profile.variables.as_ref(), exec_dotfile.variables())
+				.resolve(Some(profile.variables()), exec_dotfile.variables())
 				.with_context(|| format!("File: {}", exec_dotfile.source_path().display()))
 			{
 				Ok(template) => template,

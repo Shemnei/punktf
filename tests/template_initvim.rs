@@ -34,7 +34,7 @@ fn parse_initvim_win() -> Result<()> {
 	// set temporary env variable
 	std::env::set_var("APPDATA", "C:\\Users\\Demo\\Appdata\\Local");
 
-	let output = template.resolve(Some(&vars), None)?;
+	let output = template.resolve::<_, UserVars>(Some(&vars), None)?;
 
 	assert_eq!(
 		output.trim(),
@@ -64,7 +64,7 @@ fn template_initvim_linux() -> Result<()> {
 	// set temporary env variable
 	std::env::set_var("HOME", "/home/Demo");
 
-	let output = template.resolve(Some(&vars), None)?;
+	let output = template.resolve::<_, UserVars>(Some(&vars), None)?;
 
 	assert_eq!(
 		output.trim(),

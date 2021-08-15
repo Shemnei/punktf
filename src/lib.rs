@@ -2,6 +2,7 @@
 #![feature(option_get_or_insert_default)]
 #![feature(map_first_last)]
 #![feature(path_try_exists)]
+#![feature(io_error_more)]
 #![allow(dead_code)]
 #![deny(
     deprecated_in_future,
@@ -31,18 +32,14 @@
 
 pub mod deploy;
 pub mod hook;
+pub mod profile;
 pub mod template;
 pub mod variables;
 
-use std::collections::HashSet;
-use std::fs::File;
 use std::path::{Path, PathBuf};
 
-use color_eyre::eyre::{eyre, Context, Result};
 use serde::{Deserialize, Serialize};
 use variables::UserVars;
-
-use crate::hook::Hook;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PunktfSource {
@@ -82,114 +79,39 @@ impl PunktfSource {
 	pub fn dotfiles(&self) -> &Path {
 		&self.dotfiles
 	}
-}
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Profile {
-	/// Defines the base profile. All settings from the base are merged with the
-	/// current profile. The settings from the current profile take precendence.
-	/// Dotfiles are merged on the dotfile level (not specific dotfile settings level).
-	#[serde(skip_serializing_if = "Option::is_none", default)]
-	extends: Option<String>,
+	pub fn find_profile_path(&self, name: &str) -> std::io::Result<PathBuf> {
+		let name = name.to_lowercase();
 
-	/// Variables of the profile. Each dotfile will have this environment.
-	#[serde(skip_serializing_if = "Option::is_none", default)]
-	variables: Option<UserVars>,
+		let mut matching_profile_paths = walkdir::WalkDir::new(&self.profiles)
+			.max_depth(1)
+			.into_iter()
+			.filter_map(|dent| {
+				let dent = dent.ok()?;
+				let dent_name = dent.file_name().to_string_lossy();
 
-	/// Target root path of the deployment. Will be used as file stem for the dotfiles
-	/// when not overwritten by [Dotfile::target].
-	#[serde(skip_serializing_if = "Option::is_none", default)]
-	target: Option<PathBuf>,
+				if let Some(dot_idx) = dent_name.rfind('.') {
+					(name == dent_name[..dot_idx].to_lowercase())
+						.then(move || dent.path().to_path_buf())
+				} else {
+					None
+				}
+			})
+			.collect::<Vec<_>>();
 
-	/// Hook will be executed once before the deployment begins. If the hook fails
-	/// the deployment will not be continued.
-	#[serde(skip_serializing_if = "Vec::is_empty", default)]
-	pre_hooks: Vec<Hook>,
-
-	/// Hook will be executed once after the deployment begins.
-	#[serde(skip_serializing_if = "Vec::is_empty", default)]
-	post_hooks: Vec<Hook>,
-
-	/// Dotfiles which will be deployed.
-	#[serde(skip_serializing_if = "Vec::is_empty", default)]
-	dotfiles: Vec<Dotfile>,
-}
-
-impl Profile {
-	pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, std::io::Error> {
-		let path = path.as_ref();
-		let file = File::open(path)?;
-
-		let extension = path.extension().ok_or_else(|| {
-			std::io::Error::new(
+		if matching_profile_paths.len() > 1 {
+			Err(std::io::Error::new(
 				std::io::ErrorKind::InvalidData,
-				"Failed to get file extension for profile",
-			)
-		})?;
-
-		match extension.to_string_lossy().as_ref() {
-			"json" => serde_json::from_reader(file).map_err(|err| err.to_string()),
-			"yaml" | "yml" => serde_yaml::from_reader(file).map_err(|err| err.to_string()),
-			_ => Err(String::from("Unsupported file extension for profile")),
+				format!("Found more than one profile with the name {}", name),
+			))
+		} else if let Some(profile_path) = matching_profile_paths.pop() {
+			Ok(profile_path)
+		} else {
+			Err(std::io::Error::new(
+				std::io::ErrorKind::NotFound,
+				format!("Found no profile with the name {}", name),
+			))
 		}
-		.map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))
-	}
-
-	/// Merges everything from `other` into `self`.
-	/// Fields from `self` have precendence over `other`.
-	pub fn merge(&mut self, other: Self) {
-		let Profile {
-			extends,
-			target,
-			pre_hooks,
-			post_hooks,
-			dotfiles,
-			variables,
-		} = other;
-
-		self.extends = extends;
-
-		match (&mut self.variables, variables) {
-			(Some(self_vars), Some(other_vars)) => self_vars.merge(other_vars),
-			(Some(_), None) => {}
-			(None, Some(other_vars)) => self.variables = Some(other_vars),
-			(None, None) => {}
-		};
-
-		if self.target.is_none() {
-			self.target = target;
-		}
-
-		let pre_unique = pre_hooks
-			.into_iter()
-			.filter(|h| !self.pre_hooks.contains(h))
-			.collect::<Vec<_>>();
-		self.pre_hooks.extend(pre_unique);
-
-		let post_unique = post_hooks
-			.into_iter()
-			.filter(|h| !self.post_hooks.contains(h))
-			.collect::<Vec<_>>();
-		self.post_hooks.extend(post_unique);
-
-		let self_dotfile_paths = self
-			.dotfiles
-			.iter()
-			.map(|dotfile| &dotfile.path)
-			.collect::<HashSet<_>>();
-		let dotfiles = dotfiles
-			.into_iter()
-			.filter(|dotfile| !self_dotfile_paths.contains(&dotfile.path))
-			.collect::<Vec<_>>();
-		self.dotfiles.extend(dotfiles);
-	}
-
-	pub fn target(&self) -> Option<&Path> {
-		self.target.as_deref()
-	}
-
-	pub fn set_target(&mut self, target: Option<PathBuf>) {
-		self.target = target;
 	}
 }
 
@@ -264,119 +186,14 @@ impl Priority {
 	}
 }
 
-fn find_profile_path(profile_path: &Path, name: &str) -> Result<PathBuf> {
-	let name = name.to_lowercase();
-
-	profile_path
-		.read_dir()
-		.wrap_err("Failed to read profile directory")?
-		.filter_map(|dent| dent.ok().map(|dent| dent.path()))
-		.find(|path| {
-			let file_name = match path.file_name() {
-				Some(file_name) => file_name.to_string_lossy(),
-				None => return false,
-			};
-
-			if let Some(dot_idx) = file_name.rfind('.') {
-				name == file_name[..dot_idx].to_lowercase()
-			} else {
-				false
-			}
-		})
-		.ok_or_else(|| eyre!("No matching profile found"))
-}
-
-pub fn resolve_profile(profile_path: &Path, name: &str) -> Result<Profile> {
-	let mut profiles = HashSet::new();
-
-	let mut root = Profile::from_file(find_profile_path(profile_path, name)?)?;
-	profiles.insert(name.to_string().to_lowercase());
-
-	while let Some(base_name) = root.extends.clone() {
-		let base_name = base_name.to_lowercase();
-
-		log::info!("Resolving dependency `{}`", base_name);
-
-		if profiles.contains(&base_name) {
-			log::warn!("Circular dependency on `{}` detect", base_name);
-			break;
-		}
-
-		let path = find_profile_path(profile_path, &base_name)?;
-		log::debug!("Path for profile `{}`: {}", base_name, path.display());
-
-		let profile = Profile::from_file(path)?;
-
-		log::debug!("Profile `{}`: {:#?}", base_name, profile);
-
-		root.merge(profile);
-
-		profiles.insert(base_name);
-	}
-
-	Ok(root)
-}
-
 #[cfg(test)]
 mod tests {
-	use std::collections::HashMap;
-
 	use super::*;
-	use crate::variables::UserVars;
 
 	#[test]
 	fn priority_order() {
 		assert!(Priority::default() == Priority::new(0));
 		assert!(Priority::new(0) == Priority::new(0));
 		assert!(Priority::new(2) > Priority::new(1));
-	}
-
-	#[test]
-	fn profile_serde() {
-		let mut profile_vars = HashMap::new();
-		profile_vars.insert(String::from("RUSTC_VERSION"), String::from("XX.YY"));
-		profile_vars.insert(String::from("RUSTC_PATH"), String::from("/usr/bin/rustc"));
-
-		let mut dotfile_vars = HashMap::new();
-		dotfile_vars.insert(String::from("RUSTC_VERSION"), String::from("55.22"));
-		dotfile_vars.insert(String::from("USERNAME"), String::from("demo"));
-
-		let profile = Profile {
-			extends: None,
-			variables: Some(UserVars {
-				inner: profile_vars,
-			}),
-			target: Some(PathBuf::from("/home/demo/.config")),
-			pre_hooks: vec![Hook::new("echo \"Foo\"")],
-			post_hooks: vec![Hook::new("profiles/test.sh")],
-			dotfiles: vec![
-				Dotfile {
-					path: PathBuf::from("init.vim.ubuntu"),
-					rename: Some(PathBuf::from("init.vim")),
-					overwrite_target: None,
-					priority: Some(Priority::new(2)),
-					variables: None,
-					merge: Some(MergeMode::Overwrite),
-					template: None,
-				},
-				Dotfile {
-					path: PathBuf::from(".bashrc"),
-					rename: None,
-					overwrite_target: Some(PathBuf::from("/home/demo")),
-					priority: None,
-					variables: Some(UserVars {
-						inner: dotfile_vars,
-					}),
-					merge: Some(MergeMode::Overwrite),
-					template: Some(false),
-				},
-			],
-		};
-
-		let json = serde_json::to_string(&profile).expect("Profile to be serializeable");
-
-		let parsed: Profile = serde_json::from_str(&json).expect("Profile to be deserializable");
-
-		assert_eq!(parsed, profile);
 	}
 }

@@ -27,7 +27,7 @@ use self::block::Block;
 use self::parse::Parser;
 use self::resolve::Resolver;
 use self::source::Source;
-use crate::variables::UserVars;
+use crate::variables::Variables;
 
 #[derive(Debug, Clone)]
 pub struct Template<'a> {
@@ -40,10 +40,10 @@ impl<'a> Template<'a> {
 		Parser::new(source).parse()
 	}
 
-	pub fn resolve(
+	pub fn resolve<PV: Variables, DV: Variables>(
 		&self,
-		profile_vars: Option<&UserVars>,
-		dotfile_vars: Option<&UserVars>,
+		profile_vars: Option<&PV>,
+		dotfile_vars: Option<&DV>,
 	) -> Result<String> {
 		Resolver::new(self, profile_vars, dotfile_vars).resolve()
 	}
@@ -54,6 +54,7 @@ mod tests {
 	use std::collections::HashMap;
 
 	use super::*;
+	use crate::variables::UserVars;
 
 	#[test]
 	fn parse_template() -> Result<()> {

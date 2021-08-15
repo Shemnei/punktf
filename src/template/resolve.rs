@@ -4,7 +4,7 @@ use super::block::{Block, BlockKind, If, IfExpr, Var, VarEnv};
 use super::session::Session;
 use super::Template;
 use crate::template::diagnostic::{Diagnositic, DiagnositicBuilder, DiagnositicLevel};
-use crate::variables::{UserVars, Variables};
+use crate::variables::Variables;
 
 macro_rules! arch {
 	() => {{
@@ -74,19 +74,23 @@ macro_rules! family {
 	}};
 }
 
-pub struct Resolver<'a> {
+pub struct Resolver<'a, PV, DV> {
 	template: &'a Template<'a>,
-	profile_vars: Option<&'a UserVars>,
-	dotfile_vars: Option<&'a UserVars>,
+	profile_vars: Option<&'a PV>,
+	dotfile_vars: Option<&'a DV>,
 	session: Session,
 	output: String,
 }
 
-impl<'a> Resolver<'a> {
-	pub const fn new(
+impl<'a, PV, DV> Resolver<'a, PV, DV>
+where
+	PV: Variables,
+	DV: Variables,
+{
+	pub fn new(
 		template: &'a Template<'a>,
-		profile_vars: Option<&'a UserVars>,
-		dotfile_vars: Option<&'a UserVars>,
+		profile_vars: Option<&'a PV>,
+		dotfile_vars: Option<&'a DV>,
 	) -> Self {
 		Self {
 			template,
