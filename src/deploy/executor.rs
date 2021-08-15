@@ -597,10 +597,7 @@ where
 
 			if !self.options.dry_run {
 				if let Err(err) = std::fs::write(&exec_dotfile.deploy_path(), content.as_bytes()) {
-					log::info!(
-						"{}: Failed to write content",
-						exec_dotfile.path().display()
-					);
+					log::info!("{}: Failed to write content", exec_dotfile.path().display());
 
 					exec_dotfile.add_to_builder(
 						builder,
