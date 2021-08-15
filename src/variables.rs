@@ -41,16 +41,4 @@ impl UserVars {
 
 		Self { inner }
 	}
-
-	/// Merges everything from `other` into `self`.
-	/// Fields from `self` have precendence over `other`.
-	pub fn merge(&mut self, other: Self) {
-		self.inner.extend(
-			other
-				.inner
-				.into_iter()
-				.filter(|(key, _)| !self.inner.contains_key(key))
-				.collect::<HashMap<_, _>>(),
-		);
-	}
 }
