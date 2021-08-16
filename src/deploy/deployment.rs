@@ -171,6 +171,27 @@ impl DeploymentBuilder {
 			.map(|dotfile| dotfile.status.is_success())
 	}
 
+	pub fn finish(self) -> Deployment {
+		let failed_dotfiles = self
+			.dotfiles
+			.values()
+			.filter(|dotfile| dotfile.status().is_failed())
+			.count();
+
+		let status = if failed_dotfiles > 0 {
+			DeploymentStatus::failed(format!("Deployment of {} dotfiles failed", failed_dotfiles))
+		} else {
+			DeploymentStatus::Success
+		};
+
+		Deployment {
+			time_start: self.time_start,
+			time_end: SystemTime::now(),
+			status,
+			dotfiles: self.dotfiles,
+		}
+	}
+
 	pub fn success(self) -> Deployment {
 		Deployment {
 			time_start: self.time_start,

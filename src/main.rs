@@ -204,11 +204,7 @@ fn handle_commands(opts: Opts) -> Result<()> {
 					log::debug!("Deployment:\n{:#?}", deployment);
 					log_deployment(&deployment);
 
-					if deployment
-						.dotfiles()
-						.iter()
-						.any(|(_, dotfile)| dotfile.status().is_failed())
-					{
+					if deployment.status().is_failed() {
 						Err(eyre!("Some dotfiles failed to deploy"))
 					} else {
 						Ok(())

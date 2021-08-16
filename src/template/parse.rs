@@ -30,7 +30,6 @@ impl<'a> Parser<'a> {
 		}
 	}
 
-	// TODO: return error struct instead of emitting here
 	pub fn parse(mut self) -> Result<Template<'a>> {
 		let mut blocks = Vec::new();
 

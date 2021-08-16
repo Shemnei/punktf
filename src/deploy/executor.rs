@@ -126,8 +126,6 @@ where
 	}
 
 	pub fn deploy(&self, source: PunktfSource, profile: &LayeredProfile) -> Result<Deployment> {
-		// TODO: decide when deployment failed
-
 		// General flow:
 		//	- get deployment path
 		//	- check if dotfile already deployed
@@ -170,7 +168,7 @@ where
 				.wrap_err("Failed to execute post-hook")?;
 		}
 
-		Ok(builder.success())
+		Ok(builder.finish())
 	}
 
 	fn deploy_dotfile(
@@ -376,7 +374,6 @@ where
 
 				let _ = self.deploy_executor_dotfile(builder, source, profile, exec_dotfile)?;
 			} else if metadata.is_dir() {
-				// TODO: decide if empty directory should be kept
 				if !self.options.dry_run {
 					match std::fs::create_dir_all(&child_deploy_path) {
 						Ok(_) => {}
@@ -426,7 +423,7 @@ where
 				builder.add_dotfile(
 					directory_deploy_path,
 					directory,
-					DotfileStatus::failed(format!("Failed to canonicalize path",)),
+					DotfileStatus::failed("Failed to canonicalize path"),
 				);
 			}
 		};

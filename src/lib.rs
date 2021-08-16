@@ -18,7 +18,7 @@
     trivial_casts,
     trivial_numeric_casts,
     unsafe_code,
-    // TODO: would be nice in the future but not possible for now
+    // TODO(future): would be nice in the future but not possible for now
 	// unstable_features,
     unused_import_braces,
     unused_qualifications,
