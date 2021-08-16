@@ -377,6 +377,29 @@ where
 				let _ = self.deploy_executor_dotfile(builder, source, profile, exec_dotfile)?;
 			} else if metadata.is_dir() {
 				// TODO: decide if empty directory should be kept
+				if !self.options.dry_run {
+					match std::fs::create_dir_all(&child_deploy_path) {
+						Ok(_) => {}
+						Err(err) => {
+							log::error!(
+								"{}: Failed to create directories ({})",
+								child_path.display(),
+								err
+							);
+
+							builder.add_child(
+								child_deploy_path,
+								directory_deploy_path,
+								DotfileStatus::failed(format!(
+									"Failed to create directory: {}",
+									err
+								)),
+							);
+
+							return Ok(());
+						}
+					}
+				}
 			} else {
 				log::error!(
 					"{}: Unsupported dotfile type ({:?})",
@@ -388,12 +411,25 @@ where
 					child_deploy_path,
 					directory_deploy_path.clone(),
 					DotfileStatus::failed(format!(
-						"Unsupported dotfile type {:?}",
+						"Unsupported dotfile type: {:?}",
 						metadata.file_type()
 					)),
 				);
 			}
 		}
+
+		match directory_deploy_path.canonicalize() {
+			Ok(directory_deploy_path) => {
+				builder.add_dotfile(directory_deploy_path, directory, DotfileStatus::Success);
+			}
+			Err(_) => {
+				builder.add_dotfile(
+					directory_deploy_path,
+					directory,
+					DotfileStatus::failed(format!("Failed to canonicalize path",)),
+				);
+			}
+		};
 
 		Ok(())
 	}
