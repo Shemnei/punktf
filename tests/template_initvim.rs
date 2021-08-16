@@ -11,6 +11,7 @@ set relativenumber
 set number
 set encoding={{SYS_ENCODING}}
 set colorcolumn=80
+
 {{@if {{OS}} == "windows"}}
 set undodir='{{$APPDATA}}\nvim\vimdid'
 {{@else}}
@@ -39,7 +40,6 @@ fn parse_initvim_win() -> Result<()> {
 	assert_eq!(
 		output.trim(),
 		r#"set fileformat=dos
-
 set ttyfast
 set relativenumber
 set number
@@ -47,7 +47,6 @@ set encoding=windows1252
 set colorcolumn=80
 
 set undodir='C:\Users\Demo\Appdata\Local\nvim\vimdid'
-
 set nowrap"#
 	);
 
@@ -69,7 +68,6 @@ fn template_initvim_linux() -> Result<()> {
 	assert_eq!(
 		output.trim(),
 		r#"set fileformat=unix
-
 set ttyfast
 set relativenumber
 set number
@@ -77,7 +75,6 @@ set encoding=utf-8
 set colorcolumn=80
 
 set undodir='/home/Demo/.config/nvim/vimdid'
-
 set nowrap"#
 	);
 

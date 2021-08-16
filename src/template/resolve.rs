@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use color_eyre::eyre::Result;
 
 use super::block::{Block, BlockKind, If, IfExpr, Var, VarEnv};
@@ -79,7 +81,6 @@ pub struct Resolver<'a, PV, DV> {
 	profile_vars: Option<&'a PV>,
 	dotfile_vars: Option<&'a DV>,
 	session: Session,
-	output: String,
 }
 
 impl<'a, PV, DV> Resolver<'a, PV, DV>
@@ -97,22 +98,21 @@ where
 			profile_vars,
 			dotfile_vars,
 			session: Session::new(),
-			output: String::new(),
 		}
 	}
 
 	pub fn resolve(mut self) -> Result<String> {
+		let mut output = String::new();
+
 		for block in &self.template.blocks {
-			if let Err(builder) = self.process_block(block) {
+			if let Err(builder) = self.process_block(&mut output, block) {
 				self.report_diagnostic(builder.build());
 			}
 		}
 
 		self.session.emit(&self.template.source);
 
-		let Resolver {
-			session, output, ..
-		} = self;
+		let Resolver { session, .. } = self;
 
 		session.try_finish().map(|_| output)
 	}
@@ -125,21 +125,25 @@ where
 		self.session.report(diagnostic);
 	}
 
-	fn process_block(&mut self, block: &Block) -> Result<(), DiagnositicBuilder> {
+	fn process_block(
+		&mut self,
+		output: &mut String,
+		block: &Block,
+	) -> Result<(), DiagnositicBuilder> {
 		let Block { span, kind } = block;
 
 		match kind {
 			BlockKind::Text => {
-				self.output.push_str(&self.template.source[span]);
+				output.push_str(&self.template.source[span]);
 			}
 			BlockKind::Comment => {
 				// NOP
 			}
 			BlockKind::Escaped(inner) => {
-				self.output.push_str(&self.template.source[inner]);
+				output.push_str(&self.template.source[inner]);
 			}
 			BlockKind::Var(var) => {
-				self.output.push_str(&self.resolve_var(var)?);
+				output.push_str(&self.resolve_var(var)?);
 			}
 			BlockKind::Print(inner) => {
 				log::info!("Print: {}", &self.template.source[inner]);
@@ -150,8 +154,8 @@ where
 				els,
 				end: _,
 			}) => {
-				// TODO: if if block starts on a new line trim it
-				// TODO: if if block ends on a new line trim it
+				let mut if_output = String::new();
+
 				let (head, head_nested) = head;
 
 				let matched = match self.resolve_if_expr(head.value()) {
@@ -165,9 +169,10 @@ where
 
 				if matched {
 					for block in head_nested {
-						let _ = self.process_block(block)?;
+						let _ = self.process_block(&mut if_output, block)?;
 					}
 				} else {
+					let mut found_elif = false;
 					for (elif, elif_nested) in elifs {
 						let matched = match self.resolve_if_expr(elif.value()) {
 							Ok(x) => x,
@@ -178,21 +183,47 @@ where
 						};
 
 						if matched {
-							// return if matching elif arm was found
+							found_elif = true;
+
 							for block in elif_nested {
-								let _ = self.process_block(block)?;
+								let _ = self.process_block(&mut if_output, block)?;
 							}
 
-							return Ok(());
+							break;
 						}
 					}
 
-					if let Some((_, els_nested)) = els {
-						for block in els_nested {
-							let _ = self.process_block(block)?;
+					if !found_elif {
+						if let Some((_, els_nested)) = els {
+							for block in els_nested {
+								let _ = self.process_block(&mut if_output, block)?;
+							}
 						}
 					}
 				}
+
+				let mut if_output_prepared = if_output.deref();
+
+				// Check if characters before first line feed are all considered
+				// to be white spaces and if so omit them from the output.
+				if let Some(idx) = if_output_prepared.find('\n') {
+					// include line feed
+					if if_output_prepared[..idx].trim_start().is_empty() {
+						// Also trim line feed
+						if_output_prepared = &if_output_prepared[idx + 1..];
+					}
+				}
+
+				// Check if characters after last line feed are all considered
+				// to be white spaces and if so omit them from the output.
+				if let Some(idx) = if_output_prepared.rfind('\n') {
+					// include line feed
+					if if_output_prepared[idx..].trim_start().is_empty() {
+						if_output_prepared = &if_output_prepared[..idx];
+					}
+				}
+
+				output.push_str(if_output_prepared);
 			}
 		};
 
@@ -267,7 +298,7 @@ mod tests {
 			r#"Hello {{@if {{NAME}}}}{{NAME}}{{@else}}there{{@fi}} !"#,
 			r#"Hello there !"#
 		),
-		(
+	(
 			r#"Hello {{@if {{NAME}}}}
 {{NAME}}
 {{@else}}
@@ -282,7 +313,27 @@ there
 there
 {{@fi}}
 !"#,
-			r#"Hello there\n!"#
+			"Hello there\n!"
+		),
+		(
+			r#"Hello
+{{@if {{NAME}}}}
+{{NAME}}
+{{@else}}
+there
+{{@fi}}
+!"#,
+			"Hello\nthere\n!"
+		),
+		(
+			r#"Hello
+{{@if {{NAME}}}}
+	{{NAME}}
+{{@else}}
+	there
+{{@fi}}
+!"#,
+			"Hello\n\tthere\n!"
 		)
 	];
 
