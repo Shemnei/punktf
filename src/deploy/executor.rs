@@ -415,18 +415,24 @@ where
 			}
 		}
 
-		match directory_deploy_path.canonicalize() {
-			Ok(directory_deploy_path) => {
-				builder.add_dotfile(directory_deploy_path, directory, DotfileStatus::Success);
-			}
-			Err(_) => {
-				builder.add_dotfile(
-					directory_deploy_path,
-					directory,
-					DotfileStatus::failed("Failed to canonicalize path"),
-				);
-			}
-		};
+		if !self.options.dry_run {
+			// Only try to resolve when not in dry_run as the directory could
+			// not exists and would not be created when in dry_run.
+			match directory_deploy_path.canonicalize() {
+				Ok(directory_deploy_path) => {
+					builder.add_dotfile(directory_deploy_path, directory, DotfileStatus::Success);
+				}
+				Err(_) => {
+					builder.add_dotfile(
+						directory_deploy_path,
+						directory,
+						DotfileStatus::failed("Failed to canonicalize path"),
+					);
+				}
+			};
+		} else {
+			builder.add_dotfile(directory_deploy_path, directory, DotfileStatus::Success);
+		}
 
 		Ok(())
 	}
