@@ -251,3 +251,50 @@ where
 			.primary_span(var.name))
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use pretty_assertions::assert_eq;
+
+	use super::*;
+	use crate::template::source::Source;
+	use crate::template::Template;
+	use crate::variables::UserVars;
+
+	#[rustfmt::skip]
+	const IF_FMT_TEST_CASES: &[(&str, &str)] = &[
+		(
+			r#"Hello {{@if {{NAME}}}}{{NAME}}{{@else}}there{{@fi}} !"#,
+			r#"Hello there !"#
+		),
+		(
+			r#"Hello {{@if {{NAME}}}}
+{{NAME}}
+{{@else}}
+there
+{{@fi}} !"#,
+			r#"Hello there !"#
+		),
+		(
+			r#"Hello {{@if {{NAME}}}}
+{{NAME}}
+{{@else}}
+there
+{{@fi}}
+!"#,
+			r#"Hello there\n!"#
+		)
+	];
+
+	#[test]
+	fn if_fmt() -> Result<()> {
+		for (content, should) in IF_FMT_TEST_CASES {
+			let source = Source::anonymous(content);
+			let template = Template::parse(source)?;
+
+			assert_eq!(&template.resolve::<UserVars, UserVars>(None, None)?, should);
+		}
+
+		Ok(())
+	}
+}
