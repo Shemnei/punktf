@@ -153,6 +153,10 @@ where
 
 		for hook in profile.pre_hooks() {
 			log::info!("Executing pre-hook: {}", hook.command());
+			// No files are deployed yet, meaning if an error during hook
+			// execution occurs it will return with an error instead of just
+			// logging it.
+
 			hook.execute(source.profiles())
 				.wrap_err("Failed to execute pre-hook")?;
 		}
@@ -164,8 +168,9 @@ where
 
 		for hook in profile.post_hooks() {
 			log::info!("Executing post-hook: {}", hook.command());
-			hook.execute(source.profiles())
-				.wrap_err("Failed to execute post-hook")?;
+			if let Err(err) = hook.execute(source.profiles()) {
+				log::error!("Failed to execute post-hook ({})", err);
+			}
 		}
 
 		Ok(builder.finish())

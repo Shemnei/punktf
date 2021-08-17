@@ -1,5 +1,3 @@
-// TODO (cleanup): if possible split into separate files
-
 use std::ops::Deref;
 use std::path::Path;
 use std::{fmt, vec};
