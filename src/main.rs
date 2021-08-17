@@ -191,7 +191,14 @@ fn handle_commands(opts: Opts) -> Result<()> {
 
 			log::debug!("Profile:\n{:#?}", profile);
 			log::debug!("Source: {}", ptf_src.root().display());
-			log::debug!("Target: {:?}", profile.target());
+			log::debug!("Target: {:?}", profile.target_path());
+
+			// Setup environment
+			std::env::set_var("PUNKTF_CURRENT_SOURCE", ptf_src.root());
+			if let Some(target) = profile.target_path() {
+				std::env::set_var("PUNKTF_CURRENT_TARGET", target);
+			}
+			std::env::set_var("PUNKTF_CURRENT_PROFILE", cmd.profile);
 
 			let options = ExecutorOptions {
 				dry_run: cmd.dry_run,

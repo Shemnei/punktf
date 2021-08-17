@@ -206,7 +206,7 @@ where
 		};
 
 		log::debug!(
-			"{}:  Source: `{}` Target: `{}`",
+			"{}: Source: `{}` Target: `{}`",
 			dotfile.path.display(),
 			dotfile_source_path.display(),
 			dotfile_deploy_path.display()
