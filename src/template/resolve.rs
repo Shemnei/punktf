@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::ops::Deref;
 
 use color_eyre::eyre::Result;
@@ -240,7 +241,7 @@ where
 		}
 	}
 
-	fn resolve_var(&self, var: &Var) -> Result<String, DiagnositicBuilder> {
+	fn resolve_var(&self, var: &Var) -> Result<Cow<'_, str>, DiagnositicBuilder> {
 		let name = &self.template.source[var.name];
 
 		for env in var.envs.envs() {
@@ -256,7 +257,7 @@ where
 						("PUNKTF_TARGET_FAMILY", Err(std::env::VarError::NotPresent)) => {
 							return Ok(family!().into())
 						}
-						(_, Ok(val)) => return Ok(val),
+						(_, Ok(val)) => return Ok(Cow::Owned(val)),
 						(_, Err(_)) => continue,
 					};
 				}

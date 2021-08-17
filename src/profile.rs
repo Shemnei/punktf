@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
 use std::fs::File;
@@ -69,13 +68,11 @@ pub struct LayeredUserVars {
 }
 
 impl Variables for LayeredUserVars {
-	fn var<K>(&self, key: K) -> Option<Cow<'_, str>>
+	fn var<K>(&self, key: K) -> Option<&str>
 	where
 		K: AsRef<str>,
 	{
-		self.inner
-			.get(key.as_ref())
-			.map(|(_, value)| Cow::Borrowed(value.as_ref()))
+		self.inner.get(key.as_ref()).map(|(_, value)| value.deref())
 	}
 }
 

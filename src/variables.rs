@@ -1,11 +1,11 @@
-use std::borrow::Cow;
 use std::collections::HashMap;
+use std::ops::Deref;
 
 use serde::{Deserialize, Serialize};
 
 /// Variables that replace values it templates
 pub trait Variables {
-	fn var<K: AsRef<str>>(&self, key: K) -> Option<Cow<'_, str>>;
+	fn var<K: AsRef<str>>(&self, key: K) -> Option<&str>;
 }
 
 /// User defined variables
@@ -16,13 +16,11 @@ pub struct UserVars {
 }
 
 impl Variables for UserVars {
-	fn var<K>(&self, key: K) -> Option<Cow<'_, str>>
+	fn var<K>(&self, key: K) -> Option<&str>
 	where
 		K: AsRef<str>,
 	{
-		self.inner
-			.get(key.as_ref())
-			.map(|value| Cow::Borrowed(value.as_ref()))
+		self.inner.get(key.as_ref()).map(|value| value.deref())
 	}
 }
 
