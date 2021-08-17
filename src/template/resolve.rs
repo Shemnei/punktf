@@ -334,6 +334,30 @@ there
 {{@fi}}
 !"#,
 			"Hello\n\tthere\n!"
+		),
+		(
+			r#"Hello
+
+{{@if {{NAME}}}}
+	{{NAME}}
+{{@else}}
+	there
+{{@fi}}
+
+!"#,
+			"Hello\n\n\tthere\n\n!"
+		),
+		(
+			r#"Hello
+{{@if {{NAME}}}}
+
+	{{NAME}}
+{{@else}}
+
+	there
+{{@fi}}
+!"#,
+			"Hello\n\n\tthere\n!"
 		)
 	];
 
