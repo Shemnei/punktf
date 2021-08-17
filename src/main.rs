@@ -21,8 +21,8 @@ fn get_target_path() -> PathBuf {
 	std::env::var_os(PUNKTF_TARGET_ENVVAR)
 		.unwrap_or_else(|| {
 			panic!(
-				"No environment variable `{}` set. Either set this variable or use the profile \
-				 variable `target`.",
+				"No environment variable `{}` set. Either set this variable, use the `-t/--target`
+				argument or use the profile attribute `target`.",
 				PUNKTF_TARGET_ENVVAR
 			)
 		})
@@ -122,7 +122,7 @@ struct Deploy {
 
 	/// Alternative deployment target path.
 	///
-	/// This path will take precendence over all other ways to define a deployment
+	/// This path will take precedence over all other ways to define a deployment
 	/// path.
 	#[clap(short, long)]
 	target: Option<PathBuf>,
@@ -190,6 +190,8 @@ fn handle_commands(opts: Opts) -> Result<()> {
 			let profile = builder.finish();
 
 			log::debug!("Profile:\n{:#?}", profile);
+			log::debug!("Source: {}", ptf_src.root().display());
+			log::debug!("Target: {:?}", profile.target());
 
 			let options = ExecutorOptions {
 				dry_run: cmd.dry_run,
@@ -211,7 +213,7 @@ fn handle_commands(opts: Opts) -> Result<()> {
 					}
 				}
 				Err(err) => {
-					log::error!("Failed to deploy: {:?}", err);
+					log::error!("Deployment aborted: {}", err);
 					Err(err)
 				}
 			}

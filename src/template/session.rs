@@ -33,7 +33,7 @@ impl Session {
 
 	pub fn try_finish(self) -> Result<()> {
 		if self.failed {
-			Err(eyre!("Session has failed"))
+			Err(eyre!("Session contains errors"))
 		} else {
 			Ok(())
 		}

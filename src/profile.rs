@@ -220,7 +220,7 @@ pub fn resolve_profile(
 	name: &str,
 	resolved_profiles: &mut Vec<OsString>,
 ) -> std::io::Result<()> {
-	log::trace!("Resolving profile {}", name);
+	log::trace!("Resolving profile `{}`", name);
 
 	let path = source.find_profile_path(name)?;
 	let file_name = path
@@ -231,13 +231,13 @@ pub fn resolve_profile(
 	let mut profile = SimpleProfile::from_file(&path)?;
 
 	if !profile.extends.is_empty() && resolved_profiles.contains(&file_name) {
-		// profile was already resolve and has "childre" which will lead to
+		// profile was already resolve and has "children" which will lead to
 		// a loop while resolving
 		return Err(std::io::Error::new(
 			std::io::ErrorKind::FilesystemLoop,
 			format!(
-				"Circular dependency detected while parsing `{}` (requiered by: `{:?}`) (Stack: \
-				 {:?})",
+				"Circular dependency detected while parsing `{}` (required by: `{:?}`) (Stack: \
+				 {:#?})",
 				name,
 				resolved_profiles.last(),
 				resolved_profiles

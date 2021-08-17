@@ -152,18 +152,18 @@ where
 		let mut builder = Deployment::build();
 
 		for hook in profile.pre_hooks() {
-			log::info!("Executing pre-hook: `{:?}`", hook);
+			log::info!("Executing pre-hook: {}", hook.command());
 			hook.execute(source.profiles())
 				.wrap_err("Failed to execute pre-hook")?;
 		}
 
 		for dotfile in profile.dotfiles().cloned() {
-			log::debug!("Deploying dotfile `{}`", dotfile.path.display());
+			log::debug!("Deploying dotfile: {}", dotfile.path.display());
 			let _ = self.deploy_dotfile(&mut builder, &source, target_path, profile, dotfile)?;
 		}
 
 		for hook in profile.post_hooks() {
-			log::info!("Executing post-hook: `{:?}`", hook);
+			log::info!("Executing post-hook: {}", hook.command());
 			hook.execute(source.profiles())
 				.wrap_err("Failed to execute post-hook")?;
 		}
@@ -185,7 +185,7 @@ where
 			Ok(dotfile_source_path) => dotfile_source_path,
 			Err(err) => {
 				log::error!(
-					"[{}] Failed to resolve dotfile source path ({})",
+					"{}: Failed to resolve dotfile source path ({})",
 					dotfile.path.display(),
 					err,
 				);
@@ -201,7 +201,7 @@ where
 		};
 
 		log::debug!(
-			"[{}] `{}` | `{}`",
+			"{}:  Source: `{}` Target: `{}`",
 			dotfile.path.display(),
 			dotfile_source_path.display(),
 			dotfile_deploy_path.display()
@@ -294,7 +294,7 @@ where
 				Ok(_) => {}
 				Err(err) => {
 					log::error!(
-						"{}: Failed to create directories ({})",
+						"{}: Failed to create directory ({})",
 						directory.path.display(),
 						err
 					);
@@ -379,7 +379,7 @@ where
 						Ok(_) => {}
 						Err(err) => {
 							log::error!(
-								"{}: Failed to create directories ({})",
+								"{}: Failed to create directory ({})",
 								child_path.display(),
 								err
 							);
@@ -399,7 +399,7 @@ where
 				}
 			} else {
 				log::error!(
-					"{}: Unsupported dotfile type ({:?})",
+					"{}: Unsupported dotfile file type ({:?})",
 					child_path.display(),
 					metadata.file_type()
 				);
@@ -408,7 +408,7 @@ where
 					child_deploy_path,
 					directory_deploy_path.clone(),
 					DotfileStatus::failed(format!(
-						"Unsupported dotfile type: {:?}",
+						"Unsupported dotfile file type: {:?}",
 						metadata.file_type()
 					)),
 				);
@@ -554,7 +554,7 @@ where
 					Ok(_) => {}
 					Err(err) => {
 						log::error!(
-							"{}: Failed to create directories ({})",
+							"{}: Failed to create directory ({})",
 							exec_dotfile.path().display(),
 							err
 						);
@@ -562,7 +562,7 @@ where
 						exec_dotfile.add_to_builder(
 							builder,
 							DotfileStatus::failed(format!(
-								"Failed to create parent directories: {}",
+								"Failed to create parent directory: {}",
 								err
 							)),
 						);
@@ -578,13 +578,16 @@ where
 				Ok(content) => content,
 				Err(err) => {
 					log::info!(
-						"{}: Failed to read source content",
+						"{}: Failed to read dotfile source content",
 						exec_dotfile.path().display()
 					);
 
 					exec_dotfile.add_to_builder(
 						builder,
-						DotfileStatus::failed(format!("Failed to read content: {}", err)),
+						DotfileStatus::failed(format!(
+							"Failed to read dotfile source content: {}",
+							err
+						)),
 					);
 
 					return Ok(());

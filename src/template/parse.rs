@@ -216,6 +216,7 @@ impl<'a> Parser<'a> {
 			let els = self
 				.parse_else(span)
 				.map_err(|build| build.label_span(*head.span(), "while parsing this `if` block"))?;
+
 			let els_nested = self
 				.parse_if_enclosed_blocks()
 				.into_iter()
@@ -456,13 +457,13 @@ fn parse_var(inner: &str, mut offset: usize) -> Result<Var> {
 	// save original length to keep track of the offset
 	let orig_len = inner.len();
 
-	// remove preceding whitespaces
+	// remove preceding white spaces
 	let inner = inner.trim_start();
 
-	// increase offset to account for removed whitespaces
+	// increase offset to account for removed white spaces
 	offset += orig_len - inner.len();
 
-	// remove trailing whitespaces. Offset doesn't need to change.
+	// remove trailing white spaces. Offset doesn't need to change.
 	let mut inner = inner.trim_end();
 
 	// check for envs
@@ -481,7 +482,7 @@ fn parse_var(inner: &str, mut offset: usize) -> Result<Var> {
 				_ => break,
 			};
 
-			// break if add fails (duplicate, no more space)
+			// break if add fails (duplicate)
 			if !env_set.add(env) {
 				return Err(eyre!(
 					"Specified duplicate variable environments at {}",
@@ -533,7 +534,7 @@ fn parse_ifop(inner: &str) -> Result<IfOp> {
 		}
 		(Some(_), None) => Ok(IfOp::Eq),
 		(None, Some(_)) => Ok(IfOp::NotEq),
-		_ => Err(eyre!("Failed to find any if operation")),
+		_ => Err(eyre!("Failed to find a if operand")),
 	}
 }
 
@@ -582,13 +583,13 @@ impl<'a> Iterator for BlockIter<'a> {
 				let span = ByteSpan::new(self.index, self.index);
 				if let Some(skip) = skip {
 					self.index += skip;
-					log::debug!("Skipping: {} ({})", skip, &self.content[self.index..]);
+					log::trace!("Skipping: {} ({})", skip, &self.content[self.index..]);
 				} else {
 					self.index = self.content.len();
 				}
 				let span = span.with_high(self.index);
 
-				log::debug!("Span: {}/{}", span, err);
+				log::trace!("Span: {}/{}", span, err);
 
 				return Some(Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
 					.message("failed to parse block")

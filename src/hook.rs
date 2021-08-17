@@ -49,6 +49,10 @@ impl Hook {
 		Self(command.into())
 	}
 
+	pub fn command(&self) -> &str {
+		&self.0
+	}
+
 	pub fn execute(&self, cwd: &Path) -> Result<()> {
 		let mut child = self
 			.prepare_command()?
@@ -63,7 +67,7 @@ impl Hook {
 
 		for line in BufReader::new(stdout).lines() {
 			match line {
-				Ok(line) => log::info!("hook: {}", line),
+				Ok(line) => log::info!("hook::stdout > {}", line),
 				Err(err) => {
 					// Result is explicitly ignored as an error was already
 					// encountered
@@ -79,7 +83,7 @@ impl Hook {
 
 		for line in BufReader::new(stderr).lines() {
 			match line {
-				Ok(line) => log::error!("hook: {}", line),
+				Ok(line) => log::error!("hook::stderr > {}", line),
 				Err(err) => {
 					// Result is explicitly ignored as an error was already
 					// encountered

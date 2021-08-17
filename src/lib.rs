@@ -10,8 +10,9 @@
     future_incompatible,
     missing_copy_implementations,
     // TODO(doc): rustdoc::missing_crate_level_docs,
+    // TODO(doc): clippy::missing_docs_in_private_items,
     missing_debug_implementations,
-    // TODO(doc): enable missing_docs,
+    // TODO(doc): missing_docs,
     private_in_public,
     rust_2018_compatibility,
     rust_2018_idioms,
@@ -102,14 +103,14 @@ impl PunktfSource {
 		if matching_profile_paths.len() > 1 {
 			Err(std::io::Error::new(
 				std::io::ErrorKind::InvalidData,
-				format!("Found more than one profile with the name {}", name),
+				format!("Found more than one profile with the name `{}`", name),
 			))
 		} else if let Some(profile_path) = matching_profile_paths.pop() {
 			Ok(profile_path)
 		} else {
 			Err(std::io::Error::new(
 				std::io::ErrorKind::NotFound,
-				format!("Found no profile with the name {}", name),
+				format!("Found no profile with the name `{}`", name),
 			))
 		}
 	}
