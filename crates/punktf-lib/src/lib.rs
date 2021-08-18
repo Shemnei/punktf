@@ -52,7 +52,7 @@ use variables::UserVars;
 
 /// This struct represents the source directory used by `punktf`. The source
 /// directory is the central repository used to store
-/// (profiles)[`profile::Profile`] and (dotfiles)[`Dotfile`]. `punktf` will
+/// [profiles](`profile::Profile`) and [dotfiles](`Dotfile`). `punktf` will
 /// only read data from these directories but never write to them.
 ///
 /// The current structure looks something like this:
@@ -116,7 +116,7 @@ impl PunktfSource {
 	}
 
 	/// Tries to resolve a profile name to a path of a
-	/// (profile)[profile::Profile]. The profile name must be given without any
+	/// [profile](`profile::Profile`). The profile name must be given without any
 	/// file extension attached (e.g. `demo` instead of `demo.json`).
 	///
 	/// # Errors
@@ -230,7 +230,7 @@ impl Default for MergeMode {
 }
 
 /// This struct represents the priority a [`Dotfile`] can have.  A bigger value
-/// means a higher priority. [`Dotfile`]'s with lower priority won't be able to
+/// means a higher priority. Dotfiles with lower priority won't be able to
 /// overwrite already deployed dotfiles with a higher one.
 #[derive(
 	Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,

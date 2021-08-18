@@ -1,9 +1,13 @@
+//! A session keeps track of [diagnostics](`super::diagnostic::Diagnostic`) for
+//! a specific task and a specific [source](`super::source::Source`). It is
+//! used to bundle the diagnostics and emit them after the task has finished.
+
 use color_eyre::eyre::{eyre, Result};
 
 use super::diagnostic::Diagnostic;
 use super::source::Source;
 
-/// A session collects (diagnostics)[`crate::template::Diagnostic`] for a
+/// A session collects [diagnostics](`super::diagnostic::Diagnostic`) for a
 /// task. Additionally it keeps track if the task failed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Session {
@@ -23,7 +27,7 @@ impl Session {
 		}
 	}
 
-	/// Report a [`template::Diagnostic`] which will be added to the session.
+	/// Report a [Diagnostic](`super::diagnostic::Diagnostic`) which will be added to the session.
 	pub fn report(&mut self, diagnostic: Diagnostic) {
 		self.diagnostics.push(diagnostic);
 	}
@@ -34,17 +38,16 @@ impl Session {
 	}
 
 	/// Emit all collected diagnostics. `source` should be the
-	/// [`template::source::Source`] from which all the
-	/// [`template::Diagnostic`]'s are collected.
+	/// [source](`super::source::Source`) from which all the
+	/// [diagnostics](`super::diagnostic::Diagnostic`) are collected.
 	pub fn emit(&self, source: &Source<'_>) {
 		for diagnostic in &self.diagnostics {
 			diagnostic.emit(source);
 		}
 	}
 
-	/// This will consume the session and return [`Result::Ok`] if
-	/// [`Session::failed`] is `false`. If `failed` is `true` it will return an
-	/// error.
+	/// This will consume the session and return `Ok` if [`Session::failed`] is
+	/// `false`. If `failed` is `true` it will return an error.
 	///
 	/// # Errors
 	///
