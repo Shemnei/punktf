@@ -11,6 +11,7 @@ use crate::variables::{UserVars, Variables};
 use crate::{Dotfile, PunktfSource};
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SimpleProfile {
 	/// Defines the base profile. All settings from the base are merged with the
 	/// current profile. The settings from the current profile take precendence.
