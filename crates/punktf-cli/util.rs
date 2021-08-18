@@ -1,3 +1,5 @@
+//! Various utility functions.
+
 use std::path::{Path, PathBuf};
 
 use color_eyre::owo_colors::OwoColorize;
@@ -5,6 +7,13 @@ use color_eyre::Result;
 use punktf_lib::deploy::deployment::{Deployment, DeploymentStatus};
 use punktf_lib::deploy::dotfile::DotfileStatus;
 
+/// Retrieves the target path for the deployment by reading the environment
+/// variable with the name determined by [`super::PUNKTF_TARGET_ENVVAR`].
+///
+/// # Panics
+///
+/// This functions will panic if it failes to retrieve the target path from the
+/// environment variable.
 pub fn get_target_path() -> PathBuf {
 	std::env::var_os(super::PUNKTF_TARGET_ENVVAR)
 		.unwrap_or_else(|| {
@@ -17,6 +26,11 @@ pub fn get_target_path() -> PathBuf {
 		.into()
 }
 
+/// Function which get's called when a merge conflict arises and the merge mode
+/// of the [`punktf_lib::Dotfile`] is set to [`punktf_lib::MergeMode::Ask`].
+/// The function will ask the user to accept the merge (`y`) or deny it (`n`)
+/// via the command line ([`std::io::stdout`]/[`std::io::stdin`]). If an
+/// invalid answer is given it will ask again until a valid answer is given.
 pub fn ask_user_merge(source_path: &Path, deploy_path: &Path) -> Result<bool> {
 	use std::io::Write;
 
@@ -51,6 +65,11 @@ pub fn ask_user_merge(source_path: &Path, deploy_path: &Path) -> Result<bool> {
 	}
 }
 
+/// Logs the finished state of the
+/// [deployment](`punktf_lib::deploy::deployment::Deployment`) using the crate
+/// [`log`]. This includes amount, state and the names of the deployed
+/// [dotfiles](`punktf_lib::Dotfile`) and also the total time the deployment
+/// took to execute.
 pub fn log_deployment(deployment: &Deployment) {
 	let mut out = String::new();
 
