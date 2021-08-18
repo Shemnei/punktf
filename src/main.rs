@@ -86,12 +86,7 @@ struct Opts {
 #[derive(Debug, Clap)]
 struct Shared {
 	/// The source directory where the profiles and dotfiles are located.
-	#[clap(short, long, env = PUNKTF_SOURCE_ENVVAR)]
-	// The below is necessary for as `clap` will act different when debugging vs
-	// releasing. This will either cause `cargo test` or `cargo install` to fail.
-	// clap = "3.0.0-beta.2"
-	#[cfg_attr(debug_assertions, clap(default_value))]
-	#[cfg_attr(not(debug_assertions), clap(default_value_t))]
+	#[clap(short, long, env = PUNKTF_SOURCE_ENVVAR, default_value_t)]
 	source: SourcePath,
 
 	/// Runs with specified level of verbosity which affects the log level.
