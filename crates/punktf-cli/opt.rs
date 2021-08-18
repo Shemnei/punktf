@@ -63,12 +63,7 @@ pub struct Opts {
 #[derive(Debug, Clap)]
 pub struct Shared {
 	/// The source directory where the profiles and dotfiles are located.
-	#[clap(short, long, env = super::PUNKTF_SOURCE_ENVVAR)]
-	// The below is necessary for as `clap` will act different when debugging vs
-	// releasing. This will either cause `cargo test` or `cargo install` to fail.
-	// clap = "3.0.0-beta.2"
-	#[cfg_attr(debug_assertions, clap(default_value))]
-	#[cfg_attr(not(debug_assertions), clap(default_value_t))]
+	#[clap(short, long, env = super::PUNKTF_SOURCE_ENVVAR, default_value_t)]
 	pub source: SourcePath,
 
 	/// Runs with specified level of verbosity which affects the log level.
@@ -94,7 +89,7 @@ pub struct Deploy {
 	///
 	/// The name should be the file name of the profile without an extension (e.g.
 	/// `profiles/arch.json` should be given as `arch`).
-	#[clap(env = super::PUNKTF_DEFAULT_PROFILE_ENVVAR)]
+	#[clap(env = super::PUNKTF_PROFILE_ENVVAR)]
 	pub profile: String,
 
 	/// Alternative deployment target path.
