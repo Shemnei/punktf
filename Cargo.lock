@@ -380,8 +380,18 @@ dependencies = [
 name = "punktf"
 version = "1.0.0-alpha.1"
 dependencies = [
- "cfg-if",
  "clap",
+ "color-eyre",
+ "env_logger",
+ "log",
+ "punktf-lib",
+]
+
+[[package]]
+name = "punktf-lib"
+version = "1.0.0-alpha.1"
+dependencies = [
+ "cfg-if",
  "color-eyre",
  "env_logger",
  "log",
