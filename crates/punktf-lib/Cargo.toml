@@ -4,9 +4,9 @@ version = "1.0.0-alpha.1"
 authors = ["Michael Lohr <michael@lohr.dev>", "Shemnei"]
 edition = "2018"
 description = "Library for punktf, a cross-platform multi-target dotfiles manager"
-documentation = "https://github.com/Shemnei/punktf/tree/master/crates/punktf-lib"
-homepage = "https://github.com/Shemnei/punktf/tree/master/crates/punktf-lib"
-repository = "https://github.com/Shemnei/punktf/tree/master/crates/punktf-lib"
+documentation = "https://github.com/Shemnei/punktf/tree/main/crates/punktf-lib"
+homepage = "https://github.com/Shemnei/punktf/tree/main/crates/punktf-lib"
+repository = "https://github.com/Shemnei/punktf/tree/main/crates/punktf-lib"
 license= "MIT"
 keywords = ["dotfiles", "cli", "dotfile", "dotfiles-manager", "templating"]
 
