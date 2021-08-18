@@ -39,7 +39,7 @@ install:
 	cargo install --path $(ROOT_DIR)
 
 doc:
-	cargo doc --document-private-items
+	cargo doc --all --document-private-items
 
 # utility
 # can i commit
