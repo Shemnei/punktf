@@ -27,10 +27,11 @@ pub fn get_target_path() -> PathBuf {
 }
 
 /// Function which get's called when a merge conflict arises and the merge mode
-/// of the [`punktf_lib::Dotfile`] is set to [`punktf_lib::MergeMode::Ask`].
-/// The function will ask the user to accept the merge (`y`) or deny it (`n`)
-/// via the command line ([`std::io::stdout`]/[`std::io::stdin`]). If an
-/// invalid answer is given it will ask again until a valid answer is given.
+/// of the [dotfile](`punktf_lib::Dotfile`) is set to
+/// [MergeMode::Ask](`punktf_lib::MergeMode::Ask`).  The function will ask the
+/// user to accept the merge (`y`) or deny it (`n`) via the command line
+/// ([`std::io::stdout`]/[`std::io::stdin`]). If an invalid answer is given it
+/// will ask again until a valid answer is given.
 pub fn ask_user_merge(source_path: &Path, deploy_path: &Path) -> Result<bool> {
 	use std::io::Write;
 
