@@ -106,7 +106,7 @@ use clap::Clap;
 use color_eyre::eyre::eyre;
 use color_eyre::Result;
 use punktf_lib::deploy::executor::{Executor, ExecutorOptions};
-use punktf_lib::profile::{resolve_profile, LayeredProfile, SimpleProfile};
+use punktf_lib::profile::{resolve_profile, LayeredProfile, Profile};
 use punktf_lib::PunktfSource;
 
 /// Name of the environment variable which defines the default source path for
@@ -161,7 +161,7 @@ fn handle_commands(opts: opt::Opts) -> Result<()> {
 			let mut builder = LayeredProfile::build();
 
 			// Add target cli argument to top
-			let target_cli_profile = SimpleProfile {
+			let target_cli_profile = Profile {
 				target,
 				..Default::default()
 			};
@@ -175,7 +175,7 @@ fn handle_commands(opts: opt::Opts) -> Result<()> {
 			)?;
 
 			// Add target environment variable to bottom
-			let target_env_profile = SimpleProfile {
+			let target_env_profile = Profile {
 				target: Some(util::get_target_path()),
 				..Default::default()
 			};

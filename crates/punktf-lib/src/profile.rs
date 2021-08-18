@@ -13,7 +13,7 @@ use crate::{Dotfile, PunktfSource};
 /// A profile is a collection of dotfiles and variables, options and hooks.
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct SimpleProfile {
+pub struct Profile {
 	/// Defines the base profile. All settings from the base are merged with the
 	/// current profile. The settings from the current profile take precendence.
 	/// Dotfiles are merged on the dotfile level (not specific dotfile settings level).
@@ -43,7 +43,7 @@ pub struct SimpleProfile {
 	pub dotfiles: Vec<Dotfile>,
 }
 
-impl SimpleProfile {
+impl Profile {
 	pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, std::io::Error> {
 		let path = path.as_ref();
 		let file = File::open(path)?;
@@ -127,11 +127,11 @@ impl LayeredProfile {
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct LayeredProfileBuilder {
 	profile_names: Vec<String>,
-	profiles: Vec<SimpleProfile>,
+	profiles: Vec<Profile>,
 }
 
 impl LayeredProfileBuilder {
-	pub fn add(&mut self, name: String, profile: SimpleProfile) -> &mut Self {
+	pub fn add(&mut self, name: String, profile: Profile) -> &mut Self {
 		self.profiles.push(profile);
 		self.profile_names.push(name);
 
@@ -232,7 +232,7 @@ pub fn resolve_profile(
 		.unwrap_or_else(|| panic!("Profile path has no file name ({:?})", path))
 		.to_os_string();
 
-	let mut profile = SimpleProfile::from_file(&path)?;
+	let mut profile = Profile::from_file(&path)?;
 
 	if !profile.extends.is_empty() && resolved_profiles.contains(&file_name) {
 		// profile was already resolve and has "children" which will lead to
@@ -273,7 +273,7 @@ mod tests {
 
 	use super::*;
 	use crate::hook::Hook;
-	use crate::profile::SimpleProfile;
+	use crate::profile::Profile;
 	use crate::variables::UserVars;
 	use crate::{MergeMode, Priority};
 
@@ -287,7 +287,7 @@ mod tests {
 		dotfile_vars.insert(String::from("RUSTC_VERSION"), String::from("55.22"));
 		dotfile_vars.insert(String::from("USERNAME"), String::from("demo"));
 
-		let profile = SimpleProfile {
+		let profile = Profile {
 			extends: Vec::new(),
 			variables: Some(UserVars {
 				inner: profile_vars,
@@ -321,7 +321,7 @@ mod tests {
 
 		let json = serde_json::to_string(&profile).expect("Profile to be serializeable");
 
-		let parsed: SimpleProfile =
+		let parsed: Profile =
 			serde_json::from_str(&json).expect("Profile to be deserializable");
 
 		assert_eq!(parsed, profile);
