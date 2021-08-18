@@ -17,6 +17,7 @@ const PUNKTF_SOURCE_ENVVAR: &str = "PUNKTF_SOURCE";
 const PUNKTF_TARGET_ENVVAR: &str = "PUNKTF_TARGET";
 const PUNKTF_DEFAULT_PROFILE_ENVVAR: &str = "PUNKTF_PROFILE";
 
+/// Returns the path from the `PUNKTF_TARGET_ENVVAR` environment variable if it is set. Panics otherwise.
 fn get_target_path() -> PathBuf {
 	std::env::var_os(PUNKTF_TARGET_ENVVAR)
 		.unwrap_or_else(|| {

@@ -10,6 +10,7 @@ use crate::hook::Hook;
 use crate::variables::{UserVars, Variables};
 use crate::{Dotfile, PunktfSource};
 
+/// A profile is a collection of dotfiles and variables, options and hooks.
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SimpleProfile {
@@ -63,6 +64,8 @@ impl SimpleProfile {
 	}
 }
 
+/// Stores variables defined on different layers.
+/// Layers are created when a profile is extended.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct LayeredUserVars {
 	pub inner: HashMap<String, (usize, String)>,
@@ -77,6 +80,7 @@ impl Variables for LayeredUserVars {
 	}
 }
 
+/// Defines a profile that appears on different layers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LayeredProfile {
 	profile_names: Vec<String>,
@@ -119,6 +123,7 @@ impl LayeredProfile {
 	}
 }
 
+/// Collects different profiles from multiple layers.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct LayeredProfileBuilder {
 	profile_names: Vec<String>,
@@ -212,6 +217,7 @@ impl LayeredProfileBuilder {
 	}
 }
 
+/// Collect profiles from multiple layers if necessary.
 pub fn resolve_profile(
 	builder: &mut LayeredProfileBuilder,
 	source: &PunktfSource,

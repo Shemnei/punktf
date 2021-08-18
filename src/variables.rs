@@ -3,8 +3,9 @@ use std::ops::Deref;
 
 use serde::{Deserialize, Serialize};
 
-/// Variables that replace values it templates
+/// Variables that replace values in templates
 pub trait Variables {
+	/// Get a variable by name
 	fn var<K: AsRef<str>>(&self, key: K) -> Option<&str>;
 }
 
