@@ -21,7 +21,7 @@ pub struct DiagnosticSpan {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum DiagnositicLevel {
+pub enum DiagnosticLevel {
 	Error,
 	Warning,
 }
@@ -30,16 +30,16 @@ pub enum DiagnositicLevel {
 //
 // Copied from by <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_errors/src/diagnostic.rs#L15> with slight adaptations.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Diagnositic {
-	level: DiagnositicLevel,
+pub struct Diagnostic {
+	level: DiagnosticLevel,
 	msg: Cow<'static, str>,
 	span: Option<DiagnosticSpan>,
 	description: Option<Cow<'static, str>>,
 }
 
-impl Diagnositic {
+impl Diagnostic {
 	pub fn new<M: Into<Cow<'static, str>>, D: Into<Option<impl Into<Cow<'static, str>>>>>(
-		level: DiagnositicLevel,
+		level: DiagnosticLevel,
 		msg: M,
 		span: Option<DiagnosticSpan>,
 		description: D,
@@ -53,7 +53,7 @@ impl Diagnositic {
 	}
 
 	pub fn emit(&self, source: &'_ Source<'_>) {
-		let mut fmt = DiagnositicFormatter::new(source, &self.msg);
+		let mut fmt = DiagnosticFormatter::new(source, &self.msg);
 
 		if let Some(span) = &self.span {
 			for primary in &span.primary {
@@ -74,28 +74,28 @@ impl Diagnositic {
 		let out = fmt.finish();
 
 		match self.level {
-			DiagnositicLevel::Error => {
+			DiagnosticLevel::Error => {
 				log::error!("{}{} {}", "error".bright_red().bold(), ':'.bold(), out)
 			}
-			DiagnositicLevel::Warning => log::warn!("{}", out),
+			DiagnosticLevel::Warning => log::warn!("{}", out),
 		};
 	}
 
-	pub const fn level(&self) -> &DiagnositicLevel {
+	pub const fn level(&self) -> &DiagnosticLevel {
 		&self.level
 	}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DiagnositicBuilder {
-	level: DiagnositicLevel,
+pub struct DiagnosticBuilder {
+	level: DiagnosticLevel,
 	msg: Cow<'static, str>,
 	span: Option<DiagnosticSpan>,
 	description: Option<Cow<'static, str>>,
 }
 
-impl DiagnositicBuilder {
-	pub const fn new(level: DiagnositicLevel) -> Self {
+impl DiagnosticBuilder {
+	pub const fn new(level: DiagnosticLevel) -> Self {
 		Self {
 			level,
 			msg: Cow::Borrowed(""),
@@ -104,7 +104,7 @@ impl DiagnositicBuilder {
 		}
 	}
 
-	pub const fn level(mut self, level: DiagnositicLevel) -> Self {
+	pub const fn level(mut self, level: DiagnosticLevel) -> Self {
 		self.level = level;
 		self
 	}
@@ -137,8 +137,8 @@ impl DiagnositicBuilder {
 
 	// Destructors can not be run at compile time.
 	#[allow(clippy::missing_const_for_fn)]
-	pub fn build(self) -> Diagnositic {
-		Diagnositic {
+	pub fn build(self) -> Diagnostic {
+		Diagnostic {
 			level: self.level,
 			msg: self.msg,
 			span: self.span,
@@ -279,14 +279,14 @@ impl<'a> LineMap<'a> {
 	}
 }
 
-pub struct DiagnositicFormatter<'a> {
+pub struct DiagnosticFormatter<'a> {
 	source: &'a Source<'a>,
 	msg: &'a str,
 	descriptions: Vec<&'a str>,
 	line_map: LineMap<'a>,
 }
 
-impl<'a> DiagnositicFormatter<'a> {
+impl<'a> DiagnosticFormatter<'a> {
 	pub fn new(source: &'a Source<'a>, msg: &'a str) -> Self {
 		let descriptions = <_>::default();
 

@@ -6,7 +6,7 @@ use color_eyre::eyre::Result;
 use super::block::{Block, BlockKind, If, IfExpr, Var, VarEnv};
 use super::session::Session;
 use super::Template;
-use crate::template::diagnostic::{Diagnositic, DiagnositicBuilder, DiagnositicLevel};
+use crate::template::diagnostic::{Diagnostic, DiagnosticBuilder, DiagnosticLevel};
 use crate::variables::Variables;
 
 macro_rules! arch {
@@ -118,8 +118,8 @@ where
 		session.try_finish().map(|_| output)
 	}
 
-	fn report_diagnostic(&mut self, diagnostic: Diagnositic) {
-		if diagnostic.level() == &DiagnositicLevel::Error {
+	fn report_diagnostic(&mut self, diagnostic: Diagnostic) {
+		if diagnostic.level() == &DiagnosticLevel::Error {
 			self.session.mark_failed();
 		}
 
@@ -130,7 +130,7 @@ where
 		&mut self,
 		output: &mut String,
 		block: &Block,
-	) -> Result<(), DiagnositicBuilder> {
+	) -> Result<(), DiagnosticBuilder> {
 		let Block { span, kind } = block;
 
 		match kind {
@@ -231,7 +231,7 @@ where
 		Ok(())
 	}
 
-	fn resolve_if_expr(&self, expr: &IfExpr) -> Result<bool, DiagnositicBuilder> {
+	fn resolve_if_expr(&self, expr: &IfExpr) -> Result<bool, DiagnosticBuilder> {
 		match expr {
 			IfExpr::Compare { var, op, other } => {
 				let var = self.resolve_var(var)?;
@@ -241,7 +241,7 @@ where
 		}
 	}
 
-	fn resolve_var(&self, var: &Var) -> Result<Cow<'_, str>, DiagnositicBuilder> {
+	fn resolve_var(&self, var: &Var) -> Result<Cow<'_, str>, DiagnosticBuilder> {
 		let name = &self.template.source[var.name];
 
 		for env in var.envs.envs() {
@@ -274,7 +274,7 @@ where
 			};
 		}
 
-		Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
+		Err(DiagnosticBuilder::new(DiagnosticLevel::Error)
 			.message("failed to resolve variable")
 			.description(format!(
 				"no variable `{}` found in environments {}",
