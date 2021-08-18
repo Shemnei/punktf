@@ -7,11 +7,11 @@ use clap::{crate_authors, crate_description, crate_version, Clap};
 use color_eyre::eyre::eyre;
 use color_eyre::owo_colors::OwoColorize;
 use color_eyre::Result;
-use punktf::deploy::deployment::{Deployment, DeploymentStatus};
-use punktf::deploy::dotfile::DotfileStatus;
-use punktf::deploy::executor::{Executor, ExecutorOptions};
-use punktf::profile::{resolve_profile, LayeredProfile, SimpleProfile};
-use punktf::PunktfSource;
+use punktf_lib::deploy::deployment::{Deployment, DeploymentStatus};
+use punktf_lib::deploy::dotfile::DotfileStatus;
+use punktf_lib::deploy::executor::{Executor, ExecutorOptions};
+use punktf_lib::profile::{resolve_profile, LayeredProfile, SimpleProfile};
+use punktf_lib::PunktfSource;
 
 const PUNKTF_SOURCE_ENVVAR: &str = "PUNKTF_SOURCE";
 const PUNKTF_TARGET_ENVVAR: &str = "PUNKTF_TARGET";
