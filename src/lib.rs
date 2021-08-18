@@ -9,9 +9,9 @@
     exported_private_dependencies,
     future_incompatible,
     missing_copy_implementations,
-    rustdoc::missing_crate_level_docs,
-    missing_docs,
-    clippy::missing_docs_in_private_items,
+    //rustdoc::missing_crate_level_docs,
+    //missing_docs,
+    //clippy::missing_docs_in_private_items,
     missing_debug_implementations,
     private_in_public,
     rust_2018_compatibility,
@@ -30,6 +30,13 @@
 	clippy::use_self
 )]
 #![cfg_attr(docsrs, feature(doc_cfg), feature(doc_alias))]
+
+//! This is the library powering `punktf`, a cross-platform multi-target dotfiles manager.
+//!
+//! The main features are:
+//!
+//! - [Templating engine](`template`)
+//! - [Hooks](`hook`)
 
 pub mod deploy;
 pub mod hook;
