@@ -321,8 +321,7 @@ mod tests {
 
 		let json = serde_json::to_string(&profile).expect("Profile to be serializeable");
 
-		let parsed: Profile =
-			serde_json::from_str(&json).expect("Profile to be deserializable");
+		let parsed: Profile = serde_json::from_str(&json).expect("Profile to be deserializable");
 
 		assert_eq!(parsed, profile);
 	}
