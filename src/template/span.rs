@@ -27,7 +27,7 @@ macro_rules! pos {
             $vis struct $ident($inner_vis $inner_ty);
 
 			impl $ident {
-				pub fn new(value: $inner_ty) -> Self {
+				pub const fn new(value: $inner_ty) -> Self {
 					Self(value)
 				}
 			}
@@ -38,7 +38,7 @@ macro_rules! pos {
 				}
 
 				fn from_u32(value: u32) -> Self {
-					Self(value as $inner_ty)
+					Self(value)
 				}
 
 				fn as_usize(&self) -> usize {
@@ -46,7 +46,7 @@ macro_rules! pos {
 				}
 
 				fn as_u32(&self) -> u32 {
-					self.0 as u32
+					self.0
 				}
 			}
 
@@ -103,7 +103,7 @@ impl ByteSpan {
 		Self { low, high }
 	}
 
-	pub fn span<T>(self, value: T) -> Spanned<T> {
+	pub const fn span<T>(self, value: T) -> Spanned<T> {
 		Spanned::new(self, value)
 	}
 
@@ -156,11 +156,11 @@ impl ByteSpan {
 		copy
 	}
 
-	pub fn low(&self) -> &BytePos {
+	pub const fn low(&self) -> &BytePos {
 		&self.low
 	}
 
-	pub fn high(&self) -> &BytePos {
+	pub const fn high(&self) -> &BytePos {
 		&self.high
 	}
 }
@@ -172,7 +172,7 @@ impl fmt::Display for ByteSpan {
 }
 
 impl Index<ByteSpan> for str {
-	type Output = str;
+	type Output = Self;
 
 	fn index(&self, index: ByteSpan) -> &Self::Output {
 		&self[index.low.as_usize()..index.high.as_usize()]
@@ -180,7 +180,7 @@ impl Index<ByteSpan> for str {
 }
 
 impl Index<&ByteSpan> for str {
-	type Output = str;
+	type Output = Self;
 
 	fn index(&self, index: &ByteSpan) -> &Self::Output {
 		&self[index.low.as_usize()..index.high.as_usize()]
@@ -193,26 +193,32 @@ pub struct Spanned<T> {
 }
 
 impl<T> Spanned<T> {
-	pub fn new(span: ByteSpan, value: T) -> Self {
+	pub const fn new(span: ByteSpan, value: T) -> Self {
 		Self { span, value }
 	}
 
-	pub fn span(&self) -> &ByteSpan {
+	pub const fn span(&self) -> &ByteSpan {
 		&self.span
 	}
 
-	pub fn value(&self) -> &T {
+	pub const fn value(&self) -> &T {
 		&self.value
 	}
 
+	// Destructors can not be run at compile time.
+	#[allow(clippy::missing_const_for_fn)]
 	pub fn into_span(self) -> ByteSpan {
 		self.span
 	}
 
+	// Destructors can not be run at compile time.
+	#[allow(clippy::missing_const_for_fn)]
 	pub fn into_value(self) -> T {
 		self.value
 	}
 
+	// Destructors can not be run at compile time.
+	#[allow(clippy::missing_const_for_fn)]
 	pub fn into_inner(self) -> (ByteSpan, T) {
 		(self.span, self.value)
 	}

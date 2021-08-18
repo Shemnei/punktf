@@ -1,5 +1,3 @@
-// TODO (cleanup): if possible split into separate files
-
 use std::ops::Deref;
 use std::path::Path;
 use std::{fmt, vec};
@@ -17,11 +15,11 @@ pub struct Location {
 }
 
 impl Location {
-	pub fn line(&self) -> usize {
+	pub const fn line(&self) -> usize {
 		self.line
 	}
 
-	pub fn column(&self) -> usize {
+	pub const fn column(&self) -> usize {
 		self.column
 	}
 
@@ -61,11 +59,11 @@ pub struct MultiByteChar {
 }
 
 impl MultiByteChar {
-	pub fn pos(&self) -> &BytePos {
+	pub const fn pos(&self) -> &BytePos {
 		&self.pos
 	}
 
-	pub fn width(&self) -> u8 {
+	pub const fn width(&self) -> u8 {
 		self.bytes
 	}
 }
@@ -93,7 +91,7 @@ impl SpecialWidthChar {
 		}
 	}
 
-	pub fn width(&self) -> usize {
+	pub const fn width(&self) -> usize {
 		match self {
 			Self::ZeroWidth(_) => 0,
 			Self::Wide(_) => 2,
@@ -101,7 +99,7 @@ impl SpecialWidthChar {
 		}
 	}
 
-	pub fn pos(&self) -> &BytePos {
+	pub const fn pos(&self) -> &BytePos {
 		match self {
 			Self::ZeroWidth(p) | Self::Wide(p) | Self::Tab(p) => p,
 		}
@@ -264,11 +262,11 @@ impl<'a> Source<'a> {
 		self.get_idx_line(self.get_pos_line_idx(pos))
 	}
 
-	pub fn origin(&self) -> &SourceOrigin<'_> {
+	pub const fn origin(&self) -> &SourceOrigin<'_> {
 		&self.origin
 	}
 
-	pub fn content(&self) -> &str {
+	pub const fn content(&self) -> &str {
 		self.content
 	}
 }

@@ -7,7 +7,8 @@ pub enum BlockHint {
 	Text,
 	Comment,
 	Escaped,
-	Variable,
+	Var,
+	Print,
 	IfStart,
 	ElIf,
 	Else,
@@ -26,7 +27,21 @@ pub enum BlockKind {
 	Comment,
 	Escaped(ByteSpan),
 	Var(Var),
+	Print(ByteSpan),
 	If(If),
+}
+
+impl BlockKind {
+	pub const fn as_hint(&self) -> BlockHint {
+		match self {
+			BlockKind::Text => BlockHint::Text,
+			BlockKind::Comment => BlockHint::Comment,
+			BlockKind::Escaped(_) => BlockHint::Escaped,
+			BlockKind::Var(_) => BlockHint::Var,
+			BlockKind::Print(_) => BlockHint::Print,
+			BlockKind::If(_) => BlockHint::IfEnd,
+		}
+	}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,15 +51,15 @@ pub struct Block {
 }
 
 impl Block {
-	pub fn new(span: ByteSpan, kind: BlockKind) -> Self {
+	pub const fn new(span: ByteSpan, kind: BlockKind) -> Self {
 		Self { span, kind }
 	}
 
-	pub fn span(&self) -> &ByteSpan {
+	pub const fn span(&self) -> &ByteSpan {
 		&self.span
 	}
 
-	pub fn kind(&self) -> &BlockKind {
+	pub const fn kind(&self) -> &BlockKind {
 		&self.kind
 	}
 }
@@ -66,7 +81,7 @@ impl fmt::Display for VarEnv {
 pub struct VarEnvSet(pub [Option<VarEnv>; 3]);
 
 impl VarEnvSet {
-	pub fn empty() -> Self {
+	pub const fn empty() -> Self {
 		Self([None; 3])
 	}
 
@@ -89,7 +104,7 @@ impl VarEnvSet {
 		self.envs().count()
 	}
 
-	pub fn capacity(&self) -> usize {
+	pub const fn capacity(&self) -> usize {
 		self.0.len()
 	}
 }

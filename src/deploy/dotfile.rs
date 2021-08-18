@@ -14,7 +14,7 @@ pub enum DotfileStatus {
 }
 
 impl DotfileStatus {
-	pub fn success() -> Self {
+	pub const fn success() -> Self {
 		Self::Success
 	}
 
@@ -30,11 +30,11 @@ impl DotfileStatus {
 		self == &Self::Success
 	}
 
-	pub fn is_failed(&self) -> bool {
+	pub const fn is_failed(&self) -> bool {
 		matches!(self, &Self::Failed(_))
 	}
 
-	pub fn is_skipped(&self) -> bool {
+	pub const fn is_skipped(&self) -> bool {
 		matches!(self, &Self::Skipped(_))
 	}
 }
@@ -66,11 +66,11 @@ pub enum DeployedDotfileKind {
 }
 
 impl DeployedDotfileKind {
-	pub fn is_dotfile(&self) -> bool {
+	pub const fn is_dotfile(&self) -> bool {
 		matches!(self, Self::Dotfile(_))
 	}
 
-	pub fn is_child(&self) -> bool {
+	pub const fn is_child(&self) -> bool {
 		matches!(self, Self::Child(_))
 	}
 }
@@ -79,4 +79,14 @@ impl DeployedDotfileKind {
 pub struct DeployedDotfile {
 	pub status: DotfileStatus,
 	pub kind: DeployedDotfileKind,
+}
+
+impl DeployedDotfile {
+	pub const fn status(&self) -> &DotfileStatus {
+		&self.status
+	}
+
+	pub const fn kind(&self) -> &DeployedDotfileKind {
+		&self.kind
+	}
 }

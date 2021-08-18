@@ -2,8 +2,8 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, SystemTime, SystemTimeError};
 
-use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 
 use super::dotfile::{DeployedDotfile, DeployedDotfileKind, DotfileStatus};
@@ -16,7 +16,7 @@ pub enum DeploymentStatus {
 }
 
 impl DeploymentStatus {
-	pub fn success() -> Self {
+	pub const fn success() -> Self {
 		Self::Success
 	}
 
@@ -28,7 +28,7 @@ impl DeploymentStatus {
 		self == &Self::Success
 	}
 
-	pub fn is_failed(&self) -> bool {
+	pub const fn is_failed(&self) -> bool {
 		matches!(self, &Self::Failed(_))
 	}
 }
@@ -53,27 +53,31 @@ where
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Deployment {
-	time_start: DateTime<Utc>,
-	time_end: DateTime<Utc>,
+	time_start: SystemTime,
+	time_end: SystemTime,
 	status: DeploymentStatus,
 	dotfiles: HashMap<PathBuf, DeployedDotfile>,
 }
 
 impl Deployment {
-	pub fn time_start(&self) -> &DateTime<Utc> {
+	pub const fn time_start(&self) -> &SystemTime {
 		&self.time_start
 	}
 
-	pub fn time_end(&self) -> &DateTime<Utc> {
+	pub const fn time_end(&self) -> &SystemTime {
 		&self.time_end
 	}
 
-	pub fn duration(&self) -> Duration {
-		self.time_end - self.time_start
+	pub fn duration(&self) -> Result<Duration, SystemTimeError> {
+		self.time_end.duration_since(self.time_start)
 	}
 
-	pub fn status(&self) -> &DeploymentStatus {
+	pub const fn status(&self) -> &DeploymentStatus {
 		&self.status
+	}
+
+	pub const fn dotfiles(&self) -> &HashMap<PathBuf, DeployedDotfile> {
+		&self.dotfiles
 	}
 
 	pub fn build() -> DeploymentBuilder {
@@ -84,7 +88,7 @@ impl Deployment {
 #[must_use]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeploymentBuilder {
-	time_start: DateTime<Utc>,
+	time_start: SystemTime,
 	dotfiles: HashMap<PathBuf, DeployedDotfile>,
 }
 
@@ -167,10 +171,31 @@ impl DeploymentBuilder {
 			.map(|dotfile| dotfile.status.is_success())
 	}
 
+	pub fn finish(self) -> Deployment {
+		let failed_dotfiles = self
+			.dotfiles
+			.values()
+			.filter(|dotfile| dotfile.status().is_failed())
+			.count();
+
+		let status = if failed_dotfiles > 0 {
+			DeploymentStatus::failed(format!("Deployment of {} dotfiles failed", failed_dotfiles))
+		} else {
+			DeploymentStatus::Success
+		};
+
+		Deployment {
+			time_start: self.time_start,
+			time_end: SystemTime::now(),
+			status,
+			dotfiles: self.dotfiles,
+		}
+	}
+
 	pub fn success(self) -> Deployment {
 		Deployment {
 			time_start: self.time_start,
-			time_end: Utc::now(),
+			time_end: SystemTime::now(),
 			status: DeploymentStatus::Success,
 			dotfiles: self.dotfiles,
 		}
@@ -179,7 +204,7 @@ impl DeploymentBuilder {
 	pub fn failed<S: Into<Cow<'static, str>>>(self, reason: S) -> Deployment {
 		Deployment {
 			time_start: self.time_start,
-			time_end: Utc::now(),
+			time_end: SystemTime::now(),
 			status: DeploymentStatus::Failed(reason.into()),
 			dotfiles: self.dotfiles,
 		}
@@ -189,24 +214,26 @@ impl DeploymentBuilder {
 impl Default for DeploymentBuilder {
 	fn default() -> Self {
 		Self {
-			time_start: Utc::now(),
+			time_start: SystemTime::now(),
 			dotfiles: HashMap::new(),
-			// TODO: INVESTIGATE - Causes stack overflow???
-			//..Default::default()
 		}
 	}
 }
 
 #[cfg(test)]
 mod tests {
+	use color_eyre::Result;
+
 	use super::*;
 
 	#[test]
-	fn deployment_builder() {
+	fn deployment_builder() -> Result<()> {
 		let builder = Deployment::build();
 		let deployment = builder.success();
 
 		assert!(deployment.status().is_success());
-		assert!(deployment.duration() >= Duration::seconds(0));
+		assert!(deployment.duration()? >= Duration::from_secs(0));
+
+		Ok(())
 	}
 }

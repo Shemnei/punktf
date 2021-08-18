@@ -1,71 +1,22 @@
-use std::marker::PhantomData;
-
 use color_eyre::eyre::{eyre, Result};
 
 use super::diagnostic::Diagnositic;
 use super::source::Source;
 
-pub trait SessionState {}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ParseState {}
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ResolveState {}
-
-impl SessionState for ParseState {}
-impl SessionState for ResolveState {}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Session<'src, S> {
-	pub source: Source<'src>,
+pub struct Session {
 	failed: bool,
 	diagnostics: Vec<Diagnositic>,
-
-	_marker: PhantomData<S>,
 }
 
-impl<'src> Session<'src, ParseState> {
-	pub fn new(source: Source<'src>) -> Self {
+impl Session {
+	pub const fn new() -> Self {
 		Self {
-			source,
 			failed: false,
-			diagnostics: vec![],
-
-			_marker: PhantomData,
+			diagnostics: Vec::new(),
 		}
 	}
 
-	pub fn try_finish(self) -> Result<Session<'src, ResolveState>> {
-		if self.failed {
-			Err(eyre!("Parse session has failed"))
-		} else {
-			let new = Session {
-				source: self.source,
-				failed: false,
-				diagnostics: vec![],
-
-				_marker: PhantomData,
-			};
-
-			Ok(new)
-		}
-	}
-}
-
-impl<'src> Session<'src, ResolveState> {
-	pub fn try_finish(self) -> Result<()> {
-		if self.failed {
-			Err(eyre!("Resolve session has failed"))
-		} else {
-			Ok(())
-		}
-	}
-}
-
-impl<'src, S> Session<'src, S>
-where
-	S: SessionState,
-{
 	pub fn report(&mut self, diagnostic: Diagnositic) {
 		self.diagnostics.push(diagnostic);
 	}
@@ -74,9 +25,26 @@ where
 		self.failed = true;
 	}
 
-	pub fn emit(&self) {
+	pub fn emit(&self, source: &Source<'_>) {
 		for diagnostic in &self.diagnostics {
-			diagnostic.emit(&self.source);
+			diagnostic.emit(source);
+		}
+	}
+
+	pub fn try_finish(self) -> Result<()> {
+		if self.failed {
+			Err(eyre!("Session contains errors"))
+		} else {
+			Ok(())
+		}
+	}
+}
+
+impl Default for Session {
+	fn default() -> Self {
+		Self {
+			failed: false,
+			diagnostics: Vec::new(),
 		}
 	}
 }

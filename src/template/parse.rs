@@ -6,26 +6,28 @@ use color_eyre::Report;
 
 use super::block::{Block, BlockHint, If, IfExpr, IfOp, Var, VarEnv, VarEnvSet};
 use super::diagnostic::{Diagnositic, DiagnositicBuilder, DiagnositicLevel};
-use super::session::{ParseState, Session};
+use super::session::Session;
+use super::source::Source;
 use super::span::{ByteSpan, Pos, Spanned};
 use super::Template;
 use crate::template::block::BlockKind;
 
-// TODO:
-// - give mutable source as param
-// - record error on source
-// - try to recover on next block opening/closing
-
 #[derive(Debug, Clone)]
 pub struct Parser<'a> {
-	session: Session<'a, ParseState>,
+	source: Source<'a>,
+	session: Session,
 	blocks: BlockIter<'a>,
 }
 
 impl<'a> Parser<'a> {
-	pub fn new(session: Session<'a, ParseState>) -> Self {
-		let blocks = BlockIter::new(session.source.content);
-		Self { session, blocks }
+	pub const fn new(source: Source<'a>) -> Self {
+		let blocks = BlockIter::new(source.content);
+
+		Self {
+			source,
+			session: Session::new(),
+			blocks,
+		}
 	}
 
 	pub fn parse(mut self) -> Result<Template<'a>> {
@@ -38,10 +40,13 @@ impl<'a> Parser<'a> {
 			};
 		}
 
-		self.session.emit();
-		let session = self.session.try_finish()?;
+		self.session.emit(&self.source);
+		let _ = self.session.try_finish()?;
 
-		Ok(Template { session, blocks })
+		Ok(Template {
+			source: self.source,
+			blocks,
+		})
 	}
 
 	fn report_diagnostic(&mut self, diagnostic: Diagnositic) {
@@ -58,15 +63,16 @@ impl<'a> Parser<'a> {
 			Err(err) => return Some(Err(err)),
 		};
 
-		log::trace!("{:?}: {}", hint, &self.session.source[span]);
+		log::trace!("{:?}: {}", hint, &self.source[span]);
 
 		let block = match hint {
 			BlockHint::Text => Ok(self.parse_text(span)),
 			BlockHint::Comment => Ok(self.parse_comment(span)),
 			BlockHint::Escaped => Ok(self.parse_escaped(span)),
-			BlockHint::Variable => self
+			BlockHint::Var => self
 				.parse_variable(span)
 				.map(|var| Block::new(span, BlockKind::Var(var))),
+			BlockHint::Print => Ok(self.parse_print(span)),
 			BlockHint::IfStart => self
 				.parse_if(span)
 				.map(|Spanned { span, value }| Block::new(span, BlockKind::If(value))),
@@ -89,11 +95,11 @@ impl<'a> Parser<'a> {
 		Some(block)
 	}
 
-	fn parse_text(&self, span: ByteSpan) -> Block {
+	const fn parse_text(&self, span: ByteSpan) -> Block {
 		Block::new(span, BlockKind::Text)
 	}
 
-	fn parse_comment(&self, span: ByteSpan) -> Block {
+	const fn parse_comment(&self, span: ByteSpan) -> Block {
 		// {{!-- ... --}}
 		Block::new(span, BlockKind::Comment)
 	}
@@ -105,7 +111,7 @@ impl<'a> Parser<'a> {
 
 	fn parse_variable(&self, span: ByteSpan) -> Result<Var, DiagnositicBuilder> {
 		let span_inner = span.offset_low(2).offset_high(-2);
-		let content_inner = &self.session.source[span_inner];
+		let content_inner = &self.source[span_inner];
 
 		// +2 for block opening
 		let offset = span.low().as_usize() + 2;
@@ -116,6 +122,11 @@ impl<'a> Parser<'a> {
 				.description(err.to_string())
 				.primary_span(span)
 		})
+	}
+
+	fn parse_print(&self, span: ByteSpan) -> Block {
+		// {{@print ... }}
+		Block::new(span, BlockKind::Print(span.offset_low(9).offset_high(-2)))
 	}
 
 	fn parse_if(&mut self, span: ByteSpan) -> Result<Spanned<If>, DiagnositicBuilder> {
@@ -205,6 +216,7 @@ impl<'a> Parser<'a> {
 			let els = self
 				.parse_else(span)
 				.map_err(|build| build.label_span(*head.span(), "while parsing this `if` block"))?;
+
 			let els_nested = self
 				.parse_if_enclosed_blocks()
 				.into_iter()
@@ -278,7 +290,7 @@ impl<'a> Parser<'a> {
 	}
 
 	fn parse_else(&self, span: ByteSpan) -> Result<ByteSpan, DiagnositicBuilder> {
-		if &self.session.source[span] != "{{@else}}" {
+		if &self.source[span] != "{{@else}}" {
 			Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
 				.message("expected a `else` block")
 				.primary_span(span))
@@ -288,7 +300,7 @@ impl<'a> Parser<'a> {
 	}
 
 	fn parse_if_end(&self, span: ByteSpan) -> Result<ByteSpan, DiagnositicBuilder> {
-		if &self.session.source[span] != "{{@fi}}" {
+		if &self.source[span] != "{{@fi}}" {
 			Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
 				.message("expected a `fi` block")
 				.primary_span(span))
@@ -299,7 +311,7 @@ impl<'a> Parser<'a> {
 
 	fn parse_if_expr(&self, span: ByteSpan) -> Result<IfExpr, DiagnositicBuilder> {
 		// {{VAR}} (!=|==) "OTHER" OR {{VAR}}
-		let content = &self.session.source[span];
+		let content = &self.source[span];
 
 		// read var
 		let var_block_start = content.find("{{").ok_or_else(|| {
@@ -371,7 +383,7 @@ impl<'a> Parser<'a> {
 	}
 
 	fn peek_block_hint(&self) -> Option<BlockHint> {
-		// create a copy of the block iter to not mess up the state while peeking
+		// Create a copy of the block iter to not mess up the state while peeking
 		let mut peek = self.blocks;
 		peek.next()?.ok().map(|spanned| spanned.into_value())
 	}
@@ -445,13 +457,13 @@ fn parse_var(inner: &str, mut offset: usize) -> Result<Var> {
 	// save original length to keep track of the offset
 	let orig_len = inner.len();
 
-	// remove preceding whitespaces
+	// remove preceding white spaces
 	let inner = inner.trim_start();
 
-	// increase offset to account for removed whitespaces
+	// increase offset to account for removed white spaces
 	offset += orig_len - inner.len();
 
-	// remove trailing whitespaces. Offset doesn't need to change.
+	// remove trailing white spaces. Offset doesn't need to change.
 	let mut inner = inner.trim_end();
 
 	// check for envs
@@ -470,7 +482,7 @@ fn parse_var(inner: &str, mut offset: usize) -> Result<Var> {
 				_ => break,
 			};
 
-			// break if add fails (duplicate, no more space)
+			// break if add fails (duplicate)
 			if !env_set.add(env) {
 				return Err(eyre!(
 					"Specified duplicate variable environments at {}",
@@ -497,8 +509,11 @@ fn parse_var(inner: &str, mut offset: usize) -> Result<Var> {
 		Err(eyre!(
 			"Found invalid symbol in variable name: (b`{}`; c`{}`)",
 			invalid,
-			// TODO: could be invalid for unicode
-			*invalid as char
+			if invalid.is_ascii() {
+				*invalid as char
+			} else {
+				'\0'
+			}
 		))
 	} else {
 		Ok(Var {
@@ -519,7 +534,7 @@ fn parse_ifop(inner: &str) -> Result<IfOp> {
 		}
 		(Some(_), None) => Ok(IfOp::Eq),
 		(None, Some(_)) => Ok(IfOp::NotEq),
-		_ => Err(eyre!("Failed to find any if operation")),
+		_ => Err(eyre!("Failed to find a if operand")),
 	}
 }
 
@@ -552,7 +567,7 @@ struct BlockIter<'a> {
 }
 
 impl<'a> BlockIter<'a> {
-	fn new(content: &'a str) -> Self {
+	const fn new(content: &'a str) -> Self {
 		Self { content, index: 0 }
 	}
 }
@@ -568,13 +583,13 @@ impl<'a> Iterator for BlockIter<'a> {
 				let span = ByteSpan::new(self.index, self.index);
 				if let Some(skip) = skip {
 					self.index += skip;
-					log::debug!("Skipping: {} ({})", skip, &self.content[self.index..]);
+					log::trace!("Skipping: {} ({})", skip, &self.content[self.index..]);
 				} else {
 					self.index = self.content.len();
 				}
 				let span = span.with_high(self.index);
 
-				log::debug!("SPAN: {}/{}", span, err);
+				log::trace!("Span: {}/{}", span, err);
 
 				return Some(Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
 					.message("failed to parse block")
@@ -586,14 +601,14 @@ impl<'a> Iterator for BlockIter<'a> {
 		span = span.offset(self.index as i32);
 		self.index = span.high().as_usize();
 
-		let content = &self.content[span];
-
 		if let Some(hint) = hint {
 			return Some(Ok(span.span(hint)));
 		}
 
+		let content = &self.content[span];
+
 		// Check if its a text block (no opening and closing `{{\}}`)
-		if !matches!(content.as_bytes(), &[b'{', b'{', .., b'}', b'}']) {
+		if !content.starts_with("{{") {
 			return Some(Ok(span.span(BlockHint::Text)));
 		}
 
@@ -601,40 +616,47 @@ impl<'a> Iterator for BlockIter<'a> {
 		let content = &content[2..content.len() - 2];
 
 		// Check for escaped
-		if let (Some(b'{'), Some(b'}')) = (content.as_bytes().get(0), content.as_bytes().last()) {
+		// e.g. `{{{ Escaped }}}`
+		if content.starts_with('{') && content.ends_with('}') {
 			return Some(Ok(span.span(BlockHint::Escaped)));
 		}
 
 		// Check for comment
-		if let (Some(b"!--"), Some(b"--")) = (
-			content.as_bytes().get(..3),
-			content
-				.as_bytes()
-				.get(content.as_bytes().len().saturating_sub(3)..),
-		) {
+		// e.g. `{{!-- Comment --}}`
+		if content.starts_with("!--") && content.ends_with("--") {
 			return Some(Ok(span.span(BlockHint::Comment)));
 		}
 
+		// Check for print
+		// e.g. `{{@print ... }}`
+		if content.starts_with("@print ") {
+			return Some(Ok(span.span(BlockHint::Print)));
+		}
+
 		// Check for if
-		if let Some(b"@if ") = content.as_bytes().get(..4) {
+		// e.g. `{{@if {{VAR}} == "LITERAL"}}`
+		if content.starts_with("@if ") {
 			return Some(Ok(span.span(BlockHint::IfStart)));
 		}
 
 		// Check for elif
-		if let Some(b"@elif ") = content.as_bytes().get(..6) {
+		// e.g. `{{@elif {{VAR}} == "LITERAL"}}`
+		if content.starts_with("@elif ") {
 			return Some(Ok(span.span(BlockHint::ElIf)));
 		}
 
 		// Check for else
-		if let Some(b"@else") = content.as_bytes().get(..5) {
+		// e.g. `{{@else}}`
+		if content.starts_with("@else") {
 			return Some(Ok(span.span(BlockHint::Else)));
 		}
 
-		// Check for else
-		if let Some(b"@fi") = content.as_bytes().get(..3) {
+		// Check for fi
+		// e.g. `{{@fi}}`
+		if content.starts_with("@fi") {
 			return Some(Ok(span.span(BlockHint::IfEnd)));
 		}
 
-		Some(Ok(span.span(BlockHint::Variable)))
+		Some(Ok(span.span(BlockHint::Var)))
 	}
 }

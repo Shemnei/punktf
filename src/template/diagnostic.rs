@@ -81,7 +81,7 @@ impl Diagnositic {
 		};
 	}
 
-	pub fn level(&self) -> &DiagnositicLevel {
+	pub const fn level(&self) -> &DiagnositicLevel {
 		&self.level
 	}
 }
@@ -95,7 +95,7 @@ pub struct DiagnositicBuilder {
 }
 
 impl DiagnositicBuilder {
-	pub fn new(level: DiagnositicLevel) -> Self {
+	pub const fn new(level: DiagnositicLevel) -> Self {
 		Self {
 			level,
 			msg: Cow::Borrowed(""),
@@ -104,7 +104,7 @@ impl DiagnositicBuilder {
 		}
 	}
 
-	pub fn level(mut self, level: DiagnositicLevel) -> Self {
+	pub const fn level(mut self, level: DiagnositicLevel) -> Self {
 		self.level = level;
 		self
 	}
@@ -135,6 +135,8 @@ impl DiagnositicBuilder {
 		self
 	}
 
+	// Destructors can not be run at compile time.
+	#[allow(clippy::missing_const_for_fn)]
 	pub fn build(self) -> Diagnositic {
 		Diagnositic {
 			level: self.level,
