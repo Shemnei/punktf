@@ -26,8 +26,8 @@ brew install punktf
 
 ### AUR
 
-Install [punktf using Chocolatey](https://aur.archlinux.org/packages/punktf) on Arch Linux.
-To install it use your favorite aur capable package manager (e.g. [yay](https://github.com/Jguer/yay), [pikaur](https://github.com/actionless/pikaur)):
+Install [punktf from AUR](https://aur.archlinux.org/packages/punktf) on Arch Linux.
+To install it use your favorite AUR capable package manager (e.g. [yay](https://github.com/Jguer/yay), [pikaur](https://github.com/actionless/pikaur)):
 
 ```sh
 yay punktf # using yay
