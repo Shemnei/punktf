@@ -25,7 +25,7 @@ pub struct Profile {
 	pub variables: Option<UserVars>,
 
 	/// Target root path of the deployment. Will be used as file stem for the dotfiles
-	/// when not overwritten by [Dotfile::target].
+	/// when not overwritten by [`Dotfile::overwrite_target`].
 	#[serde(skip_serializing_if = "Option::is_none", default)]
 	pub target: Option<PathBuf>,
 

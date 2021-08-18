@@ -3,7 +3,7 @@
 #![feature(map_first_last)]
 #![feature(path_try_exists)]
 #![feature(io_error_more)]
-#![allow(dead_code)]
+#![allow(dead_code, rustdoc::private_intra_doc_links)]
 #![deny(
     deprecated_in_future,
     exported_private_dependencies,
