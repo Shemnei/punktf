@@ -8,7 +8,8 @@ use super::source::Location;
 use super::span::ByteSpan;
 use crate::template::source::Source;
 
-// COPYRIGHT
+// COPYRIGHT by Rust project contributors
+// <https://github.com/rust-lang/rust/graphs/contributors>
 //
 // Copied from <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_span/src/lib.rs#L474>.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -26,7 +27,8 @@ pub enum DiagnosticLevel {
 	Warning,
 }
 
-// COPYRIGHT
+// COPYRIGHT by Rust project contributors
+// <https://github.com/rust-lang/rust/graphs/contributors>
 //
 // Copied from by <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_errors/src/diagnostic.rs#L15> with slight adaptations.
 #[derive(Debug, Clone, PartialEq, Eq)]
