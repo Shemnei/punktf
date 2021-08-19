@@ -64,16 +64,16 @@
 //! ```text
 //! {{@if {{OS}}}}
 //!         {{@if {{&OS}} != "windows"}}
-//! 	        print("OS is not windows")
+//!             print("OS is not windows")
 //!         {{@elif {{OS}} == "windows"}}
-//! 	        {{{!-- This is a nested comment. Below it is a nested variable block. --}}}
-//! 	        print("OS is {{OS}}")
+//!             {{{!-- This is a nested comment. Below it is a nested variable block. --}}}
+//!             print("OS is {{OS}}")
 //!         {{@else}}
-//! 	        {{{!-- This is a nested comment. --}}}
-//! 	        print("Can never get here. {{{ {{OS}} is neither `windows` nor not `windows`. }}}")
+//!             {{{!-- This is a nested comment. --}}}
+//!             print("Can never get here. {{{ {{OS}} is neither `windows` nor not `windows`. }}}")
 //!         {{@fi}}
 //! {{@else}}
-//! 	print("No value for variable `OS` set")
+//!     print("No value for variable `OS` set")
 //! {{@fi}}
 //! ```
 //!

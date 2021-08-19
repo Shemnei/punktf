@@ -187,9 +187,9 @@ impl<'a> Parser<'a> {
 	///
 	/// ```text
 	/// {{@if ...}}
-	///		{{@print ...}} <-- contained block
-	///	{{@else}}
-	///		{{ ... }} <-- another contained block
+	///        {{@print ...}} <-- contained block
+	///    {{@else}}
+	///        {{ ... }} <-- another contained block
 	/// {{@fi}}
 	/// ```
 	///
