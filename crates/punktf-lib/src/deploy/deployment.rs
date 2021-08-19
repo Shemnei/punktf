@@ -9,25 +9,32 @@ use serde::{Deserialize, Serialize};
 use super::dotfile::{DeployedDotfile, DeployedDotfileKind, DotfileStatus};
 use crate::{Dotfile, Priority};
 
+/// Describes the status of a dotfile deployment.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DeploymentStatus {
+	/// The dotfile is deployed.
 	Success,
+	/// The deployment has failed.
 	Failed(Cow<'static, str>),
 }
 
 impl DeploymentStatus {
+	/// Returns success.
 	pub const fn success() -> Self {
 		Self::Success
 	}
 
+	/// Returns a failure.
 	pub fn failed<S: Into<Cow<'static, str>>>(reason: S) -> Self {
 		Self::Failed(reason.into())
 	}
 
+	/// Checks if the deployment was successful.
 	pub fn is_success(&self) -> bool {
 		self == &Self::Success
 	}
 
+	/// Checks if the deployment has failed.
 	pub const fn is_failed(&self) -> bool {
 		matches!(self, &Self::Failed(_))
 	}
@@ -51,35 +58,46 @@ where
 	}
 }
 
+/// Describes the deployment of a dotfile.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Deployment {
+	/// The time the deployment was started.
 	time_start: SystemTime,
+	/// The time the deployment was finished.
 	time_end: SystemTime,
+	/// The status of the deployment.
 	status: DeploymentStatus,
+	/// The dotfiles that were deployed.
 	dotfiles: HashMap<PathBuf, DeployedDotfile>,
 }
 
 impl Deployment {
+	/// Returns the time the deployment was started.
 	pub const fn time_start(&self) -> &SystemTime {
 		&self.time_start
 	}
 
+	/// Returns the time the deployment was finished.
 	pub const fn time_end(&self) -> &SystemTime {
 		&self.time_end
 	}
 
+	/// Returns the duration the deployment took.
 	pub fn duration(&self) -> Result<Duration, SystemTimeError> {
 		self.time_end.duration_since(self.time_start)
 	}
 
+	/// Returns the status of the deployment.
 	pub const fn status(&self) -> &DeploymentStatus {
 		&self.status
 	}
 
+	/// Returns the dotfiles.
 	pub const fn dotfiles(&self) -> &HashMap<PathBuf, DeployedDotfile> {
 		&self.dotfiles
 	}
 
+	/// Builds the deployment.
 	pub fn build() -> DeploymentBuilder {
 		DeploymentBuilder::default()
 	}
