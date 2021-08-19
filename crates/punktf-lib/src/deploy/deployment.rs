@@ -106,7 +106,7 @@ impl Deployment {
 	}
 }
 
-#[must_use]
+/// A builder for a [`Deployment`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeploymentBuilder {
 	time_start: SystemTime,
@@ -114,6 +114,7 @@ pub struct DeploymentBuilder {
 }
 
 impl DeploymentBuilder {
+	/// Adds a dotfile with the given `status` to the builder.
 	pub fn add_dotfile(
 		&mut self,
 		path: PathBuf,
@@ -130,6 +131,8 @@ impl DeploymentBuilder {
 		self
 	}
 
+	/// Adds the child of a dotfile directory with the given `status` to the
+	/// builder.
 	pub fn add_child(
 		&mut self,
 		path: PathBuf,
@@ -146,10 +149,14 @@ impl DeploymentBuilder {
 		self
 	}
 
+	/// Checks if the builder already contains a dotfile for the given `path`.
 	pub fn contains<P: AsRef<Path>>(&self, path: P) -> bool {
 		self.dotfiles.contains_key(path.as_ref())
 	}
 
+	/// Gets any dotfile already deployed at `path`.
+	///
+	/// This function ignores the status of the dotfile.
 	pub fn get_dotfile<P: AsRef<Path>>(&self, path: P) -> Option<&Dotfile> {
 		let mut value = self.dotfiles.get(path.as_ref())?;
 
@@ -163,7 +170,9 @@ impl DeploymentBuilder {
 		}
 	}
 
-	/// Only gets the dotfile if all dotfiles in the chain are deployed
+	/// Gets any dotfile already deployed at `path`.
+	///
+	/// This function only returns a dotfile with [`DotfileStatus::Success`].
 	pub fn get_deployed_dotfile<P: AsRef<Path>>(&self, path: P) -> Option<&Dotfile> {
 		let mut value = self.dotfiles.get(path.as_ref())?;
 
@@ -181,17 +190,27 @@ impl DeploymentBuilder {
 		}
 	}
 
+	/// Gets the priority of the dotfile already deployed at `path`.
+	///
+	/// This function only evaluates a dotfile with [`DotfileStatus::Success`].
 	pub fn get_priority<P: AsRef<Path>>(&self, path: P) -> Option<Option<Priority>> {
 		self.get_deployed_dotfile(path)
 			.map(|dotfile| dotfile.priority)
 	}
 
+	/// Checks if a dotfile was already successfully deployed at `path`.
+	///
+	/// This function only evaluates a dotfile with [`DotfileStatus::Success`].
 	pub fn is_deployed<P: AsRef<Path>>(&self, path: P) -> Option<bool> {
 		self.dotfiles
 			.get(path.as_ref())
 			.map(|dotfile| dotfile.status.is_success())
 	}
 
+	/// Consumes self and creates a [`Deployment`] from it.
+	///
+	/// This will try to guess the state of the deployment by looking for any
+	/// failed deployed dotfile.
 	pub fn finish(self) -> Deployment {
 		let failed_dotfiles = self
 			.dotfiles
@@ -213,6 +232,9 @@ impl DeploymentBuilder {
 		}
 	}
 
+	/// Consumes self and creates a [`Deployment`] from it.
+	///
+	/// This will mark the deployment as success.
 	pub fn success(self) -> Deployment {
 		Deployment {
 			time_start: self.time_start,
@@ -222,6 +244,10 @@ impl DeploymentBuilder {
 		}
 	}
 
+	/// Consumes self and creates a [`Deployment`] from it.
+	///
+	/// This will mark the deployment as failed with the reason given with
+	/// `reason`.
 	pub fn failed<S: Into<Cow<'static, str>>>(self, reason: S) -> Deployment {
 		Deployment {
 			time_start: self.time_start,
