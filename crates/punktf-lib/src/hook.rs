@@ -1,3 +1,5 @@
+//! Hooks which can be execute by the native os shell.
+
 use std::io::{BufRead as _, BufReader};
 use std::path::Path;
 use std::process::{Command, Stdio};

@@ -1,3 +1,6 @@
+//! Statistics and information about the final state of a deployed
+//! [profile](`crate::profile::Profile`).
+
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;

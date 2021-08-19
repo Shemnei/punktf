@@ -1,3 +1,6 @@
+//! User defined variables used by [profiles](`crate::profile::Profile`) and
+//! [dotfiles](`crate::Dotfile`).
+
 use std::collections::HashMap;
 use std::ops::Deref;
 

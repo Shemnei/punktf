@@ -1,3 +1,5 @@
+//! Defines profiles and ways to layer multiple of them.
+
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
 use std::fs::File;

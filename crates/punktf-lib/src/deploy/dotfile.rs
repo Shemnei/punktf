@@ -1,3 +1,6 @@
+//! Statistics and information about the final state of a deployed
+//! [dotfile](`crate::Dotfile`).
+
 use std::borrow::Cow;
 use std::fmt;
 use std::path::PathBuf;

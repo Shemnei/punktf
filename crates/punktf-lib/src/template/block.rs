@@ -1,3 +1,5 @@
+//! Basic block and tokens a [template](`super::Template`) is created from.
+
 use std::fmt;
 
 use super::span::{ByteSpan, Spanned};
