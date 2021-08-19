@@ -77,7 +77,9 @@ pub enum DeployedDotfileKind {
 	/// A normal dotfile.
 	Dotfile(Dotfile),
 	/// A dotfile that is contained in a directory that is deployed.
-	// PathBuf is `parent` dotfile path. The parent should always be of type `Dotfile(_)`.
+	///
+	/// PathBuf is the deploy path of the `parent` dotfile.
+	/// The parent should always be of type `Dotfile(_)`.
 	Child(PathBuf),
 }
 
@@ -93,10 +95,13 @@ impl DeployedDotfileKind {
 	}
 }
 
-/// Stores a the result of a dotfile deployment operation.
+/// Stores the result of a dotfile deployment operation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeployedDotfile {
+	/// The status of the deployed dotfile.
 	pub status: DotfileStatus,
+
+	/// The kind of the deployed dotfile.
 	pub kind: DeployedDotfileKind,
 }
 
