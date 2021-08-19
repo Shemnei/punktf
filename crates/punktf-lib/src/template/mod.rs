@@ -29,6 +29,7 @@ use self::resolve::Resolver;
 use self::source::Source;
 use crate::variables::Variables;
 
+/// A `Template` is a file from the Source folder that is not yet deployed. It might contain statements and variables.
 #[derive(Debug, Clone)]
 pub struct Template<'a> {
 	source: Source<'a>,
@@ -36,10 +37,12 @@ pub struct Template<'a> {
 }
 
 impl<'a> Template<'a> {
+	/// Parses the source file and returns a `Template` object.
 	pub fn parse(source: Source<'a>) -> Result<Self> {
 		Parser::new(source).parse()
 	}
 
+	/// Resolves the variables in the template and returns a `Template` object.
 	pub fn resolve<PV: Variables, DV: Variables>(
 		&self,
 		profile_vars: Option<&PV>,
