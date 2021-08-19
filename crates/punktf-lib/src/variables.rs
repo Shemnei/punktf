@@ -15,6 +15,7 @@ pub trait Variables {
 /// User defined variables
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UserVars {
+	/// User defined variables with a name and value.
 	#[serde(flatten)]
 	pub inner: HashMap<String, String>,
 }
@@ -29,6 +30,7 @@ impl Variables for UserVars {
 }
 
 impl UserVars {
+	/// Creates a new instance from an iterator over key, value tuples.
 	pub fn from_items<K, V, I, II>(iter: II) -> Self
 	where
 		K: Into<String>,

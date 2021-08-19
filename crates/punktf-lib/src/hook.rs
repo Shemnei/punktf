@@ -8,10 +8,14 @@ use color_eyre::eyre::Result;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+/// An enum of errors which can occur during the execution of a [`Hook`].
 #[derive(Error, Debug)]
 pub enum HookError {
+	/// An [`std::io::Error`] which occurred during the execution of a hook.
 	#[error("IO Error")]
 	IoError(#[from] std::io::Error),
+
+	/// The hook failed to execute successfully.
 	#[error("Process failed")]
 	ExitStatusError(#[from] std::process::ExitStatusError),
 }

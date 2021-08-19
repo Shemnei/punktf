@@ -46,6 +46,15 @@ pub struct Profile {
 }
 
 impl Profile {
+	/// Tries to load a profile from the file located at `path`.
+	///
+	/// This function will try to guess the correct deserializer by the file
+	/// extension of `path`
+	///
+	/// # Errors
+	///
+	/// An error is returned if the file does not exist or could not be read.
+	/// An error is returned if the file extension is unknown or missing.
 	pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, std::io::Error> {
 		let path = path.as_ref();
 		let file = File::open(path)?;
@@ -70,6 +79,9 @@ impl Profile {
 /// Layers are created when a profile is extended.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct LayeredUserVars {
+	/// Stores the variables together with the index, which indexed
+	/// [`LayeredProfile::profile_names`] to retrieve the name of the profile,
+	/// the variable came from.
 	pub inner: HashMap<String, (usize, String)>,
 }
 
@@ -85,41 +97,66 @@ impl Variables for LayeredUserVars {
 /// Defines a profile that appears on different layers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LayeredProfile {
+	/// All names of the profile which where collected from the extend chain.
 	profile_names: Vec<String>,
+
+	/// The target of the deployment.
+	///
+	/// This is the first value found by traversing the extend chain from the
+	/// top.
 	target: Option<(usize, PathBuf)>,
+
+	/// The variables collected from all profiles of the extend chain.
 	variables: LayeredUserVars,
+
+	/// The pre-hooks collected from all profiles of the extend chain.
 	pre_hooks: Vec<(usize, Hook)>,
+
+	/// The post-hooks collected from all profiles of the extend chain.
 	post_hooks: Vec<(usize, Hook)>,
+
+	/// The dotfiles collected from all profiles of the extend chain.
+	///
+	/// The index indexes into [`LayeredProfile::profile_names`] to retrieve
+	/// the name of the profile from which the dotfile came from.
 	dotfiles: Vec<(usize, Dotfile)>,
 }
 
 impl LayeredProfile {
+	/// Creates a new builder for a layered profile.
 	pub fn build() -> LayeredProfileBuilder {
 		LayeredProfileBuilder::default()
 	}
 
+	/// Returns the target path for the profile together with the index into
+	/// [`LayeredProfile::profile_names`].
 	pub fn target(&self) -> Option<(&str, &Path)> {
 		self.target
 			.as_ref()
 			.map(|(name_idx, path)| (self.profile_names[*name_idx].as_ref(), path.deref()))
 	}
 
+	/// Returns the target path for the profile.
 	pub fn target_path(&self) -> Option<&Path> {
 		self.target.as_ref().map(|(_, path)| path.deref())
 	}
 
+	/// Returns all collected variables for the profile.
 	pub const fn variables(&self) -> &LayeredUserVars {
 		&self.variables
 	}
 
+	/// Returns all collected pre-hooks for the profile.
 	pub fn pre_hooks(&self) -> impl Iterator<Item = &Hook> {
 		self.pre_hooks.iter().map(|(_, hook)| hook)
 	}
 
+	/// Returns all collected post-hooks for the profile.
 	pub fn post_hooks(&self) -> impl Iterator<Item = &Hook> {
 		self.post_hooks.iter().map(|(_, hook)| hook)
 	}
 
+	/// Returns all collected dotfiles for the profile.
 	pub fn dotfiles(&self) -> impl Iterator<Item = &Dotfile> {
 		self.dotfiles.iter().map(|(_, dotfile)| dotfile)
 	}
@@ -128,11 +165,15 @@ impl LayeredProfile {
 /// Collects different profiles from multiple layers.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct LayeredProfileBuilder {
+	/// All names of the profile which where collected from the extend chain.
 	profile_names: Vec<String>,
+
+	/// The profiles which make up the layered profile.
 	profiles: Vec<Profile>,
 }
 
 impl LayeredProfileBuilder {
+	/// Adds a new `profile` with the given `name` to the builder.
 	pub fn add(&mut self, name: String, profile: Profile) -> &mut Self {
 		self.profiles.push(profile);
 		self.profile_names.push(name);
@@ -140,6 +181,7 @@ impl LayeredProfileBuilder {
 		self
 	}
 
+	/// Consumes self and returns a new layered profile.
 	pub fn finish(self) -> LayeredProfile {
 		let target = self.profiles.iter().enumerate().find_map(|(idx, profile)| {
 			profile
@@ -219,7 +261,9 @@ impl LayeredProfileBuilder {
 	}
 }
 
-/// Collect profiles from multiple layers if necessary.
+/// Recursively resolves a profile and it's [extend
+/// chain](`crate::profile::Profile::extends`) and adds them to the layered
+/// profile in order of occurrence.
 pub fn resolve_profile(
 	builder: &mut LayeredProfileBuilder,
 	source: &PunktfSource,
@@ -264,7 +308,7 @@ pub fn resolve_profile(
 
 	let _ = resolved_profiles
 		.pop()
-		.expect("Missaligned push/pop operation");
+		.expect("Misaligned push/pop operation");
 
 	Ok(())
 }
