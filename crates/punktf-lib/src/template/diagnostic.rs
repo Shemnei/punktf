@@ -287,7 +287,7 @@ impl<'a> LineMap<'a> {
 		self.lines.last_key_value().map(|(idx, _)| idx + 1)
 	}
 
-	/// Returns the smallest (location)[`super::source::Location`] any span
+	/// Returns the smallest [location](`super::source::Location`) any span
 	/// within this struct has.
 	///
 	/// The search is done in this order:
@@ -426,7 +426,7 @@ impl<'a> DiagnosticFormatter<'a> {
 		self
 	}
 
-	/// Adds label span to the formatter (related: [`DiagnosticSpan::label`]).
+	/// Adds label span to the formatter (related: [`DiagnosticSpan::labels`]).
 	pub fn label_span(&mut self, span: &ByteSpan, label: &'a str) -> &mut Self {
 		let _ = self.line_map.insert_label(span, label);
 		self
