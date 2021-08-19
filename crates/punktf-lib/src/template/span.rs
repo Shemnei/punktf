@@ -1,3 +1,6 @@
+//! Everting needed to track a position in a [source](`super::source::Source`)
+//! file.
+
 use std::fmt;
 use std::ops::{Deref, Index};
 
@@ -7,9 +10,16 @@ use std::ops::{Deref, Index};
 // Copied from <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_span/src/lib.rs#L1768>.
 /// A general position which allows convertion from and to [`usize`] and [`u32`].
 pub trait Pos {
+	/// Creates a new position from `value`.
 	fn from_usize(value: usize) -> Self;
+
+	/// Creates a new position from `value`.
 	fn from_u32(value: u32) -> Self;
+
+	/// Interprets the position as a `usize`.
 	fn as_usize(&self) -> usize;
+
+	/// Interprets the position as a `u32`.
 	fn as_u32(&self) -> u32;
 }
 
@@ -29,6 +39,7 @@ macro_rules! pos {
             $vis struct $ident($inner_vis $inner_ty);
 
 			impl $ident {
+				/// Creates a new instance with `value`.
 				pub const fn new(value: $inner_ty) -> Self {
 					Self(value)
 				}
@@ -87,14 +98,22 @@ pos! {
 // <https://github.com/rust-lang/rust/graphs/contributors>
 //
 // Inspired by <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_span/src/lib.rs#L419>.
-/// A span with a start position ([low](`ByteSpan::low`)) and an end position ([high](`ByteSpan::high`)).
+/// A span with a [start position](`ByteSpan::low`) and an [end position](`ByteSpan::high`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ByteSpan {
+	/// Start position of the span.
 	pub low: BytePos,
+
+	/// End position of the span.
 	pub high: BytePos,
 }
 
 impl ByteSpan {
+	/// Creates a new span from `low` and `high`.
+	///
+	/// # Note
+	///
+	/// If `high` is smaller than `low` the values are switched.
 	pub fn new<L: Into<BytePos>, H: Into<BytePos>>(low: L, high: H) -> Self {
 		let mut low = low.into();
 		let mut high = high.into();
@@ -106,10 +125,12 @@ impl ByteSpan {
 		Self { low, high }
 	}
 
+	/// Associates the span with the given `value`.
 	pub const fn span<T>(self, value: T) -> Spanned<T> {
 		Spanned::new(self, value)
 	}
 
+	/// Creates a new span with `low` while `high` is taken from this span.
 	pub fn with_low<L: Into<BytePos>>(&self, low: L) -> Self {
 		let mut copy = *self;
 		copy.low = low.into();
@@ -117,6 +138,7 @@ impl ByteSpan {
 		copy
 	}
 
+	/// Creates a new span with `low` taken from this span and `high`.
 	pub fn with_high<H: Into<BytePos>>(&self, high: H) -> Self {
 		let mut copy = *self;
 		copy.high = high.into();
@@ -124,6 +146,7 @@ impl ByteSpan {
 		copy
 	}
 
+	/// Creates a new span containing both `self` and `other`.
 	pub fn union(&self, other: &Self) -> Self {
 		let low = std::cmp::min(self.low, other.low);
 		let high = std::cmp::max(self.high, other.high);
@@ -131,6 +154,7 @@ impl ByteSpan {
 		Self { low, high }
 	}
 
+	/// Creates a new span with `low` offset by `amount`.
 	pub fn offset_low<A: Into<i32>>(&self, amount: A) -> Self {
 		let amount = amount.into();
 
@@ -140,6 +164,7 @@ impl ByteSpan {
 		copy
 	}
 
+	/// Creates a new span with `high` offset by `amount`.
 	pub fn offset_high<A: Into<i32>>(&self, amount: A) -> Self {
 		let amount = amount.into();
 
@@ -149,6 +174,7 @@ impl ByteSpan {
 		copy
 	}
 
+	/// Creates a new span with both `low` and `high` offset by `amount`.
 	pub fn offset<A: Into<i32>>(&self, amount: A) -> Self {
 		let amount = amount.into();
 
@@ -159,10 +185,12 @@ impl ByteSpan {
 		copy
 	}
 
+	/// Returns the start of the span.
 	pub const fn low(&self) -> &BytePos {
 		&self.low
 	}
 
+	/// Returns the end of the span.
 	pub const fn high(&self) -> &BytePos {
 		&self.high
 	}
@@ -190,36 +218,43 @@ impl Index<&ByteSpan> for str {
 	}
 }
 
+/// Associates a [`ByteSpan`] with a generic `value`.
 pub struct Spanned<T> {
 	pub span: ByteSpan,
 	pub value: T,
 }
 
 impl<T> Spanned<T> {
+	/// Creates a new instance.
 	pub const fn new(span: ByteSpan, value: T) -> Self {
 		Self { span, value }
 	}
 
+	/// Returns the `span` associated with this struct.
 	pub const fn span(&self) -> &ByteSpan {
 		&self.span
 	}
 
+	/// Returns the `value` associated with this struct.
 	pub const fn value(&self) -> &T {
 		&self.value
 	}
 
+	/// Consumes self and returns the `span` associated with it.
 	// Destructors can not be run at compile time.
 	#[allow(clippy::missing_const_for_fn)]
 	pub fn into_span(self) -> ByteSpan {
 		self.span
 	}
 
+	/// Consumes self and returns the `value` associated with it.
 	// Destructors can not be run at compile time.
 	#[allow(clippy::missing_const_for_fn)]
 	pub fn into_value(self) -> T {
 		self.value
 	}
 
+	/// Consumes self and returns both `span` and `value`.
 	// Destructors can not be run at compile time.
 	#[allow(clippy::missing_const_for_fn)]
 	pub fn into_inner(self) -> (ByteSpan, T) {
