@@ -1,3 +1,84 @@
+//! Everthing related to parsing/resolving templates is located in this module or it's submodules.
+//!
+//! # Syntax
+//!
+//! The syntax is heavily inspired by <https://handlebarsjs.com/>.
+//!
+//! ## Comment blocks
+//!
+//! Document template blocks. Will not be copied over to final output.
+//!
+//! ### Syntax
+//!
+//! `{{!-- This is a comment --}}`
+//!
+//! ## Escape blocks
+//!
+//! Everything inside will be copied over as is. It can be used to  copied over `{{` or `}}` without it being interpreted as a template block.
+//!
+//! ### Syntax
+//!
+//! `{{{ This will be copied over {{ as is }} even with the "{{" inside }}}`
+//!
+//! ## Variable blocks
+//!
+//! Define a variable which will be inserted instead of the block. The value of the variable can be gotten from three different environments which can be defined by specifying a prefix:
+//!
+//! 1) `$`: System environment
+//! 2) `#`: Variables defined in the `profile` section
+//! 2) `&`: Variables defined in the `profile.dotfile` section
+//!
+//! To search in more than one environment, these prefixes can be combined. The order they appear in is important, as they will be searched in order of appearance. If one environment does not have a value set for the variable, the next one is searched.
+//!
+//! If no prefixes are defined, it will default to `&#`.
+//!
+//! Valid symbols/characters for a variable name are: `(a..z|A..Z|0-9|_)`
+//!
+//! ### Syntax
+//!
+//! `{{$&#OS}}`
+//!
+//! ## Print blocks
+//!
+//! Print blocks will simply print everything contained within the block to the command line. The content of the print block **won't** be resolved, meaning it will be printed 1 to 1 (e.g. no variables are resolved).
+//!
+//! ### Syntax
+//!
+//! `{{@print Hello World}}`
+//!
+//! ## If blocks
+//!
+//! Supported are `if`, `elif`, `else` and `fi`. Each `if` block must have a `fi` block as a final closing block.
+//! In between the `if` and `fi` block can be zero or multiple `elif` blocks with a final optional `else` block.
+//! Each if related block must be prefixed with `{{@` and end with `}}`.
+//!
+//! Currently the only supported if syntax is:
+//!
+//! - Check if the value of a variable is (not) equal to the literal given: `{{VAR}} (==|!=) "LITERAL"`
+//! - Check if a value for a variable exists: `{{VAR}}`
+//!
+//! Other blocks can be nested inside the `if`, `elif` and `else` bodies.
+//!
+//! ### Syntax
+//!
+//! ```text
+//! {{@if {{OS}}}}
+//!         {{@if {{&OS}} != "windows"}}
+//! 	        print("OS is not windows")
+//!         {{@elif {{OS}} == "windows"}}
+//! 	        {{{!-- This is a nested comment. Below it is a nested variable block. --}}}
+//! 	        print("OS is {{OS}}")
+//!         {{@else}}
+//! 	        {{{!-- This is a nested comment. --}}}
+//! 	        print("Can never get here. {{{ {{OS}} is neither `windows` nor not `windows`. }}}")
+//!         {{@fi}}
+//! {{@else}}
+//! 	print("No value for variable `OS` set")
+//! {{@fi}}
+//! ```
+//!
+//! # Copyright Notice
+//!
 //! The code for error/diagnostics and source input handling is heavily inspired by
 //! [rust's](https://github.com/rust-lang/rust) compiler, which is licensed under the MIT license.
 //! While some code is adapted for use with `punktf`, some of it is also a plain copy of it. If a
