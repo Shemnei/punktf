@@ -198,7 +198,10 @@ impl DiagnosticBuilder {
 /// what spans are located on a line without having to copy/clone them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum SpanRef {
+	/// An index into [`LineMap::primary_spans`].
 	Primary(usize),
+
+	/// An index into [`LineMap::label_spans`].
 	Label(usize),
 }
 
@@ -442,6 +445,9 @@ impl<'a> DiagnosticFormatter<'a> {
 		// 28 |         out.push_str(format!(" |{}", ));
 		//    |                                 ^^
 
+		/// Styles the given `s` with ANSI escape codes.
+		///
+		/// <https://en.wikipedia.org/wiki/ANSI_escape_code>.
 		fn style<S: AsRef<str>>(s: S) -> String {
 			s.as_ref().bright_blue().bold().to_string()
 		}

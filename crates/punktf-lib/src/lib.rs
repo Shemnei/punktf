@@ -66,8 +66,13 @@ use variables::UserVars;
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PunktfSource {
+	/// The absolute root source path.
 	root: PathBuf,
+
+	/// The absolute path to the `profiles` directory.
 	profiles: PathBuf,
+
+	/// The absolute path to the `dotfiles` directory.
 	dotfiles: PathBuf,
 }
 

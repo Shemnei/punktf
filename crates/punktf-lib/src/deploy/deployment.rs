@@ -109,7 +109,13 @@ impl Deployment {
 /// A builder for a [`Deployment`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeploymentBuilder {
+	/// The start time of the deployment.
+	///
+	/// This used to keep track of the total execution time of the deployment
+	/// process.
 	time_start: SystemTime,
+
+	/// All dotfiles which were already process by the deployment process.
 	dotfiles: HashMap<PathBuf, DeployedDotfile>,
 }
 

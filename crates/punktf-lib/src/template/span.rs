@@ -220,7 +220,10 @@ impl Index<&ByteSpan> for str {
 
 /// Associates a [`ByteSpan`] with a generic `value`.
 pub struct Spanned<T> {
+	/// A span.
 	pub span: ByteSpan,
+
+	/// The value associated with the span.
 	pub value: T,
 }
 

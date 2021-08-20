@@ -113,7 +113,12 @@ use crate::variables::Variables;
 /// A `Template` is a file from the Source folder that is not yet deployed. It might contain statements and variables.
 #[derive(Debug, Clone)]
 pub struct Template<'a> {
+	/// The source from which the template was parsed from.
 	source: Source<'a>,
+
+	/// All parsed blocks contained in `source`.
+	///
+	/// These are sorted in the order they occur in `source`.
 	blocks: Vec<Block>,
 }
 

@@ -170,16 +170,34 @@ pub struct Var {
 /// Defines an if block.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct If {
+	/// The head of an if statement.
+	///
+	/// `{{@if {{VAR}}}}`
 	pub head: (Spanned<IfExpr>, Vec<Block>),
+
+	/// All elif statements of the if.
+	///
+	/// `{{@elif {{VAR}}}}`
 	pub elifs: Vec<(Spanned<IfExpr>, Vec<Block>)>,
+
+	/// The else statement of the if.
+	///
+	/// `{{@else}}`
 	pub els: Option<(ByteSpan, Vec<Block>)>,
+
+	/// The closing fi statement.
+	///
+	/// `{{@fi}}`
 	pub end: ByteSpan,
 }
 
 /// The different types of if expression operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IfOp {
+	/// Operand to check for equality.
 	Eq,
+
+	/// Operand to check for inequality.
 	NotEq,
 }
 
@@ -197,7 +215,20 @@ impl IfOp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IfExpr {
 	/// An if expression that compares two values.
-	Compare { var: Var, op: IfOp, other: ByteSpan },
+	Compare {
+		/// Left hand side of the compare operation.
+		var: Var,
+
+		/// Compare operand.
+		op: IfOp,
+
+		/// Right hand side of the compare operation.
+		other: ByteSpan,
+	},
+
 	/// An if expression that checks if a value is defined.
-	Exists { var: Var },
+	Exists {
+		/// Variable to check existence for.
+		var: Var,
+	},
 }
