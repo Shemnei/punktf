@@ -1,3 +1,10 @@
+//! All code related to command line argument parsing.
+
+// We allow missing documentation for this module, as any documentation put on
+// the cli struct will appear in the help message which, in most cases, is not
+// what we want.
+#![allow(missing_docs, clippy::missing_docs_in_private_items)]
+
 use std::fmt;
 use std::ops::Deref;
 use std::path::PathBuf;
@@ -6,7 +13,9 @@ use std::str::FromStr;
 use clap::{crate_authors, crate_description, crate_version, Clap};
 use color_eyre::Result;
 
-// Used so that it defaults to current_dir if no value is given.
+/// The path to `punktfs` source directory.
+///
+/// Used so that it defaults to [`std::env::current_dir`] if no value is given.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SourcePath(PathBuf);
 
