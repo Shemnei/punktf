@@ -1,16 +1,21 @@
+//! User defined variables used by [profiles](`crate::profile::Profile`) and
+//! [dotfiles](`crate::Dotfile`).
+
 use std::collections::HashMap;
 use std::ops::Deref;
 
 use serde::{Deserialize, Serialize};
 
-/// Variables that replace values it templates
+/// Variables that replace values in templates
 pub trait Variables {
+	/// Get a variable by name
 	fn var<K: AsRef<str>>(&self, key: K) -> Option<&str>;
 }
 
 /// User defined variables
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UserVars {
+	/// User defined variables with a name and value.
 	#[serde(flatten)]
 	pub inner: HashMap<String, String>,
 }
@@ -25,6 +30,7 @@ impl Variables for UserVars {
 }
 
 impl UserVars {
+	/// Creates a new instance from an iterator over key, value tuples.
 	pub fn from_items<K, V, I, II>(iter: II) -> Self
 	where
 		K: Into<String>,

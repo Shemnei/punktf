@@ -49,7 +49,7 @@ jobs:
       RUST_BACKTRACE: 1
     strategy:
       matrix:
-        build: [linux, win-msvc, win-gnu, win32-msvc]
+        build: [linux, win-msvc, win32-msvc]
         include:
           - build: linux
             os: ubuntu-latest

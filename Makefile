@@ -1,5 +1,5 @@
 .PHONY: default buildd buildr build check test clippy checkfmt lint run clean
-.PHONY: install cic todos
+.PHONY: install doc cic todos
 
 # Is set to the directory which contains the Makefile regardless from where
 # the make command is called.
@@ -38,9 +38,12 @@ clean:
 install:
 	cargo install --path $(ROOT_DIR)
 
+doc:
+	cargo doc --all --document-private-items
+
 # utility
 # can i commit
-cic: test lint
+cic: test lint doc
 
 # searches for things which need to be improved
 todos:

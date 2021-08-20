@@ -10,6 +10,8 @@ use crate::template::span::ByteSpan;
 
 #[test]
 fn parse_single_text() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	let content = r#"Hello World this is a text block"#;
 
 	let source = Source::anonymous(content);
@@ -29,6 +31,8 @@ fn parse_single_text() -> Result<()> {
 
 #[test]
 fn parse_single_comment() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	let content = r#"{{!-- Hello World this is a comment block --}}"#;
 
 	let source = Source::anonymous(content);
@@ -48,6 +52,8 @@ fn parse_single_comment() -> Result<()> {
 
 #[test]
 fn parse_single_escaped() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	let content = r#"{{{ Hello World this is a comment block }}}"#;
 
 	let source = Source::anonymous(content);
@@ -68,6 +74,8 @@ fn parse_single_escaped() -> Result<()> {
 
 #[test]
 fn parse_single_var_default() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	let content = r#"{{OS}}"#;
 
 	let source = Source::anonymous(content);
@@ -89,6 +97,8 @@ fn parse_single_var_default() -> Result<()> {
 
 #[test]
 fn parse_single_var_env() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	let content = r#"{{$ENV}}"#;
 
 	let source = Source::anonymous(content);
@@ -110,6 +120,8 @@ fn parse_single_var_env() -> Result<()> {
 
 #[test]
 fn parse_single_var_profile() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	let content = r#"{{#PROFILE}}"#;
 
 	let source = Source::anonymous(content);
@@ -131,6 +143,8 @@ fn parse_single_var_profile() -> Result<()> {
 
 #[test]
 fn parse_single_var_dotfile() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	let content = r#"{{&ITEM}}"#;
 
 	let source = Source::anonymous(content);
@@ -152,6 +166,8 @@ fn parse_single_var_dotfile() -> Result<()> {
 
 #[test]
 fn parse_single_var_mixed() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	let content = r#"{{$&#MIXED}}"#;
 
 	let source = Source::anonymous(content);
@@ -177,6 +193,8 @@ fn parse_single_var_mixed() -> Result<()> {
 
 #[test]
 fn parse_single_vars() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	// duplicate variable environment
 	let content = r#"{{##OS}}"#;
 
@@ -193,6 +211,8 @@ fn parse_single_vars() -> Result<()> {
 
 #[test]
 fn parse_single_print() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	let content = r#"{{@print FooBar}}"#;
 
 	let source = Source::anonymous(content);
@@ -213,6 +233,8 @@ fn parse_single_print() -> Result<()> {
 
 #[test]
 fn parse_single_if_eq() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	let content = r#"{{@if {{OS}} == "windows"}}{{@fi}}"#;
 
 	let source = Source::anonymous(content);
@@ -261,6 +283,8 @@ fn parse_single_if_eq() -> Result<()> {
 
 #[test]
 fn parse_single_if_neq() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	let content = r#"{{@if {{OS}} != "windows"}}{{@fi}}"#;
 
 	let source = Source::anonymous(content);
@@ -309,6 +333,8 @@ fn parse_single_if_neq() -> Result<()> {
 
 #[test]
 fn parse_single_if_exists() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	let content = r#"{{@if {{$#EXISTS}}}}{{@fi}}"#;
 
 	let source = Source::anonymous(content);
@@ -350,6 +376,8 @@ fn parse_single_if_exists() -> Result<()> {
 
 #[test]
 fn find_blocks() {
+	crate::tests::setup_test_env();
+
 	let content = r#"{{ Hello World }} {{{ Escaped {{ }} }} }}}
 		{{!-- Hello World {{}} {{{ asdf }}} this is a comment --}}
 		{{@if {{}} }} }}
@@ -370,6 +398,8 @@ fn find_blocks() {
 
 #[test]
 fn find_blocks_unicode() {
+	crate::tests::setup_test_env();
+
 	let content = "\u{1f600}{{{ \u{1f600} }}}\u{1f600}";
 
 	let iter = BlockIter::new(content);
@@ -382,6 +412,8 @@ fn find_blocks_unicode() {
 
 #[test]
 fn parse_comment() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	let content = r#"{{!-- Hello World this {{}} is a comment {{{{{{ }}}--}}"#;
 
 	let source = Source::anonymous(content);
@@ -401,6 +433,8 @@ fn parse_comment() -> Result<()> {
 
 #[test]
 fn parse_escaped() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	let content = r#"{{{!-- Hello World this {{}} is a comment {{{{{{ }}--}}}"#;
 
 	let source = Source::anonymous(content);
@@ -423,6 +457,8 @@ fn parse_escaped() -> Result<()> {
 
 #[test]
 fn parse_if_cmp() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	let content = r#"{{@if {{&OS}} == "windows" }}
 		DEMO
 		{{@elif {{&OS}} == "linux"  }}
@@ -446,6 +482,8 @@ fn parse_if_cmp() -> Result<()> {
 
 #[test]
 fn parse_if_cmp_nested() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	let content = r#"{{@if {{&OS}} == "windows" }}
 		{{!-- This is a nested comment --}}
 		{{{ Escaped {{}} }}}
@@ -471,6 +509,8 @@ fn parse_if_cmp_nested() -> Result<()> {
 
 #[test]
 fn parse_if_exists() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	let content = r#"{{@if {{&OS}}  }}
 		DEMO
 		ASD
@@ -491,6 +531,8 @@ fn parse_if_exists() -> Result<()> {
 
 #[test]
 fn parse_if_mixed() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	let content = r#"{{@if {{OS}}}}
 	print("No value for variable `OS` set")
 {{@elif {{&OS}} != "windows"}}
@@ -518,6 +560,8 @@ fn parse_if_mixed() -> Result<()> {
 
 #[test]
 fn parse_print() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	let content = r#"{{@print FooBar}}"#;
 
 	let source = Source::anonymous(content);
@@ -535,6 +579,8 @@ fn parse_print() -> Result<()> {
 
 #[test]
 fn parse_variables() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	assert_eq!(
 		parse_var("$#&FOO_BAR", 0)?,
 		Var {
@@ -577,6 +623,8 @@ fn parse_variables() -> Result<()> {
 
 #[test]
 fn parse_others() -> Result<()> {
+	crate::tests::setup_test_env();
+
 	assert_eq!(parse_other("\"BAZ_1\"", 0)?, ByteSpan::new(1usize, 6usize));
 	assert_eq!(
 		parse_other("This is a test \"Hello World How are you today\"", 0)?,

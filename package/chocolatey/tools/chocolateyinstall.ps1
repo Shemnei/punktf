@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop';
 
 $packageName = 'punktf'
 $toolsDir   = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
-$url64       = 'https://github.com/Shemnei/punktf/releases/download/v1.0.0-alpha/punktf-x86_64-pc-windows-msvc.zip'
+$url64       = 'https://github.com/Shemnei/punktf/releases/download/v1.0.0/punktf-x86_64-pc-windows-msvc.zip'
 $bin         = $toolsDir + '\punktf-x86_64-pc-windows-msvc\punktf.exe'
 
 $packageArgs = @{

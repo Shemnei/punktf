@@ -1,3 +1,5 @@
+//! This module handles the parsing of a [template](`super::Template`).
+
 #[cfg(test)]
 mod tests;
 
@@ -5,21 +7,30 @@ use color_eyre::eyre::{eyre, Result};
 use color_eyre::Report;
 
 use super::block::{Block, BlockHint, If, IfExpr, IfOp, Var, VarEnv, VarEnvSet};
-use super::diagnostic::{Diagnositic, DiagnositicBuilder, DiagnositicLevel};
+use super::diagnostic::{Diagnostic, DiagnosticBuilder, DiagnosticLevel};
 use super::session::Session;
 use super::source::Source;
 use super::span::{ByteSpan, Pos, Spanned};
 use super::Template;
 use crate::template::block::BlockKind;
 
+/// This is the parser which converts a [source](`super::source::Source`) into
+/// [blocks](`super::block::Block`), which make up a
+/// [template](`super::Template`).
 #[derive(Debug, Clone)]
 pub struct Parser<'a> {
+	/// The source which will be parsed.
 	source: Source<'a>,
+
+	/// The session where parsing errors/diagnostics will be recorded to.
 	session: Session,
+
+	/// An iterator of all blocks found within `source`.
 	blocks: BlockIter<'a>,
 }
 
 impl<'a> Parser<'a> {
+	/// Creates a new parser for the given `source`.
 	pub const fn new(source: Source<'a>) -> Self {
 		let blocks = BlockIter::new(source.content);
 
@@ -30,6 +41,10 @@ impl<'a> Parser<'a> {
 		}
 	}
 
+	/// Consumes self and tries to resolve each block found within
+	/// [`Parser::source`].
+	///
+	/// If no errors occurred it will return a [template](`super::Template`).
 	pub fn parse(mut self) -> Result<Template<'a>> {
 		let mut blocks = Vec::new();
 
@@ -49,15 +64,34 @@ impl<'a> Parser<'a> {
 		})
 	}
 
-	fn report_diagnostic(&mut self, diagnostic: Diagnositic) {
-		if diagnostic.level() == &DiagnositicLevel::Error {
+	/// Adds a diagnostic to the session.
+	///
+	/// If [Diagnostic::level](`super::diagnostic::Diagnostic::level`) is
+	/// [DiagnosticLevel::Error](`super::diagnostic::DiagnosticLevel::Error`)
+	/// it will also mark the session as failed.
+	fn report_diagnostic(&mut self, diagnostic: Diagnostic) {
+		if diagnostic.level() == &DiagnosticLevel::Error {
 			self.session.mark_failed();
 		}
 
 		self.session.report(diagnostic);
 	}
 
-	fn next_top_level_block(&mut self) -> Option<Result<Block, DiagnositicBuilder>> {
+	/// Tries to resolve the next "top-level" block.
+	///
+	/// Top-level block in this context means, a block which can appear on it's
+	/// own without needing another block preceding it.
+	///
+	/// # Examples
+	///
+	/// - Top-level block: [BlockHint::Print](`super::block::BlockHint::Print`) as it can stand on it's own.
+	/// - **NONE** top-level block: [BlockHint::ElIf](`super::block::BlockHint::ElIf`) as it needs to be after a preceding [BlockHint::IfStart](`super::block::BlockHint::IfStart`) block.
+	///
+	/// # Errors
+	///
+	/// Returns an error if [`Parser::blocks`] failed to get the next block.
+	/// Returns an error if a none top-level block was found.
+	fn next_top_level_block(&mut self) -> Option<Result<Block, DiagnosticBuilder>> {
 		let Spanned { span, value: hint } = match self.blocks.next()? {
 			Ok(x) => x,
 			Err(err) => return Some(Err(err)),
@@ -78,15 +112,15 @@ impl<'a> Parser<'a> {
 				.map(|Spanned { span, value }| Block::new(span, BlockKind::If(value))),
 
 			// Illegal top level blocks
-			BlockHint::ElIf => Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
+			BlockHint::ElIf => Err(DiagnosticBuilder::new(DiagnosticLevel::Error)
 				.message("top-level `elif` block")
 				.description("an `elif` block must always come after an `if` block")
 				.primary_span(span)),
-			BlockHint::Else => Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
+			BlockHint::Else => Err(DiagnosticBuilder::new(DiagnosticLevel::Error)
 				.message("top-level `else` block")
 				.description("an `else` block must always come after an `if` or `elfi` block")
 				.primary_span(span)),
-			BlockHint::IfEnd => Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
+			BlockHint::IfEnd => Err(DiagnosticBuilder::new(DiagnosticLevel::Error)
 				.message("top-level `fi` block")
 				.description("an `fi` can only be used to close an open `if` block")
 				.primary_span(span)),
@@ -95,21 +129,33 @@ impl<'a> Parser<'a> {
 		Some(block)
 	}
 
+	/// Resolves the `span` to a block with
+	/// [BlockKind::Text](`super::block::BlockKind::Text`).
 	const fn parse_text(&self, span: ByteSpan) -> Block {
 		Block::new(span, BlockKind::Text)
 	}
 
+	/// Resolves the `span` to a block with
+	/// [BlockKind::Comment](`super::block::BlockKind::Comment`).
 	const fn parse_comment(&self, span: ByteSpan) -> Block {
 		// {{!-- ... --}}
 		Block::new(span, BlockKind::Comment)
 	}
 
+	/// Resolves the `span` to a block with
+	/// [BlockKind::Escaped](`super::block::BlockKind::Escaped`).
 	fn parse_escaped(&self, span: ByteSpan) -> Block {
 		// {{{ ... }}}
 		Block::new(span, BlockKind::Escaped(span.offset_low(3).offset_high(-3)))
 	}
 
-	fn parse_variable(&self, span: ByteSpan) -> Result<Var, DiagnositicBuilder> {
+	/// Tries to resolves the `span` to a block with
+	/// [BlockKind::Var](`super::block::BlockKind::Var`).
+	///
+	/// # Errors
+	///
+	/// Returns an error if the call to [`parse_var`] fails.
+	fn parse_variable(&self, span: ByteSpan) -> Result<Var, DiagnosticBuilder> {
 		let span_inner = span.offset_low(2).offset_high(-2);
 		let content_inner = &self.source[span_inner];
 
@@ -117,19 +163,43 @@ impl<'a> Parser<'a> {
 		let offset = span.low().as_usize() + 2;
 
 		parse_var(content_inner, offset).map_err(|err| {
-			DiagnositicBuilder::new(DiagnositicLevel::Error)
+			DiagnosticBuilder::new(DiagnosticLevel::Error)
 				.message("failed to parse variable block")
 				.description(err.to_string())
 				.primary_span(span)
 		})
 	}
 
+	/// Resolves the `span` to a block with
+	/// [BlockKind::Print](`super::block::BlockKind::Print`).
 	fn parse_print(&self, span: ByteSpan) -> Block {
 		// {{@print ... }}
 		Block::new(span, BlockKind::Print(span.offset_low(9).offset_high(-2)))
 	}
 
-	fn parse_if(&mut self, span: ByteSpan) -> Result<Spanned<If>, DiagnositicBuilder> {
+	/// Tries to resolves the `span` to a block with
+	/// [BlockKind::If](`super::block::BlockKind::If`).
+	///
+	/// During this operation it will also try to parse all other blocks
+	/// contained between the if related blocks.
+	///
+	/// # Examples
+	///
+	/// ```text
+	/// {{@if ...}}
+	///        {{@print ...}} <-- contained block
+	///    {{@else}}
+	///        {{ ... }} <-- another contained block
+	/// {{@fi}}
+	/// ```
+	///
+	/// # Errors
+	///
+	/// Returns an error if a call to [`parse_var`] fails.
+	/// Returns an error if no closing [BlockHint::IfEnd](`super::block::BlockHint::IfEnd`) was found.
+	/// Bubbles up any error which may occur during the subsequent calls to
+	/// [`Parser::parse_if_enclosed_blocks`].
+	fn parse_if(&mut self, span: ByteSpan) -> Result<Spanned<If>, DiagnosticBuilder> {
 		let head = span.span(
 			self.parse_if_start(span)
 				.map_err(|build| build.label_span(span, "while parsing this `if` block"))?,
@@ -159,7 +229,7 @@ impl<'a> Parser<'a> {
 			.blocks
 			.next()
 			.ok_or_else(|| {
-				DiagnositicBuilder::new(DiagnositicLevel::Error)
+				DiagnosticBuilder::new(DiagnosticLevel::Error)
 					.message("unexpected end of `if` block")
 					.description("close the `if` block with `{{@fi}}`")
 					.primary_span(span)
@@ -200,7 +270,7 @@ impl<'a> Parser<'a> {
 				.blocks
 				.next()
 				.ok_or_else(|| {
-					DiagnositicBuilder::new(DiagnositicLevel::Error)
+					DiagnosticBuilder::new(DiagnosticLevel::Error)
 						.message("unexpected end of `elif` block")
 						.description("close the `if` block with `{{@fi}}`")
 						.primary_span(span)
@@ -240,7 +310,7 @@ impl<'a> Parser<'a> {
 				.blocks
 				.next()
 				.ok_or_else(|| {
-					DiagnositicBuilder::new(DiagnositicLevel::Error)
+					DiagnosticBuilder::new(DiagnosticLevel::Error)
 						.message("unexpected end of `else` block")
 						.description("close the `if` block with `{{@fi}}`")
 						.primary_span(span)
@@ -260,7 +330,7 @@ impl<'a> Parser<'a> {
 			self.parse_if_end(span)
 				.map_err(|build| build.label_span(*head.span(), "while parsing this `if` block"))?
 		} else {
-			return Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
+			return Err(DiagnosticBuilder::new(DiagnosticLevel::Error)
 				.message("unexpected end of `if` block")
 				.description("close the `if` block with `{{@fi}}`")
 				.primary_span(span)
@@ -277,21 +347,45 @@ impl<'a> Parser<'a> {
 		}))
 	}
 
-	fn parse_if_start(&self, span: ByteSpan) -> Result<IfExpr, DiagnositicBuilder> {
+	/// Tries to resolves the `span` which contains a whole
+	/// [BlockHint::IfStart](`super::block::BlockHint::IfStart`) to a
+	/// [IfExpr](`super::block::IfExpr`).
+	///
+	/// # Errors
+	///
+	/// An error is returned if it fails to resolve the expression (related:
+	/// [`Parser::parse_if_expr`]).
+	fn parse_if_start(&self, span: ByteSpan) -> Result<IfExpr, DiagnosticBuilder> {
 		// {{@if {{VAR}} (!=|==) "LIT" }}
 		let expr_span = span.offset_low(6).offset_high(-2);
 		self.parse_if_expr(expr_span)
 	}
 
-	fn parse_elif(&self, span: ByteSpan) -> Result<IfExpr, DiagnositicBuilder> {
+	/// Tries to resolves the `span` which contains a whole
+	/// [BlockHint::ElIf](`super::block::BlockHint::ElIf`) to a
+	/// [IfExpr](`super::block::IfExpr`).
+	///
+	/// # Errors
+	///
+	/// An error is returned if it fails to resolve the expression (related:
+	/// [`Parser::parse_if_expr`]).
+	fn parse_elif(&self, span: ByteSpan) -> Result<IfExpr, DiagnosticBuilder> {
 		// {{@elif {{VAR}} (!=|==) "LIT" }}
 		let expr_span = span.offset_low(8).offset_high(-2);
 		self.parse_if_expr(expr_span)
 	}
 
-	fn parse_else(&self, span: ByteSpan) -> Result<ByteSpan, DiagnositicBuilder> {
+	/// Tries to resolves the `span` which contains a whole
+	/// [BlockHint::Else](`super::block::BlockHint::Else`) to a
+	/// [IfExpr](`super::block::IfExpr`).
+	///
+	/// # Errors
+	///
+	/// An error is returned if it fails to resolve the expression (related:
+	/// [`Parser::parse_if_expr`]).
+	fn parse_else(&self, span: ByteSpan) -> Result<ByteSpan, DiagnosticBuilder> {
 		if &self.source[span] != "{{@else}}" {
-			Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
+			Err(DiagnosticBuilder::new(DiagnosticLevel::Error)
 				.message("expected a `else` block")
 				.primary_span(span))
 		} else {
@@ -299,9 +393,16 @@ impl<'a> Parser<'a> {
 		}
 	}
 
-	fn parse_if_end(&self, span: ByteSpan) -> Result<ByteSpan, DiagnositicBuilder> {
+	/// Tries to validate if `span` contains a valid
+	/// [BlockHint::IfEnd](`super::block::BlockHint::IfEnd`).
+	///
+	/// # Errors
+	///
+	/// An error is returned if `span` does not contain a
+	/// [BlockHint::IfEnd](`super::block::BlockHint::IfEnd`).
+	fn parse_if_end(&self, span: ByteSpan) -> Result<ByteSpan, DiagnosticBuilder> {
 		if &self.source[span] != "{{@fi}}" {
-			Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
+			Err(DiagnosticBuilder::new(DiagnosticLevel::Error)
 				.message("expected a `fi` block")
 				.primary_span(span))
 		} else {
@@ -309,20 +410,31 @@ impl<'a> Parser<'a> {
 		}
 	}
 
-	fn parse_if_expr(&self, span: ByteSpan) -> Result<IfExpr, DiagnositicBuilder> {
+	/// Tries to resolve all components that make up an if expression.
+	///
+	/// These currently come in two forms:
+	///
+	/// - {{VAR}} (!=|==) "OTHER": Compare value of VAR with the literal OTHER
+	/// - {{VAR}}: Checks if the variable is present/can be resolved.
+	///
+	/// # Errors
+	///
+	/// An error is returned if `span` can not be interpreted as an if
+	/// expression.
+	fn parse_if_expr(&self, span: ByteSpan) -> Result<IfExpr, DiagnosticBuilder> {
 		// {{VAR}} (!=|==) "OTHER" OR {{VAR}}
 		let content = &self.source[span];
 
 		// read var
 		let var_block_start = content.find("{{").ok_or_else(|| {
-			DiagnositicBuilder::new(DiagnositicLevel::Error)
+			DiagnosticBuilder::new(DiagnosticLevel::Error)
 				.message("expected a variable block")
 				.description("add a variable block with `{{VARIABLE_NAME}}`")
 				.primary_span(span)
 		})?;
 
 		let var_block_end = content.find("}}").ok_or_else(|| {
-			DiagnositicBuilder::new(DiagnositicLevel::Error)
+			DiagnosticBuilder::new(DiagnosticLevel::Error)
 				.message("variable block not closed")
 				.description("add `}}` to the close the open variable block")
 				.primary_span(ByteSpan::new(var_block_start, var_block_start + 2))
@@ -343,7 +455,7 @@ impl<'a> Parser<'a> {
 			Ok(IfExpr::Exists { var })
 		} else {
 			let op = parse_ifop(&content[var_block_end..]).map_err(|_| {
-				DiagnositicBuilder::new(DiagnositicLevel::Error)
+				DiagnosticBuilder::new(DiagnosticLevel::Error)
 					.message("failed to find if operation")
 					.description("add either `==` or `!=` after the variable block")
 					.primary_span(var_block_span)
@@ -354,7 +466,7 @@ impl<'a> Parser<'a> {
 				span.low().as_usize() + var_block_end,
 			)
 			.map_err(|_| {
-				DiagnositicBuilder::new(DiagnositicLevel::Error)
+				DiagnosticBuilder::new(DiagnosticLevel::Error)
 					.message("failed to find right hand side of the if operation")
 					.description("add a literal to compare againt with `\"LITERAL\"`")
 					.primary_span(var_block_span)
@@ -364,7 +476,12 @@ impl<'a> Parser<'a> {
 		}
 	}
 
-	fn parse_if_enclosed_blocks(&mut self) -> Vec<Result<Block, DiagnositicBuilder>> {
+	/// Eagerly tries to parse all "non-if blocks" (related:
+	/// [BlockHint::is_if_subblock](`super::block::BlockHint::is_if_subblock`))
+	/// and collects them into a vector. If an "if-subblock" is found it
+	/// returns all blocks found before it. The next block [`Parser::blocks`]
+	/// will return is the found "if-subblock".
+	fn parse_if_enclosed_blocks(&mut self) -> Vec<Result<Block, DiagnosticBuilder>> {
 		let mut enclosed_blocks = Vec::new();
 
 		while self
@@ -382,6 +499,8 @@ impl<'a> Parser<'a> {
 		enclosed_blocks
 	}
 
+	/// Peeks at the next block hint. This does not affect any state of the
+	/// resolver.
 	fn peek_block_hint(&self) -> Option<BlockHint> {
 		// Create a copy of the block iter to not mess up the state while peeking
 		let mut peek = self.blocks;
@@ -389,9 +508,25 @@ impl<'a> Parser<'a> {
 	}
 }
 
+/// A span together with an optional block hint, describing the type of the
+/// block contained by the span.
 type NextBlock = (ByteSpan, Option<BlockHint>);
+
+/// An error together with the amount of bytes to skip to continue parsing. The
+/// amount tries to skip the erroneous part.
 type NextBlockError = (Option<usize>, Report);
 
+/// Tries to find the next block contained in `s`.
+///
+/// It first tries to search for the "special" blocks and if non match, the
+/// block is of type [BlockHint::Text](`super::block::BlockHint::Text`). It
+/// does not skip any part of `s`, as the next block will always start at index
+/// `0` of `s`.
+///
+/// # Errors
+///
+/// An error is returned if the start of a block was detected but no closing
+/// counterpart was found.
 fn next_block(s: &str) -> Option<Result<NextBlock, NextBlockError>> {
 	if s.is_empty() {
 		return None;
@@ -452,7 +587,23 @@ fn next_block(s: &str) -> Option<Result<NextBlock, NextBlockError>> {
 	}
 }
 
-// inner should be without the `{{` and `}}`. Offset should include the starting `{{`.
+/// Tries to parse `inner` as a [`Var`](`super::block::Var`).
+///
+/// The offset is used to correctly locate `inner` in a bigger parent string,
+/// as `inner` is supposed to be only a small slice from a bigger string. This
+/// means, that all calculated indices are offset by `offset`.
+///
+/// # Note
+///
+/// `inner` must be without the `{{` and `}}`.
+/// `offset` must include the starting `{{`.
+///
+/// # Errors
+///
+/// An error is returned if a (variable environment)[`super::block::VarEnv`]
+/// was found more than once.
+/// An error is returned if the name of the variable is not valid (related:
+/// [`is_var_name_symbol`]).
 fn parse_var(inner: &str, mut offset: usize) -> Result<Var> {
 	// save original length to keep track of the offset
 	let orig_len = inner.len();
@@ -523,6 +674,11 @@ fn parse_var(inner: &str, mut offset: usize) -> Result<Var> {
 	}
 }
 
+/// Tries to parse the content of `inner` as an (IfOp)[`super::block::IfOp`].
+///
+/// # Errors
+///
+/// An error is returned if `inner` could not be interpreted as an if operand.
 fn parse_ifop(inner: &str) -> Result<IfOp> {
 	match (inner.find("=="), inner.find("!=")) {
 		(Some(eq_idx), Some(noteq_idx)) => {
@@ -538,8 +694,13 @@ fn parse_ifop(inner: &str) -> Result<IfOp> {
 	}
 }
 
-// parses the right hand side of an if/elif. The `"` characters are not included.
-// e.g. "windows"
+/// Parses the right hand side of an if/elif compare operand, which is string literal. The `"`
+/// characters are not included in the returned span.
+///
+/// # Errors
+///
+/// An error is returned if no `"` was found.
+/// An error is returned if a opening `"` was found but no closing one.
 fn parse_other(inner: &str, offset: usize) -> Result<ByteSpan> {
 	let mut matches = inner.match_indices('"').map(|(idx, _)| idx);
 
@@ -553,6 +714,8 @@ fn parse_other(inner: &str, offset: usize) -> Result<ByteSpan> {
 	}
 }
 
+/// Checks if `b` is considered to be a valid byte for a [variable](`super::block::Var`)
+/// identifier.
 fn is_var_name_symbol(b: u8) -> bool {
 	(b'a'..=b'z').contains(&b)
 		|| (b'A'..=b'Z').contains(&b)
@@ -560,20 +723,25 @@ fn is_var_name_symbol(b: u8) -> bool {
 		|| b == b'_'
 }
 
+/// An iterator over all [blocks](`super::block::BlockHint`) of a string.
 #[derive(Debug, Clone, Copy)]
 struct BlockIter<'a> {
+	/// Content to iterate over.
 	content: &'a str,
+
+	/// Current index into `content`.
 	index: usize,
 }
 
 impl<'a> BlockIter<'a> {
+	/// Creates a new instance for `content`.
 	const fn new(content: &'a str) -> Self {
 		Self { content, index: 0 }
 	}
 }
 
 impl<'a> Iterator for BlockIter<'a> {
-	type Item = Result<Spanned<BlockHint>, DiagnositicBuilder>;
+	type Item = Result<Spanned<BlockHint>, DiagnosticBuilder>;
 
 	fn next(&mut self) -> Option<Self::Item> {
 		let (mut span, hint) = match next_block(&self.content[self.index..])? {
@@ -591,7 +759,7 @@ impl<'a> Iterator for BlockIter<'a> {
 
 				log::trace!("Span: {}/{}", span, err);
 
-				return Some(Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
+				return Some(Err(DiagnosticBuilder::new(DiagnosticLevel::Error)
 					.message("failed to parse block")
 					.description(err.to_string())
 					.primary_span(span)));

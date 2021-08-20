@@ -2,7 +2,7 @@ cargo-features = ["strip"]
 
 [package]
 name = "punktf"
-version = "1.0.0-alpha.1"
+version = "1.0.0"
 authors = ["Michael Lohr <michael@lohr.dev>", "Shemnei"]
 edition = "2018"
 description = "A cross-platform multi-target dotfiles manager"
@@ -14,24 +14,20 @@ keywords = ["dotfiles", "cli", "dotfile", "dotfiles-manager"]
 categories = ["command-line-utilities", "config"]
 
 [[bin]]
-path = "src/main.rs"
+path = "crates/punktf-cli/main.rs"
 name = "punktf"
 
+[workspace]
+members = [
+	"crates/punktf-lib"
+]
+
 [dependencies]
-clap = "3.0.0-beta.2"
+clap = "3.0.0-beta.4"
 color-eyre = "0.5.11"
 env_logger = "0.9.0"
 log = "0.4.14"
-serde = { version = "1.0.126", features = ["derive"] }
-serde_json = "1.0.64"
-serde_yaml = "0.8.17"
-thiserror = "1.0.26"
-walkdir = "2.3.2"
-unicode-width = "0.1.8"
-cfg-if = "1.0.0"
-
-[dev-dependencies]
-pretty_assertions = "0.7.2"
+punktf-lib = { version = "1.0.0", path = "crates/punktf-lib" }
 
 [profile.dev]
 opt-level = 0

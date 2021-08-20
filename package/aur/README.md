@@ -8,6 +8,18 @@
 
 ## Update
 
+### PKGBUILD
+
+Update the fields `pkgver` and `sha512sums`.
+
+The `sha512sums` must the be sha-512 sum of `Source code.tar.gz`.
+
+```bash
+shasum -a 512 ...
+```
+
+### Release
+
 ```bash
 git clone ssh://aur@aur.archlinux.org/punktf.git
 cp punktf/package/aur/PKGBUILD punktf/.
