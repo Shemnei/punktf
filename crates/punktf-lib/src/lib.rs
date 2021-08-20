@@ -251,10 +251,29 @@ impl Priority {
 
 #[cfg(test)]
 mod tests {
+	use std::sync::Once;
+
 	use super::*;
+
+	static SETUP_GATE: Once = Once::new();
+
+	pub(crate) fn setup_test_env() {
+		SETUP_GATE.call_once(|| {
+			let _ = env_logger::Builder::from_env(
+				env_logger::Env::default().default_filter_or(log::Level::Debug.as_str()),
+			)
+			.is_test(true)
+			.try_init()
+			.unwrap();
+
+			let _ = color_eyre::install().unwrap();
+		})
+	}
 
 	#[test]
 	fn priority_order() {
+		setup_test_env();
+
 		assert!(Priority::default() == Priority::new(0));
 		assert!(Priority::new(0) == Priority::new(0));
 		assert!(Priority::new(2) > Priority::new(1));

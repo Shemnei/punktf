@@ -325,6 +325,8 @@ mod tests {
 
 	#[test]
 	fn profile_serde() {
+		crate::tests::setup_test_env();
+
 		let mut profile_vars = HashMap::new();
 		profile_vars.insert(String::from("RUSTC_VERSION"), String::from("XX.YY"));
 		profile_vars.insert(String::from("RUSTC_PATH"), String::from("/usr/bin/rustc"));

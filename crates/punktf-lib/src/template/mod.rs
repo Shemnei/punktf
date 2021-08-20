@@ -147,11 +147,7 @@ mod tests {
 
 	#[test]
 	fn parse_template() -> Result<()> {
-		let _ = env_logger::Builder::from_env(
-			env_logger::Env::default().default_filter_or(log::Level::Debug.as_str()),
-		)
-		.is_test(true)
-		.try_init()?;
+		crate::tests::setup_test_env();
 
 		let content = r#"
 			[some settings]
@@ -205,6 +201,8 @@ mod tests {
 
 	#[test]
 	fn parse_template_vars() -> Result<()> {
+		crate::tests::setup_test_env();
+
 		// Default
 		let content = r#"{{OS}}"#;
 		let source = Source::anonymous(content);

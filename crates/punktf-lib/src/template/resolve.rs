@@ -424,6 +424,8 @@ there
 
 	#[test]
 	fn if_fmt() -> Result<()> {
+		crate::tests::setup_test_env();
+
 		for (content, should) in IF_FMT_TEST_CASES {
 			let source = Source::anonymous(content);
 			let template = Template::parse(source)?;

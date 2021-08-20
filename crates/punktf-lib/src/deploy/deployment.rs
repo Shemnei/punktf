@@ -281,6 +281,8 @@ mod tests {
 
 	#[test]
 	fn deployment_builder() -> Result<()> {
+		crate::tests::setup_test_env();
+
 		let builder = Deployment::build();
 		let deployment = builder.success();
 

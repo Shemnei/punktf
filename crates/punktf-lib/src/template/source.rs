@@ -347,6 +347,8 @@ mod tests {
 
 	#[test]
 	fn location_lines() {
+		crate::tests::setup_test_env();
+
 		let content = r#"Hello
 World
 Foo
@@ -366,6 +368,8 @@ Bar"#;
 
 	#[test]
 	fn location_special() {
+		crate::tests::setup_test_env();
+
 		let content = "\tA\r\n\t\tHello";
 
 		let src = Source::anonymous(content);
