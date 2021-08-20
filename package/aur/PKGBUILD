@@ -2,7 +2,7 @@
 # Maintainer: Michael Lohr <michael at lohr dot dev>
 
 pkgname=punktf
-pkgver=1.0.0_alpha
+pkgver=1.0.0
 pkgrel=1
 pkgdesc='A cross-platform multi-target dotfiles manager'
 arch=(x86_64)
