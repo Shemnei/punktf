@@ -1,3 +1,5 @@
+//! Everting related to user facing diagnostics a process may report.
+
 use std::borrow::Cow;
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, HashSet};
@@ -8,38 +10,60 @@ use super::source::Location;
 use super::span::ByteSpan;
 use crate::template::source::Source;
 
-// COPYRIGHT
+// COPYRIGHT by Rust project contributors
+// <https://github.com/rust-lang/rust/graphs/contributors>
 //
 // Copied from <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_span/src/lib.rs#L474>.
+/// Represents all spans related to one diagnostic.
+///
+/// The primary spans indicate where to "real" problem lies, while the labeled
+/// spans are there for hints and extra information.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct DiagnosticSpan {
 	/// A primary span is displayed with `^` bellow the spanned text.
 	pub(super) primary: Vec<ByteSpan>,
 
-	/// A label is displayed as the spanned text together with the label.
+	/// A label is displayed with `-` bellow the spanned text together with the label.
 	pub(super) labels: Vec<(ByteSpan, Cow<'static, str>)>,
 }
 
+/// The level of severity a diagnostic can have.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum DiagnositicLevel {
+pub enum DiagnosticLevel {
+	/// The diagnostic is an error.
 	Error,
+
+	/// The diagnostic is a warning.
 	Warning,
 }
 
-// COPYRIGHT
+// COPYRIGHT by Rust project contributors
+// <https://github.com/rust-lang/rust/graphs/contributors>
 //
 // Copied from by <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_errors/src/diagnostic.rs#L15> with slight adaptations.
+/// A diagnostic is something a task wants to communicate to the user.
+///
+/// It has a main message with a span, indicating which position in the source
+/// code the diagnostic want to reference.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Diagnositic {
-	level: DiagnositicLevel,
+pub struct Diagnostic {
+	/// The severity level associated with this diagnostic.
+	level: DiagnosticLevel,
+
+	/// The main message this diagnostic is about.
 	msg: Cow<'static, str>,
+
+	/// The spans this diagnostic is about.
 	span: Option<DiagnosticSpan>,
+
+	/// An optional extensive description.
 	description: Option<Cow<'static, str>>,
 }
 
-impl Diagnositic {
+impl Diagnostic {
+	/// Creates a new diagnostic.
 	pub fn new<M: Into<Cow<'static, str>>, D: Into<Option<impl Into<Cow<'static, str>>>>>(
-		level: DiagnositicLevel,
+		level: DiagnosticLevel,
 		msg: M,
 		span: Option<DiagnosticSpan>,
 		description: D,
@@ -52,8 +76,10 @@ impl Diagnositic {
 		}
 	}
 
+	/// Formats the diagnostic with [`DiagnosticFormatter`] and emits it with
+	/// the crate [`log`].
 	pub fn emit(&self, source: &'_ Source<'_>) {
-		let mut fmt = DiagnositicFormatter::new(source, &self.msg);
+		let mut fmt = DiagnosticFormatter::new(source, &self.msg);
 
 		if let Some(span) = &self.span {
 			for primary in &span.primary {
@@ -74,28 +100,41 @@ impl Diagnositic {
 		let out = fmt.finish();
 
 		match self.level {
-			DiagnositicLevel::Error => {
+			DiagnosticLevel::Error => {
 				log::error!("{}{} {}", "error".bright_red().bold(), ':'.bold(), out)
 			}
-			DiagnositicLevel::Warning => log::warn!("{}", out),
+			DiagnosticLevel::Warning => log::warn!("{}", out),
 		};
 	}
 
-	pub const fn level(&self) -> &DiagnositicLevel {
+	/// Returns the [`DiagnosticLevel`] associated with this diagnostic.
+	pub const fn level(&self) -> &DiagnosticLevel {
 		&self.level
 	}
 }
 
+/// A builder for a [`Diagnostic`].
+///
+/// The advantage over directly constructing a diagnostic is the ability to
+/// easily add spans to the builder.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DiagnositicBuilder {
-	level: DiagnositicLevel,
+pub struct DiagnosticBuilder {
+	/// The severity level associated with the diagnostic.
+	level: DiagnosticLevel,
+
+	/// The main message this diagnostic is about.
 	msg: Cow<'static, str>,
+
+	/// The spans this diagnostic is about.
 	span: Option<DiagnosticSpan>,
+
+	/// An optional extensive description.
 	description: Option<Cow<'static, str>>,
 }
 
-impl DiagnositicBuilder {
-	pub const fn new(level: DiagnositicLevel) -> Self {
+impl DiagnosticBuilder {
+	/// Creates a new diagnostic builder.
+	pub const fn new(level: DiagnosticLevel) -> Self {
 		Self {
 			level,
 			msg: Cow::Borrowed(""),
@@ -104,16 +143,19 @@ impl DiagnositicBuilder {
 		}
 	}
 
-	pub const fn level(mut self, level: DiagnositicLevel) -> Self {
+	/// Sets the diagnostic level on the builder.
+	pub const fn level(mut self, level: DiagnosticLevel) -> Self {
 		self.level = level;
 		self
 	}
 
+	/// Sets the message on the builder.
 	pub fn message<M: Into<Cow<'static, str>>>(mut self, msg: M) -> Self {
 		self.msg = msg.into();
 		self
 	}
 
+	/// Sets the description on the builder.
 	pub fn description<D: Into<Option<impl Into<Cow<'static, str>>>>>(
 		mut self,
 		description: D,
@@ -122,11 +164,13 @@ impl DiagnositicBuilder {
 		self
 	}
 
+	/// Adds a primary span to the builder.
 	pub fn primary_span(mut self, span: ByteSpan) -> Self {
 		self.span.get_or_insert_default().primary.push(span);
 		self
 	}
 
+	/// Adds a label span to the builder.
 	pub fn label_span<L: Into<Cow<'static, str>>>(mut self, span: ByteSpan, label: L) -> Self {
 		self.span
 			.get_or_insert_default()
@@ -135,10 +179,11 @@ impl DiagnositicBuilder {
 		self
 	}
 
+	/// Consumes self and creates a diagnostic from it.
 	// Destructors can not be run at compile time.
 	#[allow(clippy::missing_const_for_fn)]
-	pub fn build(self) -> Diagnositic {
-		Diagnositic {
+	pub fn build(self) -> Diagnostic {
+		Diagnostic {
 			level: self.level,
 			msg: self.msg,
 			span: self.span,
@@ -147,24 +192,53 @@ impl DiagnositicBuilder {
 	}
 }
 
+/// An reference to either a primary or label span.
+///
+/// The reference is just a index into a vector. This is used to keep track of
+/// what spans are located on a line without having to copy/clone them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum SpanRef {
+	/// An index into [`LineMap::primary_spans`].
 	Primary(usize),
+
+	/// An index into [`LineMap::label_spans`].
 	Label(usize),
 }
 
+/// This struct holds all lines necessary to resolve/format a diagnostic.
+///
+/// It also holds additional information like:
+///
+/// - For each line which span is located on it
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct LineMap<'a> {
+	/// The source from which to resolve the lines needed for format a
+	/// diagnostic.
 	source: &'a Source<'a>,
 
-	// the lines are stored as line index (meaning 0 indexed)
+	/// All lines necessary for formatting the diagnostic.
+	///
+	/// The lines are saved here to avoid multiple lookups to the same line.
+	/// The `key` is the zero-indexed line number/index.
 	lines: BTreeMap<usize, &'a str>,
+
+	/// This maps all spans of a diagnostic to the lines they occur on.
+	///
+	/// A span can be on multiple lines, that's why the "cheap" [`SpanRef`] is
+	/// used here instead of cloning/coping the span multiple times.
 	line_spans: BTreeMap<usize, HashSet<SpanRef>>,
+
+	/// All primary span of a diagnostic, resolved to a start and end
+	/// [location](`super::source::Location`).
 	primary_spans: Vec<(Location, Location)>,
+
+	/// All label span of a diagnostic, resolved to a start and end
+	/// [location](`super::source::Location`).
 	label_spans: Vec<(Location, Location, &'a str)>,
 }
 
 impl<'a> LineMap<'a> {
+	/// Creates a new line map for the given `source`.
 	pub fn new(source: &'a Source<'a>) -> Self {
 		let (lines, line_spans, primary_spans, label_spans) = <_>::default();
 
@@ -177,6 +251,10 @@ impl<'a> LineMap<'a> {
 		}
 	}
 
+	/// Adds a primary span to the line map.
+	///
+	/// This will also intern all lines the `span` spans if it is not already
+	/// present.
 	pub fn insert_primary(&mut self, span: &ByteSpan) -> SpanRef {
 		// get index of next vacant entry
 		let span_ref = SpanRef::Primary(self.primary_spans.len());
@@ -187,6 +265,10 @@ impl<'a> LineMap<'a> {
 		span_ref
 	}
 
+	/// Adds a label span to the line map.
+	///
+	/// This will also intern all lines the `span` spans if it is not already
+	/// present.
 	pub fn insert_label(&mut self, span: &ByteSpan, label: &'a str) -> SpanRef {
 		// get index of next vacant entry
 		let span_ref = SpanRef::Label(self.label_spans.len());
@@ -198,16 +280,25 @@ impl<'a> LineMap<'a> {
 		span_ref
 	}
 
+	/// Returns the lowest one-indexed line number this line map has interned.
 	pub fn min_line_nr(&self) -> Option<usize> {
 		self.lines.first_key_value().map(|(idx, _)| idx + 1)
 	}
 
+	/// Returns the highest one-indexed line number this line map has interned.
 	pub fn max_line_nr(&self) -> Option<usize> {
 		self.lines.last_key_value().map(|(idx, _)| idx + 1)
 	}
 
-	// Searches for the lowest primary location.
-	// If none is found it will search the labels for the lowest.
+	/// Returns the smallest [location](`super::source::Location`) any span
+	/// within this struct has.
+	///
+	/// The search is done in this order:
+	///
+	/// 1) First searches the primary spans for the smallest location and
+	///       returns any if found.
+	/// 2) After that it searches the label spans for the smallest location and
+	///       returns any if found.
 	pub fn min_location(&self) -> Option<Location> {
 		self.primary_spans
 			.iter()
@@ -217,14 +308,23 @@ impl<'a> LineMap<'a> {
 			.copied()
 	}
 
+	/// Returns a vector containing all one-indexed line numbers interned by
+	/// this line map.
+	///
+	/// The line numbers are sorted from low to high.
 	pub fn line_nrs(&self) -> Vec<usize> {
 		self.lines.keys().copied().map(|nr| nr + 1).collect()
 	}
 
+	/// Returns the contents of a line for a given one-indexed line number.
 	pub fn line(&self, line_nr: usize) -> Option<&str> {
 		self.lines.get(&(line_nr - 1)).copied()
 	}
 
+	/// Returns an iterator over all spans (primary and labeled) located on the
+	/// one-indexed line number.
+	///
+	/// The spans are sorted by their start location, low to high.
 	pub fn line_spans_sorted(
 		&self,
 		line_nr: usize,
@@ -250,6 +350,7 @@ impl<'a> LineMap<'a> {
 		Some(items)
 	}
 
+	/// Resolves a span to a start and end [location][`super::source::Location`].
 	fn locations(&self, span: &ByteSpan) -> (Location, Location) {
 		(
 			self.source.get_pos_location(span.low),
@@ -257,6 +358,9 @@ impl<'a> LineMap<'a> {
 		)
 	}
 
+	/// Interns all lines this `span` spans.
+	///
+	/// If the line is already present, it is skipped.
 	fn intern_span(&mut self, span: &ByteSpan, span_ref: SpanRef) {
 		let line_idx_low = self.source.get_pos_line_idx(span.low);
 		let line_idx_high = self.source.get_pos_line_idx(span.high);
@@ -266,6 +370,11 @@ impl<'a> LineMap<'a> {
 		}
 	}
 
+	/// Interns a line which is located at the zero-indexed `line_idx` if it is
+	/// not already present.
+	///
+	/// It also adds `span_ref` to the reference [`LineMap::line_spans`] keeps
+	/// for each line.
 	fn intern_line(&mut self, line_idx: usize, span_ref: SpanRef) {
 		if let Entry::Vacant(e) = self.lines.entry(line_idx) {
 			e.insert(self.source.get_idx_line(line_idx));
@@ -279,14 +388,24 @@ impl<'a> LineMap<'a> {
 	}
 }
 
-pub struct DiagnositicFormatter<'a> {
+/// This struct is responsible for formatting a [`Diagnostic`].
+pub struct DiagnosticFormatter<'a> {
+	/// The source the diagnostic references.
 	source: &'a Source<'a>,
+
+	/// The message from the diagnostic.
 	msg: &'a str,
+
+	/// The description from the diagnostic.
 	descriptions: Vec<&'a str>,
+
+	/// All lines referenced by the diagnostic.
 	line_map: LineMap<'a>,
 }
 
-impl<'a> DiagnositicFormatter<'a> {
+impl<'a> DiagnosticFormatter<'a> {
+	/// Creates a new formatter for the given `source` and primary `msg`
+	/// (related: [`Diagnostic::msg`]).
 	pub fn new(source: &'a Source<'a>, msg: &'a str) -> Self {
 		let descriptions = <_>::default();
 
@@ -298,21 +417,26 @@ impl<'a> DiagnositicFormatter<'a> {
 		}
 	}
 
+	/// Adds a description to the formatter (related: [`Diagnostic::description`]).
 	pub fn description(&mut self, description: &'a str) -> &mut Self {
 		self.descriptions.push(description);
 		self
 	}
 
+	/// Adds primary span to the formatter (related: [`DiagnosticSpan::primary`]).
 	pub fn primary_span(&mut self, span: &ByteSpan) -> &mut Self {
 		let _ = self.line_map.insert_primary(span);
 		self
 	}
 
+	/// Adds label span to the formatter (related: [`DiagnosticSpan::labels`]).
 	pub fn label_span(&mut self, span: &ByteSpan, label: &'a str) -> &mut Self {
 		let _ = self.line_map.insert_label(span, label);
 		self
 	}
 
+	/// Consumes self and formats all attributes set on this formatter into a
+	/// string.
 	pub fn finish(self) -> String {
 		// Rust check example:
 		// error: 1 positional argument in format string, but no arguments were given
@@ -321,6 +445,9 @@ impl<'a> DiagnositicFormatter<'a> {
 		// 28 |         out.push_str(format!(" |{}", ));
 		//    |                                 ^^
 
+		/// Styles the given `s` with ANSI escape codes.
+		///
+		/// <https://en.wikipedia.org/wiki/ANSI_escape_code>.
 		fn style<S: AsRef<str>>(s: S) -> String {
 			s.as_ref().bright_blue().bold().to_string()
 		}

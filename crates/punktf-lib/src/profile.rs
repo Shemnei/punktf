@@ -1,3 +1,5 @@
+//! Defines profiles and ways to layer multiple of them.
+
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
 use std::fs::File;
@@ -10,8 +12,10 @@ use crate::hook::Hook;
 use crate::variables::{UserVars, Variables};
 use crate::{Dotfile, PunktfSource};
 
+/// A profile is a collection of dotfiles and variables, options and hooks.
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SimpleProfile {
+#[serde(deny_unknown_fields)]
+pub struct Profile {
 	/// Defines the base profile. All settings from the base are merged with the
 	/// current profile. The settings from the current profile take precendence.
 	/// Dotfiles are merged on the dotfile level (not specific dotfile settings level).
@@ -23,7 +27,7 @@ pub struct SimpleProfile {
 	pub variables: Option<UserVars>,
 
 	/// Target root path of the deployment. Will be used as file stem for the dotfiles
-	/// when not overwritten by [Dotfile::target].
+	/// when not overwritten by [`Dotfile::overwrite_target`].
 	#[serde(skip_serializing_if = "Option::is_none", default)]
 	pub target: Option<PathBuf>,
 
@@ -41,7 +45,16 @@ pub struct SimpleProfile {
 	pub dotfiles: Vec<Dotfile>,
 }
 
-impl SimpleProfile {
+impl Profile {
+	/// Tries to load a profile from the file located at `path`.
+	///
+	/// This function will try to guess the correct deserializer by the file
+	/// extension of `path`
+	///
+	/// # Errors
+	///
+	/// An error is returned if the file does not exist or could not be read.
+	/// An error is returned if the file extension is unknown or missing.
 	pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, std::io::Error> {
 		let path = path.as_ref();
 		let file = File::open(path)?;
@@ -62,8 +75,13 @@ impl SimpleProfile {
 	}
 }
 
+/// Stores variables defined on different layers.
+/// Layers are created when a profile is extended.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct LayeredUserVars {
+	/// Stores the variables together with the index, which indexed
+	/// [`LayeredProfile::profile_names`] to retrieve the name of the profile,
+	/// the variable came from.
 	pub inner: HashMap<String, (usize, String)>,
 }
 
@@ -76,62 +94,94 @@ impl Variables for LayeredUserVars {
 	}
 }
 
+/// Defines a profile that appears on different layers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LayeredProfile {
+	/// All names of the profile which where collected from the extend chain.
 	profile_names: Vec<String>,
+
+	/// The target of the deployment.
+	///
+	/// This is the first value found by traversing the extend chain from the
+	/// top.
 	target: Option<(usize, PathBuf)>,
+
+	/// The variables collected from all profiles of the extend chain.
 	variables: LayeredUserVars,
+
+	/// The pre-hooks collected from all profiles of the extend chain.
 	pre_hooks: Vec<(usize, Hook)>,
+
+	/// The post-hooks collected from all profiles of the extend chain.
 	post_hooks: Vec<(usize, Hook)>,
+
+	/// The dotfiles collected from all profiles of the extend chain.
+	///
+	/// The index indexes into [`LayeredProfile::profile_names`] to retrieve
+	/// the name of the profile from which the dotfile came from.
 	dotfiles: Vec<(usize, Dotfile)>,
 }
 
 impl LayeredProfile {
+	/// Creates a new builder for a layered profile.
 	pub fn build() -> LayeredProfileBuilder {
 		LayeredProfileBuilder::default()
 	}
 
+	/// Returns the target path for the profile together with the index into
+	/// [`LayeredProfile::profile_names`].
 	pub fn target(&self) -> Option<(&str, &Path)> {
 		self.target
 			.as_ref()
 			.map(|(name_idx, path)| (self.profile_names[*name_idx].as_ref(), path.deref()))
 	}
 
+	/// Returns the target path for the profile.
 	pub fn target_path(&self) -> Option<&Path> {
 		self.target.as_ref().map(|(_, path)| path.deref())
 	}
 
+	/// Returns all collected variables for the profile.
 	pub const fn variables(&self) -> &LayeredUserVars {
 		&self.variables
 	}
 
+	/// Returns all collected pre-hooks for the profile.
 	pub fn pre_hooks(&self) -> impl Iterator<Item = &Hook> {
 		self.pre_hooks.iter().map(|(_, hook)| hook)
 	}
 
+	/// Returns all collected post-hooks for the profile.
 	pub fn post_hooks(&self) -> impl Iterator<Item = &Hook> {
 		self.post_hooks.iter().map(|(_, hook)| hook)
 	}
 
+	/// Returns all collected dotfiles for the profile.
 	pub fn dotfiles(&self) -> impl Iterator<Item = &Dotfile> {
 		self.dotfiles.iter().map(|(_, dotfile)| dotfile)
 	}
 }
 
+/// Collects different profiles from multiple layers.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct LayeredProfileBuilder {
+	/// All names of the profile which where collected from the extend chain.
 	profile_names: Vec<String>,
-	profiles: Vec<SimpleProfile>,
+
+	/// The profiles which make up the layered profile.
+	profiles: Vec<Profile>,
 }
 
 impl LayeredProfileBuilder {
-	pub fn add(&mut self, name: String, profile: SimpleProfile) -> &mut Self {
+	/// Adds a new `profile` with the given `name` to the builder.
+	pub fn add(&mut self, name: String, profile: Profile) -> &mut Self {
 		self.profiles.push(profile);
 		self.profile_names.push(name);
 
 		self
 	}
 
+	/// Consumes self and returns a new layered profile.
 	pub fn finish(self) -> LayeredProfile {
 		let target = self.profiles.iter().enumerate().find_map(|(idx, profile)| {
 			profile
@@ -211,6 +261,9 @@ impl LayeredProfileBuilder {
 	}
 }
 
+/// Recursively resolves a profile and it's [extend
+/// chain](`crate::profile::Profile::extends`) and adds them to the layered
+/// profile in order of occurrence.
 pub fn resolve_profile(
 	builder: &mut LayeredProfileBuilder,
 	source: &PunktfSource,
@@ -225,7 +278,7 @@ pub fn resolve_profile(
 		.unwrap_or_else(|| panic!("Profile path has no file name ({:?})", path))
 		.to_os_string();
 
-	let mut profile = SimpleProfile::from_file(&path)?;
+	let mut profile = Profile::from_file(&path)?;
 
 	if !profile.extends.is_empty() && resolved_profiles.contains(&file_name) {
 		// profile was already resolve and has "children" which will lead to
@@ -255,7 +308,7 @@ pub fn resolve_profile(
 
 	let _ = resolved_profiles
 		.pop()
-		.expect("Missaligned push/pop operation");
+		.expect("Misaligned push/pop operation");
 
 	Ok(())
 }
@@ -266,7 +319,7 @@ mod tests {
 
 	use super::*;
 	use crate::hook::Hook;
-	use crate::profile::SimpleProfile;
+	use crate::profile::Profile;
 	use crate::variables::UserVars;
 	use crate::{MergeMode, Priority};
 
@@ -280,7 +333,7 @@ mod tests {
 		dotfile_vars.insert(String::from("RUSTC_VERSION"), String::from("55.22"));
 		dotfile_vars.insert(String::from("USERNAME"), String::from("demo"));
 
-		let profile = SimpleProfile {
+		let profile = Profile {
 			extends: Vec::new(),
 			variables: Some(UserVars {
 				inner: profile_vars,
@@ -314,8 +367,7 @@ mod tests {
 
 		let json = serde_json::to_string(&profile).expect("Profile to be serializeable");
 
-		let parsed: SimpleProfile =
-			serde_json::from_str(&json).expect("Profile to be deserializable");
+		let parsed: Profile = serde_json::from_str(&json).expect("Profile to be deserializable");
 
 		assert_eq!(parsed, profile);
 	}

@@ -1,3 +1,5 @@
+//! Everting needed to deploy a [profile](`crate::profile::Profile`).
+
 use std::path::{Path, PathBuf};
 
 use color_eyre::eyre::Context;
@@ -11,24 +13,48 @@ use crate::template::Template;
 use crate::variables::UserVars;
 use crate::{Dotfile, MergeMode, Priority, PunktfSource};
 
+/// An enum to be generic over both a "real" dotfile and a child of a directory
+/// dotfile.
 enum ExecutorDotfile<'a> {
+	/// A "real" dotile.
 	File {
+		/// The dotfile.
 		dotfile: Dotfile,
+
+		/// The absolute source path of the dotfile.
 		source_path: PathBuf,
+
+		/// The absolute deploy path of the dotfile.
 		deploy_path: PathBuf,
 	},
+	/// A child of a directory dotfile.
 	Child {
+		/// The directory dotfile this child stems from.
 		parent: &'a Dotfile,
+
+		/// The absolute source path of the directory dotfile this child stems
+		/// from.
 		parent_source_path: &'a Path,
+
+		/// The absolute deploy path of the directory dotfile this child stems
+		/// from.
 		parent_deploy_path: &'a Path,
-		// relative path in source (equivalent to `Dotfile::path`)
+
+		/// Relative path in
+		/// [PunktfSource::dotfiles](`crate::PunktfSource::dotfiles`)
+		/// (equivalent to [Dotfile::path](`crate::Dotfile::path`)).
 		path: PathBuf,
+
+		/// The absolute source path of the child.
 		source_path: PathBuf,
+
+		/// The absolute deploy path of the child.
 		deploy_path: PathBuf,
 	},
 }
 
 impl<'a> ExecutorDotfile<'a> {
+	/// Returns the absolute deploy path.
 	fn deploy_path(&self) -> &Path {
 		match self {
 			Self::File { deploy_path, .. } => deploy_path,
@@ -36,6 +62,7 @@ impl<'a> ExecutorDotfile<'a> {
 		}
 	}
 
+	/// Returns the absolute source path.
 	fn source_path(&self) -> &Path {
 		match self {
 			Self::File { source_path, .. } => source_path,
@@ -43,6 +70,7 @@ impl<'a> ExecutorDotfile<'a> {
 		}
 	}
 
+	/// Returns the relative path in [PunktfSource::dotfiles](`crate::PunktfSource::dotfiles`).
 	fn path(&self) -> &Path {
 		match self {
 			Self::File { dotfile, .. } => &dotfile.path,
@@ -50,6 +78,9 @@ impl<'a> ExecutorDotfile<'a> {
 		}
 	}
 
+	/// Returns the priority.
+	///
+	/// If it is a child, the of the directory dotfile is used.
 	const fn priority(&self) -> Option<Priority> {
 		match self {
 			Self::File { dotfile, .. } => dotfile.priority,
@@ -57,6 +88,9 @@ impl<'a> ExecutorDotfile<'a> {
 		}
 	}
 
+	/// Returns the merge mode.
+	///
+	/// If it is a child, the value of the directory dotfile is used.
 	const fn merge_mode(&self) -> Option<MergeMode> {
 		match self {
 			Self::File { dotfile, .. } => dotfile.merge,
@@ -64,6 +98,9 @@ impl<'a> ExecutorDotfile<'a> {
 		}
 	}
 
+	/// Returns whether this is a template.
+	///
+	/// If it is a child, the value of the directory dotfile is used.
 	fn is_template(&self) -> bool {
 		match self {
 			Self::File { dotfile, .. } => dotfile.is_template(),
@@ -71,6 +108,9 @@ impl<'a> ExecutorDotfile<'a> {
 		}
 	}
 
+	/// Returns the [dotfile variables][`crate::Dotfile::variables`].
+	///
+	/// If it is a child, the value of the directory dotfile is used.
 	const fn variables(&self) -> Option<&UserVars> {
 		match self {
 			Self::File { dotfile, .. } => dotfile.variables.as_ref(),
@@ -78,6 +118,7 @@ impl<'a> ExecutorDotfile<'a> {
 		}
 	}
 
+	/// Adds the item to a deployment builder with the given `status`.
 	fn add_to_builder<S: Into<DotfileStatus>>(self, builder: &mut DeploymentBuilder, status: S) {
 		let status = status.into();
 
@@ -101,16 +142,33 @@ impl<'a> ExecutorDotfile<'a> {
 	}
 }
 
+/// Configuration options for the [`Executor`].
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ExecutorOptions {
+	/// If this flag is set, it will prevent any write operations from occurring
+	/// during the deployment.
+	///
+	/// This includes write, copy and directory creation operations.
 	pub dry_run: bool,
 }
 
+/// The executor is responsible for deploying a
+/// [profile](`crate::profile::Profile`).
+///
+/// This includes checking for merge conflicts, resolving children of a
+/// directory dotfile, parsing and resolving of templates and the actual
+/// writing of the dotfile to the target destination.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Executor<F> {
+	/// Configuration options for the executor.
 	options: ExecutorOptions,
-	// called when same priority dotfile exists and merge mode == Ask.
-	// Gets called with dotfile_source_path, dotfile_deploy_path
+
+	/// This function gets called when a dotfile at the target destination
+	/// already exists and the merge mode is
+	/// [MergeMode::Ask](`crate::MergeMode::Ask`).
+	///
+	/// The arguments for the function are (dotfile_source_path,
+	/// dotfile_deploy_path).
 	merge_ask_fn: F,
 }
 
@@ -118,6 +176,7 @@ impl<F> Executor<F>
 where
 	F: Fn(&Path, &Path) -> Result<bool>,
 {
+	/// Creates a new executor with the given `options`.
 	pub fn new(options: ExecutorOptions, f: F) -> Self {
 		Self {
 			options,
@@ -125,14 +184,21 @@ where
 		}
 	}
 
+	/// Tries to deploy the given `profile`.
+	///
+	/// # Errors
+	///
+	/// Only hard errors will be returned as error, everthing else will be
+	/// recorded in the [Deployment](`super::deployment::Deployment`) on a
+	/// dotfile level.
 	pub fn deploy(&self, source: PunktfSource, profile: &LayeredProfile) -> Result<Deployment> {
 		// General flow:
 		//	- get deployment path
 		//	- check if dotfile already deployed
 		//	- YES:
 		//		- compare priorities
-		//		- LOWER/SAME: continue next dotfile
-		//		- HIGHER: skip file exists check
+		//		- LOWER: continue next dotfile
+		//		- SAME/HIGHER: next step
 		//	- check if dotfile exists
 		//	- YES:
 		//		- check merge operation
@@ -176,6 +242,13 @@ where
 		Ok(builder.finish())
 	}
 
+	/// Resolves all necessary paths to deploy the dotfile and tries to deploys it.
+	///
+	/// If the dotfile is a directory, [`Executor::deploy_dir`] will be called,
+	/// otherwise [`Executor::deploy_executor_dotfile`] will be called.
+	///
+	/// Gets called for each dotfile defined by a
+	/// [profile](`crate::profile::Profile`).
 	fn deploy_dotfile(
 		&self,
 		builder: &mut DeploymentBuilder,
@@ -271,6 +344,11 @@ where
 		}
 	}
 
+	/// Deploys a dotfile directory by iterating over all children contained
+	/// wihwithin the directory and it's subdirectories and deploying them.
+	///
+	/// This will call [`Executor::deploy_executor_dotfile`] for each child
+	/// found.
 	#[allow(clippy::too_many_arguments)]
 	fn deploy_dir(
 		&self,
@@ -442,6 +520,15 @@ where
 		Ok(())
 	}
 
+	/// This function does the actual deploying of a dotfile or a child of a
+	/// dotfile.
+	///
+	/// It first checks if a dotfile with a higher priority was already
+	/// deployed and if so returns early.
+	/// After that it checks the merge mode and executes the appropriate action
+	/// for it.
+	/// After that it will parse and resolve the template if it is one and
+	/// lastly will write the content to the deploy path.
 	fn deploy_executor_dotfile<'a>(
 		&self,
 		builder: &mut DeploymentBuilder,
@@ -684,6 +771,7 @@ where
 	}
 }
 
+/// Resolves the deploy path for the given `dotfile`.
 fn resolve_deployment_path(profile_target: &Path, dotfile: &Dotfile) -> PathBuf {
 	dotfile
 		.overwrite_target
@@ -692,6 +780,12 @@ fn resolve_deployment_path(profile_target: &Path, dotfile: &Dotfile) -> PathBuf 
 		.join(dotfile.rename.as_ref().unwrap_or(&dotfile.path))
 }
 
+/// Tries to resolve the source path for the given `dotfile`.
+///
+/// # Erros
+///
+/// An error is returned if the subsequent call to
+/// [`std::path::Path::canonicalize`] fails.
 fn resolve_source_path(source_path: &Path, dotfile: &Dotfile) -> std::io::Result<PathBuf> {
 	source_path.join(&dotfile.path).canonicalize()
 }

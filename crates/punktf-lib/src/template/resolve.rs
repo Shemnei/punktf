@@ -1,3 +1,7 @@
+//! This module contains everything needed to resolve a
+//! [template](`super::Template`) to a string.  This includes filling of
+//! variable blocks and evaluation of if blocks.
+
 use std::borrow::Cow;
 use std::ops::Deref;
 
@@ -6,9 +10,12 @@ use color_eyre::eyre::Result;
 use super::block::{Block, BlockKind, If, IfExpr, Var, VarEnv};
 use super::session::Session;
 use super::Template;
-use crate::template::diagnostic::{Diagnositic, DiagnositicBuilder, DiagnositicLevel};
+use crate::template::diagnostic::{Diagnostic, DiagnosticBuilder, DiagnosticLevel};
 use crate::variables::Variables;
 
+/// This macro resolves to the target architecture string of the compiling
+/// system. All possible values can be found here
+/// <https://doc.rust-lang.org/reference/conditional-compilation.html#target_arch>.
 macro_rules! arch {
 	() => {{
 		cfg_if::cfg_if! {
@@ -33,6 +40,9 @@ macro_rules! arch {
 	}};
 }
 
+/// This macro resolves to the target operating system string of the compiling
+/// system. All possible values can be found here
+/// <https://doc.rust-lang.org/reference/conditional-compilation.html#target_os>.
 macro_rules! os {
 	() => {{
 		cfg_if::cfg_if! {
@@ -61,6 +71,9 @@ macro_rules! os {
 	}};
 }
 
+/// This macro resolves to the target family string of the compiling
+/// system. All possible values can be found here
+/// <https://doc.rust-lang.org/reference/conditional-compilation.html#target_family>.
 macro_rules! family {
 	() => {{
 		cfg_if::cfg_if! {
@@ -77,10 +90,22 @@ macro_rules! family {
 	}};
 }
 
+/// The resolver is responsible for evaluating and filling a
+/// [template](`super::Template`). During the filling all found errors are
+/// recorded in the [session](`super::session::Session`) and emitted after the
+/// [resolve](`Resolver::resolve`) process.
 pub struct Resolver<'a, PV, DV> {
+	/// Template to resolve.
 	template: &'a Template<'a>,
+
+	/// Variables defined in the profile.
 	profile_vars: Option<&'a PV>,
+
+	/// Variables defined by the [dotfile](`crate::Dotfile`) which corresponds to the template.
 	dotfile_vars: Option<&'a DV>,
+
+	/// Session where all errors/diagnostic which occur during the resolving
+	/// process are recorded to.
 	session: Session,
 }
 
@@ -89,6 +114,8 @@ where
 	PV: Variables,
 	DV: Variables,
 {
+	/// Creates a new resolver for `template` with the given `profile_vars` and
+	/// `dotfile_vars`.
 	pub fn new(
 		template: &'a Template<'a>,
 		profile_vars: Option<&'a PV>,
@@ -102,6 +129,12 @@ where
 		}
 	}
 
+	/// Consumes the resolver and tries to resolve all blocks defined by the
+	/// template.
+	///
+	/// # Errors
+	///
+	/// An error is returned if a variable could not be resolved.
 	pub fn resolve(mut self) -> Result<String> {
 		let mut output = String::new();
 
@@ -118,19 +151,26 @@ where
 		session.try_finish().map(|_| output)
 	}
 
-	fn report_diagnostic(&mut self, diagnostic: Diagnositic) {
-		if diagnostic.level() == &DiagnositicLevel::Error {
+	/// Adds a diagnostic to the session.
+	fn report_diagnostic(&mut self, diagnostic: Diagnostic) {
+		if diagnostic.level() == &DiagnosticLevel::Error {
 			self.session.mark_failed();
 		}
 
 		self.session.report(diagnostic);
 	}
 
+	/// Processes a [block](`super::block::Block`) and appends the resolved
+	/// output to `output`.
+	///
+	/// # Errors
+	///
+	/// An error is returned if a variable could not be resolved.
 	fn process_block(
 		&mut self,
 		output: &mut String,
 		block: &Block,
-	) -> Result<(), DiagnositicBuilder> {
+	) -> Result<(), DiagnosticBuilder> {
 		let Block { span, kind } = block;
 
 		match kind {
@@ -231,7 +271,13 @@ where
 		Ok(())
 	}
 
-	fn resolve_if_expr(&self, expr: &IfExpr) -> Result<bool, DiagnositicBuilder> {
+	/// Tries to resolve an [if expression](`super::block::IfExpr`) and returns
+	/// the result of the evaluated expression.
+	///
+	/// # Errors
+	///
+	/// An error is returned if a variable could not be resolved.
+	fn resolve_if_expr(&self, expr: &IfExpr) -> Result<bool, DiagnosticBuilder> {
 		match expr {
 			IfExpr::Compare { var, op, other } => {
 				let var = self.resolve_var(var)?;
@@ -241,7 +287,21 @@ where
 		}
 	}
 
-	fn resolve_var(&self, var: &Var) -> Result<Cow<'_, str>, DiagnositicBuilder> {
+	/// Tries to resolve a [variable](`super::block::Var`) by looking for the
+	/// value in [`Resolver::profile_vars`], [`Resolver::dotfile_vars`] and the
+	/// system environment.
+	///
+	/// This function injects the following environment
+	/// variables if not present:
+	///
+	/// - `PUNKTF_TARGET_ARCH`: Architecture of the compiling system
+	/// - `PUNKTF_TARGET_OS`: Operating system of the compiling system
+	/// - `PUNKTF_TARGET_FAMILY`: Operating system family of the compiling system
+	///
+	/// # Errors
+	///
+	/// An error is returned if the variable could not be resolved.
+	fn resolve_var(&self, var: &Var) -> Result<Cow<'_, str>, DiagnosticBuilder> {
 		let name = &self.template.source[var.name];
 
 		for env in var.envs.envs() {
@@ -274,7 +334,7 @@ where
 			};
 		}
 
-		Err(DiagnositicBuilder::new(DiagnositicLevel::Error)
+		Err(DiagnosticBuilder::new(DiagnosticLevel::Error)
 			.message("failed to resolve variable")
 			.description(format!(
 				"no variable `{}` found in environments {}",

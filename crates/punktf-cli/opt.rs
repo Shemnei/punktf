@@ -1,3 +1,10 @@
+//! All code related to command line argument parsing.
+
+// We allow missing documentation for this module, as any documentation put on
+// the cli struct will appear in the help message which, in most cases, is not
+// what we want.
+#![allow(missing_docs, clippy::missing_docs_in_private_items)]
+
 use std::fmt;
 use std::ops::Deref;
 use std::path::PathBuf;
@@ -6,7 +13,9 @@ use std::str::FromStr;
 use clap::{crate_authors, crate_description, crate_version, Clap};
 use color_eyre::Result;
 
-// Used so that it defaults to current_dir if no value is given.
+/// The path to `punktfs` source directory.
+///
+/// Used so that it defaults to [`std::env::current_dir`] if no value is given.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SourcePath(PathBuf);
 
@@ -63,12 +72,7 @@ pub struct Opts {
 #[derive(Debug, Clap)]
 pub struct Shared {
 	/// The source directory where the profiles and dotfiles are located.
-	#[clap(short, long, env = super::PUNKTF_SOURCE_ENVVAR)]
-	// The below is necessary for as `clap` will act different when debugging vs
-	// releasing. This will either cause `cargo test` or `cargo install` to fail.
-	// clap = "3.0.0-beta.2"
-	#[cfg_attr(debug_assertions, clap(default_value))]
-	#[cfg_attr(not(debug_assertions), clap(default_value_t))]
+	#[clap(short, long, env = super::PUNKTF_SOURCE_ENVVAR, default_value_t)]
 	pub source: SourcePath,
 
 	/// Runs with specified level of verbosity which affects the log level.
@@ -94,7 +98,7 @@ pub struct Deploy {
 	///
 	/// The name should be the file name of the profile without an extension (e.g.
 	/// `profiles/arch.json` should be given as `arch`).
-	#[clap(env = super::PUNKTF_DEFAULT_PROFILE_ENVVAR)]
+	#[clap(env = super::PUNKTF_PROFILE_ENVVAR)]
 	pub profile: String,
 
 	/// Alternative deployment target path.

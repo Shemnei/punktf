@@ -1,3 +1,5 @@
+//! Hooks which can be execute by the native os shell.
+
 use std::io::{BufRead as _, BufReader};
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -6,26 +8,34 @@ use color_eyre::eyre::Result;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+/// An enum of errors which can occur during the execution of a [`Hook`].
 #[derive(Error, Debug)]
 pub enum HookError {
+	/// An [`std::io::Error`] which occurred during the execution of a hook.
 	#[error("IO Error")]
 	IoError(#[from] std::io::Error),
+
+	/// The hook failed to execute successfully.
 	#[error("Process failed")]
 	ExitStatusError(#[from] std::process::ExitStatusError),
 }
 
+/// Implements the `Hook` trait, which is used to run a command after or before a build.
 #[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Hook(String);
 
 impl Hook {
+	/// Creates a new Hook for the given command. The command must be executable by the native shell.
 	pub fn new<S: Into<String>>(command: S) -> Self {
 		Self(command.into())
 	}
 
+	/// Runs the hook command.
 	pub fn command(&self) -> &str {
 		&self.0
 	}
 
+	/// Executes the hook command.
 	pub fn execute(&self, cwd: &Path) -> Result<()> {
 		let mut child = self
 			.prepare_command()?
@@ -73,6 +83,7 @@ impl Hook {
 			.map_err(Into::into)
 	}
 
+	/// Prepares the command for execution depending on the platform.
 	fn prepare_command(&self) -> Result<Command> {
 		cfg_if::cfg_if! {
 			if #[cfg(target_family = "windows")] {
@@ -84,7 +95,7 @@ impl Hook {
 				cmd.args(&["-c", &self.0]);
 				Ok(cmd)
 			} else {
-				Err(std::io::Error::new(std::io::ErrorKind::Other, "Hooks are only supported on windows and unix based systems"))
+				Err(std::io::Error::new(std::io::ErrorKind::Other, "Hooks are only supported on Windows and Unix-based systems"))
 			}
 		}
 	}
