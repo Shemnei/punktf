@@ -14,7 +14,7 @@ $packageArgs = @{
 
     unzipLocation = $toolsDir
 
-    checksum64    = 'e4cf1d9ed43217df69b7e13659435b86614ac62ea6049fc079785e993b8c5b0f'
+    checksum64    = '6dcbb94b4993f746636ebc4050f866ae91b115146daea13818724c5ca6f373c5'
     checksumType64= 'sha256'
 
     validExitCodes= @(0)
