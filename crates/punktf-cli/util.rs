@@ -9,21 +9,8 @@ use punktf_lib::deploy::dotfile::DotfileStatus;
 
 /// Retrieves the target path for the deployment by reading the environment
 /// variable with the name determined by [`super::PUNKTF_TARGET_ENVVAR`].
-///
-/// # Panics
-///
-/// This functions will panic if it failes to retrieve the target path from the
-/// environment variable.
-pub fn get_target_path() -> PathBuf {
-	std::env::var_os(super::PUNKTF_TARGET_ENVVAR)
-		.unwrap_or_else(|| {
-			panic!(
-				"No environment variable `{}` set. Either set this variable, use the `-t/--target`
-				argument or use the profile attribute `target`.",
-				super::PUNKTF_TARGET_ENVVAR
-			)
-		})
-		.into()
+pub fn get_target_path() -> Option<PathBuf> {
+	std::env::var_os(super::PUNKTF_TARGET_ENVVAR).map(|val| val.into())
 }
 
 /// Function which get's called when a merge conflict arises and the merge mode
