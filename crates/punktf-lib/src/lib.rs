@@ -43,6 +43,7 @@ pub mod deploy;
 pub mod hook;
 pub mod profile;
 pub mod template;
+pub mod transform;
 pub mod variables;
 
 use std::path::{Path, PathBuf};
