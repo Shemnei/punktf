@@ -48,8 +48,7 @@ impl Transform for LineTerminator {
 					.collect::<Vec<_>>();
 
 				for (offset, lf_idx) in lf_idxs.into_iter().enumerate() {
-					let lf_idx = lf_idx + offset;
-					content.insert(lf_idx, '\r');
+					content.insert(lf_idx + offset, '\r');
 				}
 
 				Ok(content)
