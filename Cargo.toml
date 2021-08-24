@@ -10,7 +10,7 @@ documentation = "https://github.com/Shemnei/punktf"
 homepage = "https://github.com/Shemnei/punktf"
 repository = "https://github.com/Shemnei/punktf"
 license= "MIT"
-exclude = ["packages"]
+exclude = ["/package/", "/Makefile", "/.git/", "/.github/"]
 keywords = ["dotfiles", "cli", "dotfile", "dotfiles-manager"]
 categories = ["command-line-utilities", "config"]
 
