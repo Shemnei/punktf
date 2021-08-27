@@ -20,5 +20,3 @@ $packageArgs = @{
     validExitCodes= @(0)
 }
 Install-ChocolateyZipPackage @packageArgs
-
-Install-BinFile -Name "punktf" -Path "$bin"
