@@ -44,7 +44,7 @@ pikaur -S punktf
 Install [punktf using Chocolatey](https://community.chocolatey.org/packages/punktf) on Windows:
 
 ```sh
-choco install punktf --pre
+choco install punktf
 ```
 
 ## Usage
