@@ -27,6 +27,7 @@ pub trait Pos {
 // <https://github.com/rust-lang/rust/graphs/contributors>
 //
 // Copied from <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_span/src/lib.rs#L1775> with slight adaptations.
+/// Generates a basic structure/functions for a position type.
 macro_rules! pos {
     (
         $(
