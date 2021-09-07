@@ -48,7 +48,7 @@ pub mod variables;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
-use variables::UserVars;
+use variables::Variables;
 
 /// This struct represents the source directory used by `punktf`. The source
 /// directory is the central repository used to store
@@ -193,7 +193,7 @@ pub struct Dotfile {
 	/// take precendence over the ones defined in
 	/// [`profile::Profile::variables`].
 	#[serde(skip_serializing_if = "Option::is_none", default)]
-	variables: Option<UserVars>,
+	variables: Option<Variables>,
 
 	/// Merge operation for already existing dotfiles with the same or higher
 	/// priority.

@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::hook::Hook;
-use crate::variables::{UserVars, Variables};
+use crate::variables::{Variables, Vars};
 use crate::{Dotfile, PunktfSource};
 
 /// A profile is a collection of dotfiles and variables, options and hooks.
@@ -24,7 +24,7 @@ pub struct Profile {
 
 	/// Variables of the profile. Each dotfile will have this environment.
 	#[serde(skip_serializing_if = "Option::is_none", default)]
-	pub variables: Option<UserVars>,
+	pub variables: Option<Variables>,
 
 	/// Target root path of the deployment. Will be used as file stem for the dotfiles
 	/// when not overwritten by [`Dotfile::overwrite_target`].
@@ -85,7 +85,7 @@ pub struct LayeredUserVars {
 	pub inner: HashMap<String, (usize, String)>,
 }
 
-impl Variables for LayeredUserVars {
+impl Vars for LayeredUserVars {
 	fn var<K>(&self, key: K) -> Option<&str>
 	where
 		K: AsRef<str>,
@@ -320,7 +320,7 @@ mod tests {
 	use super::*;
 	use crate::hook::Hook;
 	use crate::profile::Profile;
-	use crate::variables::UserVars;
+	use crate::variables::Variables;
 	use crate::{MergeMode, Priority};
 
 	#[test]
@@ -337,7 +337,7 @@ mod tests {
 
 		let profile = Profile {
 			extends: Vec::new(),
-			variables: Some(UserVars {
+			variables: Some(Variables {
 				inner: profile_vars,
 			}),
 			target: Some(PathBuf::from("/home/demo/.config")),
@@ -358,7 +358,7 @@ mod tests {
 					rename: None,
 					overwrite_target: Some(PathBuf::from("/home/demo")),
 					priority: None,
-					variables: Some(UserVars {
+					variables: Some(Variables {
 						inner: dotfile_vars,
 					}),
 					merge: Some(MergeMode::Overwrite),

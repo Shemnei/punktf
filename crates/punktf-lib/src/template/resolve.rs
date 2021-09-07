@@ -11,7 +11,7 @@ use super::block::{Block, BlockKind, If, IfExpr, Var, VarEnv};
 use super::session::Session;
 use super::Template;
 use crate::template::diagnostic::{Diagnostic, DiagnosticBuilder, DiagnosticLevel};
-use crate::variables::Variables;
+use crate::variables::Vars;
 
 /// This macro resolves to the target architecture string of the compiling
 /// system. All possible values can be found here
@@ -111,8 +111,8 @@ pub struct Resolver<'a, PV, DV> {
 
 impl<'a, PV, DV> Resolver<'a, PV, DV>
 where
-	PV: Variables,
-	DV: Variables,
+	PV: Vars,
+	DV: Vars,
 {
 	/// Creates a new resolver for `template` with the given `profile_vars` and
 	/// `dotfile_vars`.
@@ -351,7 +351,7 @@ mod tests {
 	use super::*;
 	use crate::template::source::Source;
 	use crate::template::Template;
-	use crate::variables::UserVars;
+	use crate::variables::Variables;
 
 	#[rustfmt::skip]
 	const IF_FMT_TEST_CASES: &[(&str, &str)] = &[
@@ -430,7 +430,10 @@ there
 			let source = Source::anonymous(content);
 			let template = Template::parse(source)?;
 
-			assert_eq!(&template.resolve::<UserVars, UserVars>(None, None)?, should);
+			assert_eq!(
+				&template.resolve::<Variables, Variables>(None, None)?,
+				should
+			);
 		}
 
 		Ok(())
