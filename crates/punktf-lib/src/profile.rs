@@ -78,14 +78,14 @@ impl Profile {
 /// Stores variables defined on different layers.
 /// Layers are created when a profile is extended.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct LayeredUserVars {
+pub struct LayeredVariables {
 	/// Stores the variables together with the index, which indexed
 	/// [`LayeredProfile::profile_names`] to retrieve the name of the profile,
 	/// the variable came from.
 	pub inner: HashMap<String, (usize, String)>,
 }
 
-impl Vars for LayeredUserVars {
+impl Vars for LayeredVariables {
 	fn var<K>(&self, key: K) -> Option<&str>
 	where
 		K: AsRef<str>,
@@ -107,7 +107,7 @@ pub struct LayeredProfile {
 	target: Option<(usize, PathBuf)>,
 
 	/// The variables collected from all profiles of the extend chain.
-	variables: LayeredUserVars,
+	variables: LayeredVariables,
 
 	/// The pre-hooks collected from all profiles of the extend chain.
 	pre_hooks: Vec<(usize, Hook)>,
@@ -142,7 +142,7 @@ impl LayeredProfile {
 	}
 
 	/// Returns all collected variables for the profile.
-	pub const fn variables(&self) -> &LayeredUserVars {
+	pub const fn variables(&self) -> &LayeredVariables {
 		&self.variables
 	}
 
@@ -190,7 +190,7 @@ impl LayeredProfileBuilder {
 				.map(move |target| (idx, target.to_path_buf()))
 		});
 
-		let mut variables = LayeredUserVars::default();
+		let mut variables = LayeredVariables::default();
 
 		for (idx, vars) in self
 			.profiles
