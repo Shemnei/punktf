@@ -61,7 +61,7 @@ build() {
 main() {
   setup
 
-  #clean
+  clean
   build
   check
   srcinfo
