@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop';
 
 $packageName = 'punktf'
 $toolsDir   = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
-$url64       = 'https://github.com/Shemnei/punktf/releases/download/v1.0.0/punktf-x86_64-pc-windows-msvc.zip'
+$url64       = 'https://github.com/Shemnei/punktf/releases/download/v1.0.1/punktf-x86_64-pc-windows-msvc.zip'
 $bin         = $toolsDir + '\punktf-x86_64-pc-windows-msvc\punktf.exe'
 
 $packageArgs = @{
@@ -14,7 +14,7 @@ $packageArgs = @{
 
     unzipLocation = $toolsDir
 
-    checksum64    = '6dcbb94b4993f746636ebc4050f866ae91b115146daea13818724c5ca6f373c5'
+    checksum64    = 'e67fe62cb03ae62c8b5cddff0d602700aa02e555d3f00b254794d5d13f59aba3'
     checksumType64= 'sha256'
 
     validExitCodes= @(0)
