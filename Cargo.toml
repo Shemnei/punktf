@@ -44,7 +44,9 @@ opt-level = 3
 
 [profile.release]
 lto = "thin"
-opt-level = 3
+# Optimize for binary size. In this case also turns out to be the fastest to
+# compile.
+opt-level = "s"
 # Strip symbols for the release build to decrease binary size
 strip = true
 # Reduces parallel code generation units to increase optimizations
