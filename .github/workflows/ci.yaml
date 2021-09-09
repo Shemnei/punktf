@@ -1,6 +1,19 @@
-on: [push, pull_request]
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - staging
+      - trying
 
 name: CI
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  RUST_BACKTRACE: short
+  RUSTFLAGS: "-D warnings -W rust-2021-compatibility"
+  RUSTUP_MAX_RETRIES: 10
 
 jobs:
   test:
@@ -12,16 +25,25 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
+
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: nightly
           override: true
-      - name: Run cargo test
+
+      - name: Compile
         uses: actions-rs/cargo@v1
         with:
           command: test
+          args: --no-run --locked
+
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: -- --nocapture --quiet
 
   lints:
     name: Lints
@@ -29,6 +51,7 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
+
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -36,11 +59,13 @@ jobs:
           toolchain: nightly
           override: true
           components: rustfmt, clippy
+
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
+
       - name: Run cargo clippy
         uses: actions-rs/cargo@v1
         with:
