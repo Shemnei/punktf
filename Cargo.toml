@@ -19,6 +19,8 @@ path = "crates/punktf-cli/main.rs"
 name = "punktf"
 
 [workspace]
+# Use new resolver
+resolver = "2"
 members = [
 	"crates/punktf-lib"
 ]
