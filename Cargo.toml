@@ -32,6 +32,9 @@ punktf-lib = { version = "1.0.0", path = "crates/punktf-lib" }
 
 [profile.dev]
 opt-level = 0
+# Only retain line level debug information; This will speed up the build process
+# and is only used when debugging.
+debug = 1
 
 [profile.dev.package.backtrace]
 # color-eyre: Improves performance for debug builds
@@ -44,3 +47,6 @@ opt-level = 3
 strip = true
 # Reduces parallel code generation units to increase optimizations
 codegen-units = 1
+# Dont retain any debug information; This will speed up the build process
+# and is only used when debugging.
+debug = 0
