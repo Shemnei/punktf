@@ -19,9 +19,6 @@ jobs:
   test:
     name: Test Suite
     runs-on: ubuntu-latest
-    env:
-      # Get backtraces on panics
-      RUST_BACKTRACE: 1
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -32,6 +29,10 @@ jobs:
           profile: minimal
           toolchain: nightly
           override: true
+
+      # This pluging should be loaded after toolchain setup
+      - name: Cache
+        uses: Swatinem/rust-cache@v1
 
       - name: Compile
         uses: actions-rs/cargo@v1
@@ -59,6 +60,10 @@ jobs:
           toolchain: nightly
           override: true
           components: rustfmt, clippy
+
+      # This pluging should be loaded after toolchain setup
+      - name: Cache
+        uses: Swatinem/rust-cache@v1
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
