@@ -34,6 +34,8 @@ jobs:
       - name: Cache
         uses: Swatinem/rust-cache@v1
 
+      # `test` is used instead of `build` to also include the test modules in
+      # the compilation check.
       - name: Compile
         uses: actions-rs/cargo@v1
         with:
