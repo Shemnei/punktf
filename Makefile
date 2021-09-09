@@ -1,5 +1,5 @@
 .PHONY: default buildd buildr build check test clippy checkfmt lint run clean
-.PHONY: install doc cic todos
+.PHONY: install doc cic todos timings
 
 # Is set to the directory which contains the Makefile regardless from where
 # the make command is called.
@@ -48,3 +48,7 @@ cic: test lint doc
 # searches for things which need to be improved
 todos:
 	rg "(TODO|print(!|ln!)|unwrap\()"
+
+# Compile timings
+timings:
+	cargo +nightly build -p punktf --bin punktf -Z timings --release
