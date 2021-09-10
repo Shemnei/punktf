@@ -248,15 +248,15 @@ fn handle_commands(opts: opt::Opts) -> Result<()> {
 					log::debug!("Deployment:\n{:#?}", deployment);
 					util::log_deployment(&deployment);
 
+					if options.dry_run {
+						log::info!(
+							"Note: No files were actually deployed, since dry run mode was enabled"
+						);
+					}
+
 					if deployment.status().is_failed() {
 						Err(eyre!("Some dotfiles failed to deploy"))
 					} else {
-						if options.dry_run {
-							log::info!(
-								"Note: No files were actually deployed, since dry run mode was \
-								 eabled"
-							);
-						}
 						Ok(())
 					}
 				}
