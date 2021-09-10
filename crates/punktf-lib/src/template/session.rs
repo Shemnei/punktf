@@ -9,7 +9,7 @@ use super::source::Source;
 
 /// A session collects [diagnostics](`super::diagnostic::Diagnostic`) for a
 /// task. Additionally it keeps track if the task failed.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Session {
 	/// Indicates if the session is considered to be failed.
 	failed: bool,
@@ -57,15 +57,6 @@ impl Session {
 			Err(eyre!("Session contains errors"))
 		} else {
 			Ok(())
-		}
-	}
-}
-
-impl Default for Session {
-	fn default() -> Self {
-		Self {
-			failed: false,
-			diagnostics: Vec::new(),
 		}
 	}
 }
