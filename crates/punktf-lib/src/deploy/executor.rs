@@ -10,7 +10,7 @@ use crate::deploy::dotfile::DotfileStatus;
 use crate::profile::LayeredProfile;
 use crate::template::source::Source;
 use crate::template::Template;
-use crate::variables::UserVars;
+use crate::variables::Variables;
 use crate::{Dotfile, MergeMode, Priority, PunktfSource};
 
 /// An enum to be generic over both a "real" dotfile and a child of a directory
@@ -111,7 +111,7 @@ impl<'a> ExecutorDotfile<'a> {
 	/// Returns the [dotfile variables][`crate::Dotfile::variables`].
 	///
 	/// If it is a child, the value of the directory dotfile is used.
-	const fn variables(&self) -> Option<&UserVars> {
+	const fn variables(&self) -> Option<&Variables> {
 		match self {
 			Self::File { dotfile, .. } => dotfile.variables.as_ref(),
 			Self::Child { parent, .. } => parent.variables.as_ref(),

@@ -30,13 +30,13 @@ Install [punktf from AUR](https://aur.archlinux.org/packages/punktf) on Arch Lin
 To install it use your favorite AUR capable package manager (e.g. [yay](https://github.com/Jguer/yay), [pikaur](https://github.com/actionless/pikaur)):
 
 ```sh
-yay punktf # using yay
+yay punktf
 ```
 
 or
 
 ```sh
-pikaur -S punktf #
+pikaur -S punktf
 ```
 
 ### Chocolatey
@@ -44,7 +44,7 @@ pikaur -S punktf #
 Install [punktf using Chocolatey](https://community.chocolatey.org/packages/punktf) on Windows:
 
 ```sh
-choco install punktf --pre
+choco install punktf
 ```
 
 ## Usage

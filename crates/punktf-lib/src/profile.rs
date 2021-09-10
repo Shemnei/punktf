@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::hook::Hook;
-use crate::variables::{UserVars, Variables};
+use crate::variables::{Variables, Vars};
 use crate::{Dotfile, PunktfSource};
 
 /// A profile is a collection of dotfiles and variables, options and hooks.
@@ -24,7 +24,7 @@ pub struct Profile {
 
 	/// Variables of the profile. Each dotfile will have this environment.
 	#[serde(skip_serializing_if = "Option::is_none", default)]
-	pub variables: Option<UserVars>,
+	pub variables: Option<Variables>,
 
 	/// Target root path of the deployment. Will be used as file stem for the dotfiles
 	/// when not overwritten by [`Dotfile::overwrite_target`].
@@ -78,14 +78,14 @@ impl Profile {
 /// Stores variables defined on different layers.
 /// Layers are created when a profile is extended.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct LayeredUserVars {
+pub struct LayeredVariables {
 	/// Stores the variables together with the index, which indexed
 	/// [`LayeredProfile::profile_names`] to retrieve the name of the profile,
 	/// the variable came from.
 	pub inner: HashMap<String, (usize, String)>,
 }
 
-impl Variables for LayeredUserVars {
+impl Vars for LayeredVariables {
 	fn var<K>(&self, key: K) -> Option<&str>
 	where
 		K: AsRef<str>,
@@ -107,7 +107,7 @@ pub struct LayeredProfile {
 	target: Option<(usize, PathBuf)>,
 
 	/// The variables collected from all profiles of the extend chain.
-	variables: LayeredUserVars,
+	variables: LayeredVariables,
 
 	/// The pre-hooks collected from all profiles of the extend chain.
 	pre_hooks: Vec<(usize, Hook)>,
@@ -142,7 +142,7 @@ impl LayeredProfile {
 	}
 
 	/// Returns all collected variables for the profile.
-	pub const fn variables(&self) -> &LayeredUserVars {
+	pub const fn variables(&self) -> &LayeredVariables {
 		&self.variables
 	}
 
@@ -190,7 +190,7 @@ impl LayeredProfileBuilder {
 				.map(move |target| (idx, target.to_path_buf()))
 		});
 
-		let mut variables = LayeredUserVars::default();
+		let mut variables = LayeredVariables::default();
 
 		for (idx, vars) in self
 			.profiles
@@ -320,7 +320,7 @@ mod tests {
 	use super::*;
 	use crate::hook::Hook;
 	use crate::profile::Profile;
-	use crate::variables::UserVars;
+	use crate::variables::Variables;
 	use crate::{MergeMode, Priority};
 
 	#[test]
@@ -337,7 +337,7 @@ mod tests {
 
 		let profile = Profile {
 			extends: Vec::new(),
-			variables: Some(UserVars {
+			variables: Some(Variables {
 				inner: profile_vars,
 			}),
 			target: Some(PathBuf::from("/home/demo/.config")),
@@ -358,7 +358,7 @@ mod tests {
 					rename: None,
 					overwrite_target: Some(PathBuf::from("/home/demo")),
 					priority: None,
-					variables: Some(UserVars {
+					variables: Some(Variables {
 						inner: dotfile_vars,
 					}),
 					merge: Some(MergeMode::Overwrite),

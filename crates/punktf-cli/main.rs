@@ -206,7 +206,7 @@ fn handle_commands(opts: opt::Opts) -> Result<()> {
 
 			// Add target environment variable to bottom
 			let target_env_profile = Profile {
-				target: Some(util::get_target_path()),
+				target: util::get_target_path(),
 				..Default::default()
 			};
 			builder.add(
@@ -215,6 +215,16 @@ fn handle_commands(opts: opt::Opts) -> Result<()> {
 			);
 
 			let profile = builder.finish();
+
+			// Ensure target is set
+			if profile.target_path().is_none() {
+				panic!(
+					"No target path for the deployment set. Either use the command line argument \
+					 `-t/--target`, the profile attribute `target` or the environment variable \
+					 `{}`",
+					PUNKTF_TARGET_ENVVAR
+				)
+			}
 
 			log::debug!("Profile:\n{:#?}", profile);
 			log::debug!("Source: {}", ptf_src.root().display());
