@@ -50,5 +50,5 @@ todos:
 	rg "(TODO|print(!|ln!)|unwrap\()"
 
 # Compile timings
-timings:
+timings: clean
 	cargo +nightly build -p punktf --bin punktf -Z timings --release

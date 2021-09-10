@@ -19,24 +19,38 @@ path = "crates/punktf-cli/main.rs"
 name = "punktf"
 
 [workspace]
+# Use new resolver
+resolver = "2"
 members = [
 	"crates/punktf-lib"
 ]
 
 [dependencies]
 clap = "3.0.0-beta.4"
-color-eyre = "0.5.11"
-env_logger = "0.9.0"
+color-eyre = { version = "0.5.11", default-features = false }
+env_logger = { version = "0.9.0", default-features = false, features = ["termcolor", "atty"] }
 log = "0.4.14"
 punktf-lib = { version = "1.0.0", path = "crates/punktf-lib" }
 
 [profile.dev]
 opt-level = 0
+# Only retain line level debug information; This will speed up the build process
+# and is only used when debugging.
+debug = 1
+
+[profile.dev.package.backtrace]
+# color-eyre: Improves performance for debug builds
+opt-level = 3
 
 [profile.release]
 lto = "thin"
-opt-level = 3
+# Optimize for binary size. In this case also turns out to be the fastest to
+# compile.
+opt-level = "s"
 # Strip symbols for the release build to decrease binary size
 strip = true
 # Reduces parallel code generation units to increase optimizations
 codegen-units = 1
+# Dont retain any debug information; This will speed up the build process
+# and is only used when debugging.
+debug = 0
