@@ -375,6 +375,49 @@ fn parse_single_if_exists() -> Result<()> {
 }
 
 #[test]
+fn parse_single_if_not_exists() -> Result<()> {
+	crate::tests::setup_test_env();
+
+	let content = r#"{{@if !{{$#EXISTS}}}}{{@fi}}"#;
+
+	let source = Source::anonymous(content);
+	let mut parser = Parser::new(source);
+	let block = parser
+		.next_top_level_block()
+		.expect("Found no block")
+		.expect("Encountered a parse error");
+
+	assert_eq!(block.span(), &ByteSpan::new(0usize, content.len()));
+
+	let if_span = ByteSpan::new(0usize, 21usize);
+	assert_eq!(&content[if_span], r#"{{@if !{{$#EXISTS}}}}"#);
+
+	let name = ByteSpan::new(11usize, 17usize);
+	assert_eq!(&content[name], "EXISTS");
+	let envs = VarEnvSet([Some(VarEnv::Environment), Some(VarEnv::Profile), None]);
+
+	let end_span = ByteSpan::new(21usize, 28usize);
+	assert_eq!(&content[end_span], r#"{{@fi}}"#);
+
+	assert_eq!(
+		block.kind(),
+		&BlockKind::If(If {
+			head: (
+				if_span.span(IfExpr::NotExists {
+					var: Var { envs, name }
+				}),
+				vec![]
+			),
+			elifs: vec![],
+			els: None,
+			end: end_span
+		})
+	);
+
+	Ok(())
+}
+
+#[test]
 fn find_blocks() {
 	crate::tests::setup_test_env();
 

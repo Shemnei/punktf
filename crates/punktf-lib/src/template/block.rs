@@ -231,4 +231,10 @@ pub enum IfExpr {
 		/// Variable to check existence for.
 		var: Var,
 	},
+
+	/// An if expression that checks if a value is not defined.
+	NotExists {
+		/// Variable to check not existence for.
+		var: Var,
+	},
 }

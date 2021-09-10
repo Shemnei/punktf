@@ -415,15 +415,18 @@ impl<'a> Parser<'a> {
 	/// These currently come in two forms:
 	///
 	/// - {{VAR}} (!=|==) "OTHER": Compare value of VAR with the literal OTHER
-	/// - {{VAR}}: Checks if the variable is present/can be resolved.
+	/// - (!){{VAR}}: Checks if the variable is (not) present/can (not) be resolved.
 	///
 	/// # Errors
 	///
 	/// An error is returned if `span` can not be interpreted as an if
 	/// expression.
 	fn parse_if_expr(&self, span: ByteSpan) -> Result<IfExpr, DiagnosticBuilder> {
-		// {{VAR}} (!=|==) "OTHER" OR {{VAR}}
+		// {{VAR}} (!=|==) "OTHER" OR (!){{VAR}}
 		let content = &self.source[span];
+
+		// Read optional `!` for not_exists
+		let hat_not_present_prefix = content.trim().as_bytes().starts_with(b"!");
 
 		// read var
 		let var_block_start = content.find("{{").ok_or_else(|| {
@@ -452,7 +455,11 @@ impl<'a> Parser<'a> {
 		let remainder = &content[var_block_end..];
 
 		if remainder.trim().is_empty() {
-			Ok(IfExpr::Exists { var })
+			if hat_not_present_prefix {
+				Ok(IfExpr::NotExists { var })
+			} else {
+				Ok(IfExpr::Exists { var })
+			}
 		} else {
 			let op = parse_ifop(&content[var_block_end..]).map_err(|_| {
 				DiagnosticBuilder::new(DiagnosticLevel::Error)
