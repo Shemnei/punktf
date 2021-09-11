@@ -1,7 +1,7 @@
-//! Transforms run once for each defined dotile during the deploy process.
+//! Transforms run once for each defined dotfile during the deploy process.
 //!
-//! They can either be specified for a whole profile, in which case each dotile
-//! is transformed by them or they can be attached to a specific dotile.
+//! They can either be specified for a whole profile, in which case each dotfile
+//! is transformed by them or they can be attached to a specific dotfile.
 //!
 //! The transformation takes place after the template resolving and takes the
 //! contents in a textual representation. After processing the text a new text
@@ -11,7 +11,7 @@ use std::fmt;
 
 use color_eyre::Result;
 
-/// A transform takes the contents of a dotile, processes it and returns a new
+/// A transform takes the contents of a dotfile, processes it and returns a new
 /// version of the content.
 ///
 /// The dotfile is either the text of a resolved template or a non-template
@@ -54,10 +54,10 @@ impl fmt::Display for ContentTransformer {
 /// style (`\n`) or windows style (`\r\b`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum LineTerminator {
-	/// Replaces all occurences of `\r\n` with `\n` (unix style).
+	/// Replaces all occurrences of `\r\n` with `\n` (unix style).
 	Lf,
 
-	/// Replaces all occurences of `\n` with `\r\n` (windows style).
+	/// Replaces all occurrences of `\n` with `\r\n` (windows style).
 	Crlf,
 }
 
