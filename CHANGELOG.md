@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Changed release profile to decrease compile times and final binary size ([#60](https://github.com/Shemnei/punktf/pull/60))
 
+### Removed
+
+- Removed current directory as fallback for the `punktf` source directory when neither `-s/--source` or `PUNKTF_SOURCE` were supplied. This mainly caused confusion and was a undocumented feature.
+
 ## [1.0.1] - 2021-09-03
 
 ### Fixed
