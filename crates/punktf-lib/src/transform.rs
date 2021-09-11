@@ -114,11 +114,11 @@ mod tests {
 
 	#[test]
 	fn line_terminator_lf() -> Result<()> {
-		const CONTENT: &str = "Hello\r\nWorld\nHow\nare\r\nyou today?\r\r\r\nLast line\r";
+		const CONTENT: &str = "Hello\r\nWorld\nHow\nare\r\nyou today?\r\r\r\nLast line\r\\n";
 
 		assert_eq!(
 			LineTerminator::Lf.transform(String::from(CONTENT))?,
-			"Hello\nWorld\nHow\nare\nyou today?\r\r\nLast line\r"
+			"Hello\nWorld\nHow\nare\nyou today?\r\r\nLast line\r\\n"
 		);
 
 		Ok(())
@@ -126,11 +126,11 @@ mod tests {
 
 	#[test]
 	fn line_terminator_crlf() -> Result<()> {
-		const CONTENT: &str = "Hello\r\nWorld\nHow\nare\r\nyou today?\r\r\r\nLast line\r";
+		const CONTENT: &str = "Hello\r\nWorld\nHow\nare\r\nyou today?\r\r\r\nLast line\r\\n";
 
 		assert_eq!(
 			LineTerminator::Crlf.transform(String::from(CONTENT))?,
-			"Hello\r\nWorld\r\nHow\r\nare\r\nyou today?\r\r\r\nLast line\r"
+			"Hello\r\nWorld\r\nHow\r\nare\r\nyou today?\r\r\r\nLast line\r\\n"
 		);
 
 		Ok(())
