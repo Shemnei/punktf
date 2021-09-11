@@ -6,10 +6,12 @@ use std::fs::File;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
+use color_eyre::eyre::{eyre, Context};
+use color_eyre::Result;
 use serde::{Deserialize, Serialize};
 
 use crate::hook::Hook;
-use crate::variables::{UserVars, Variables};
+use crate::variables::{Variables, Vars};
 use crate::{Dotfile, PunktfSource};
 
 /// A profile is a collection of dotfiles and variables, options and hooks.
@@ -24,7 +26,7 @@ pub struct Profile {
 
 	/// Variables of the profile. Each dotfile will have this environment.
 	#[serde(skip_serializing_if = "Option::is_none", default)]
-	pub variables: Option<UserVars>,
+	pub variables: Option<Variables>,
 
 	/// Target root path of the deployment. Will be used as file stem for the dotfiles
 	/// when not overwritten by [`Dotfile::overwrite_target`].
@@ -55,37 +57,77 @@ impl Profile {
 	///
 	/// An error is returned if the file does not exist or could not be read.
 	/// An error is returned if the file extension is unknown or missing.
-	pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, std::io::Error> {
+	pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
 		let path = path.as_ref();
-		let file = File::open(path)?;
 
-		let extension = path.extension().ok_or_else(|| {
-			std::io::Error::new(
-				std::io::ErrorKind::InvalidData,
-				"Failed to get file extension for profile",
-			)
-		})?;
+		/// Inner function is used to reduce monomorphizes as path here is a
+		/// concrete type and no generic one.
+		fn from_file_inner(path: &Path) -> Result<Profile> {
+			// Allowed in case no feature is present.
+			#[allow(unused_variables)]
+			let file = File::open(path)?;
 
-		match extension.to_string_lossy().as_ref() {
-			"json" => serde_json::from_reader(file).map_err(|err| err.to_string()),
-			"yaml" | "yml" => serde_yaml::from_reader(file).map_err(|err| err.to_string()),
-			_ => Err(String::from("Unsupported file extension for profile")),
+			let extension = path.extension().ok_or_else(|| {
+				std::io::Error::new(
+					std::io::ErrorKind::InvalidData,
+					"Failed to get file extension for profile",
+				)
+			})?;
+
+			#[cfg(feature = "profile-json")]
+			{
+				if extension.eq_ignore_ascii_case("json") {
+					return Profile::from_json_file(file);
+				}
+			}
+
+			#[cfg(feature = "profile-yaml")]
+			{
+				if extension.eq_ignore_ascii_case("yaml") || extension.eq_ignore_ascii_case("yml") {
+					return Profile::from_yaml_file(file);
+				}
+			}
+
+			Err(eyre!(
+				"Found unsupported file extension for profile (extension: {:?})",
+				extension
+			))
 		}
-		.map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))
+
+		from_file_inner(path).wrap_err(format!(
+			"Failed to process profile at path `{}`",
+			path.display()
+		))
+	}
+
+	/// Tries to load a profile from a json file.
+	#[cfg(feature = "profile-json")]
+	fn from_json_file(file: File) -> Result<Self> {
+		serde_json::from_reader(&file).map_err(|err| {
+			color_eyre::Report::msg(err).wrap_err("Failed to parse profile from json content.")
+		})
+	}
+
+	/// Tries to load a profile from a yaml file.
+	#[cfg(feature = "profile-yaml")]
+	fn from_yaml_file(file: File) -> Result<Self> {
+		serde_yaml::from_reader(file).map_err(|err| {
+			color_eyre::Report::msg(err).wrap_err("Failed to parse profile from yaml content.")
+		})
 	}
 }
 
 /// Stores variables defined on different layers.
 /// Layers are created when a profile is extended.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct LayeredUserVars {
+pub struct LayeredVariables {
 	/// Stores the variables together with the index, which indexed
 	/// [`LayeredProfile::profile_names`] to retrieve the name of the profile,
 	/// the variable came from.
 	pub inner: HashMap<String, (usize, String)>,
 }
 
-impl Variables for LayeredUserVars {
+impl Vars for LayeredVariables {
 	fn var<K>(&self, key: K) -> Option<&str>
 	where
 		K: AsRef<str>,
@@ -107,7 +149,7 @@ pub struct LayeredProfile {
 	target: Option<(usize, PathBuf)>,
 
 	/// The variables collected from all profiles of the extend chain.
-	variables: LayeredUserVars,
+	variables: LayeredVariables,
 
 	/// The pre-hooks collected from all profiles of the extend chain.
 	pre_hooks: Vec<(usize, Hook)>,
@@ -142,7 +184,7 @@ impl LayeredProfile {
 	}
 
 	/// Returns all collected variables for the profile.
-	pub const fn variables(&self) -> &LayeredUserVars {
+	pub const fn variables(&self) -> &LayeredVariables {
 		&self.variables
 	}
 
@@ -190,7 +232,7 @@ impl LayeredProfileBuilder {
 				.map(move |target| (idx, target.to_path_buf()))
 		});
 
-		let mut variables = LayeredUserVars::default();
+		let mut variables = LayeredVariables::default();
 
 		for (idx, vars) in self
 			.profiles
@@ -269,7 +311,7 @@ pub fn resolve_profile(
 	source: &PunktfSource,
 	name: &str,
 	resolved_profiles: &mut Vec<OsString>,
-) -> std::io::Result<()> {
+) -> Result<()> {
 	log::trace!("Resolving profile `{}`", name);
 
 	let path = source.find_profile_path(name)?;
@@ -283,15 +325,11 @@ pub fn resolve_profile(
 	if !profile.extends.is_empty() && resolved_profiles.contains(&file_name) {
 		// profile was already resolve and has "children" which will lead to
 		// a loop while resolving
-		return Err(std::io::Error::new(
-			std::io::ErrorKind::FilesystemLoop,
-			format!(
-				"Circular dependency detected while parsing `{}` (required by: `{:?}`) (Stack: \
-				 {:#?})",
-				name,
-				resolved_profiles.last(),
-				resolved_profiles
-			),
+		return Err(eyre!(
+			"Circular dependency detected while parsing `{}` (required by: `{:?}`) (Stack: {:#?})",
+			name,
+			resolved_profiles.last(),
+			resolved_profiles
 		));
 	}
 
@@ -320,10 +358,11 @@ mod tests {
 	use super::*;
 	use crate::hook::Hook;
 	use crate::profile::Profile;
-	use crate::variables::UserVars;
+	use crate::variables::Variables;
 	use crate::{MergeMode, Priority};
 
 	#[test]
+	#[cfg(feature = "profile-json")]
 	fn profile_serde() {
 		crate::tests::setup_test_env();
 
@@ -337,7 +376,7 @@ mod tests {
 
 		let profile = Profile {
 			extends: Vec::new(),
-			variables: Some(UserVars {
+			variables: Some(Variables {
 				inner: profile_vars,
 			}),
 			target: Some(PathBuf::from("/home/demo/.config")),
@@ -358,7 +397,7 @@ mod tests {
 					rename: None,
 					overwrite_target: Some(PathBuf::from("/home/demo")),
 					priority: None,
-					variables: Some(UserVars {
+					variables: Some(Variables {
 						inner: dotfile_vars,
 					}),
 					merge: Some(MergeMode::Overwrite),

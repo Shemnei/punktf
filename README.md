@@ -20,23 +20,25 @@ Features:
 Install [punktf using Homebrew](https://github.com/michidk/homebrew-tools/blob/main/Formula/punktf.rb) on Linux:
 
 ```sh
-brew tap michidk/tools
-brew install punktf
+brew install michidk/tools/punktf
 ```
 
 ### AUR
 
 Install [punktf from AUR](https://aur.archlinux.org/packages/punktf) on Arch Linux.
+
 To install it use your favorite AUR capable package manager (e.g. [yay](https://github.com/Jguer/yay), [pikaur](https://github.com/actionless/pikaur)):
 
+**NOTE:** As this builds `punktf` from source an up-to-date rust installation aswell as the nightly toolchain are needed.
+
 ```sh
-yay punktf # using yay
+yay punktf
 ```
 
 or
 
 ```sh
-pikaur -S punktf #
+pikaur -S punktf
 ```
 
 ### Chocolatey
@@ -44,7 +46,23 @@ pikaur -S punktf #
 Install [punktf using Chocolatey](https://community.chocolatey.org/packages/punktf) on Windows:
 
 ```sh
-choco install punktf --pre
+choco install punktf
+```
+
+## Building from source
+
+To install `punktf` from source the following is needed:
+
+- An up-to-date rust installation
+- An installed nightly toolchain
+
+```bash
+# Clone
+git clone https://github.com/Shemnei/punktf
+cd punktf
+
+# Build (cargo)
+cargo +nightly build --release
 ```
 
 ## Usage

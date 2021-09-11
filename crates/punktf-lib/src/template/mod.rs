@@ -108,7 +108,7 @@ use self::block::Block;
 use self::parse::Parser;
 use self::resolve::Resolver;
 use self::source::Source;
-use crate::variables::Variables;
+use crate::variables::Vars;
 
 /// A `Template` is a file from the Source folder that is not yet deployed. It might contain statements and variables.
 #[derive(Debug, Clone)]
@@ -129,7 +129,7 @@ impl<'a> Template<'a> {
 	}
 
 	/// Resolves the variables in the template and returns a `Template` object.
-	pub fn resolve<PV: Variables, DV: Variables>(
+	pub fn resolve<PV: Vars, DV: Vars>(
 		&self,
 		profile_vars: Option<&PV>,
 		dotfile_vars: Option<&DV>,
@@ -143,7 +143,7 @@ mod tests {
 	use std::collections::HashMap;
 
 	use super::*;
-	use crate::variables::UserVars;
+	use crate::variables::Variables;
 
 	#[test]
 	fn parse_template() -> Result<()> {
@@ -192,7 +192,7 @@ mod tests {
 		let mut vars = HashMap::new();
 		vars.insert(String::from("BUZZ"), String::from("Hello World"));
 		vars.insert(String::from("OS"), String::from("linux"));
-		let vars = UserVars { inner: vars };
+		let vars = Variables { inner: vars };
 
 		println!("{}", template.resolve(Some(&vars), Some(&vars))?);
 
@@ -208,8 +208,8 @@ mod tests {
 		let source = Source::anonymous(content);
 		let template = Template::parse(source)?;
 
-		let profile_vars = UserVars::from_items(vec![("OS", "windows")]);
-		let item_vars = UserVars::from_items(vec![("OS", "unix")]);
+		let profile_vars = Variables::from_items(vec![("OS", "windows")]);
+		let item_vars = Variables::from_items(vec![("OS", "unix")]);
 		std::env::set_var("OS", "macos");
 
 		assert_eq!(
@@ -222,8 +222,8 @@ mod tests {
 		let source = Source::anonymous(content);
 		let template = Template::parse(source)?;
 
-		let profile_vars = UserVars::from_items(vec![("OS", "windows")]);
-		let item_vars = UserVars::from_items(vec![("OS", "unix")]);
+		let profile_vars = Variables::from_items(vec![("OS", "windows")]);
+		let item_vars = Variables::from_items(vec![("OS", "unix")]);
 		std::env::set_var("OS", "macos");
 
 		assert_eq!(
@@ -236,8 +236,8 @@ mod tests {
 		let source = Source::anonymous(content);
 		let template = Template::parse(source)?;
 
-		let profile_vars = UserVars::from_items(vec![("OS", "windows")]);
-		let item_vars = UserVars::from_items(vec![("OS", "unix")]);
+		let profile_vars = Variables::from_items(vec![("OS", "windows")]);
+		let item_vars = Variables::from_items(vec![("OS", "unix")]);
 		std::env::set_var("OS", "macos");
 
 		assert_eq!(
@@ -250,8 +250,8 @@ mod tests {
 		let source = Source::anonymous(content);
 		let template = Template::parse(source)?;
 
-		let profile_vars = UserVars::from_items(vec![("OS", "windows")]);
-		let item_vars = UserVars::from_items(vec![("OS", "unix")]);
+		let profile_vars = Variables::from_items(vec![("OS", "windows")]);
+		let item_vars = Variables::from_items(vec![("OS", "unix")]);
 		std::env::set_var("OS", "macos");
 
 		assert_eq!(
@@ -264,8 +264,8 @@ mod tests {
 		let source = Source::anonymous(content);
 		let template = Template::parse(source)?;
 
-		let profile_vars = UserVars::from_items(vec![("OS", "windows")]);
-		let item_vars = UserVars::from_items(vec![("OS", "unix")]);
+		let profile_vars = Variables::from_items(vec![("OS", "windows")]);
+		let item_vars = Variables::from_items(vec![("OS", "unix")]);
 		std::env::set_var("OS", "macos");
 
 		assert_eq!(
@@ -278,8 +278,8 @@ mod tests {
 		let source = Source::anonymous(content);
 		let template = Template::parse(source)?;
 
-		let profile_vars = UserVars::from_items(vec![("OS", "windows")]);
-		let item_vars = UserVars::from_items(vec![("OS", "unix")]);
+		let profile_vars = Variables::from_items(vec![("OS", "windows")]);
+		let item_vars = Variables::from_items(vec![("OS", "unix")]);
 		std::env::remove_var("OS");
 
 		assert_eq!(

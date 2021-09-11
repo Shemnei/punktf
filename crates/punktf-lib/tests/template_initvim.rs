@@ -23,19 +23,19 @@ use color_eyre::Result;
 use pretty_assertions::assert_eq;
 use punktf_lib::template::source::Source;
 use punktf_lib::template::Template;
-use punktf_lib::variables::UserVars;
+use punktf_lib::variables::Variables;
 
 #[test]
 fn parse_initvim_win() -> Result<()> {
 	let source = Source::anonymous(TEMPLATE);
 	let template = Template::parse(source)?;
 
-	let vars = UserVars::from_items(vec![("OS", "windows"), ("SYS_ENCODING", "windows1252")]);
+	let vars = Variables::from_items(vec![("OS", "windows"), ("SYS_ENCODING", "windows1252")]);
 
 	// set temporary env variable
 	std::env::set_var("APPDATA", "C:\\Users\\Demo\\Appdata\\Local");
 
-	let output = template.resolve::<_, UserVars>(Some(&vars), None)?;
+	let output = template.resolve::<_, Variables>(Some(&vars), None)?;
 
 	assert_eq!(
 		output.trim(),
@@ -58,12 +58,12 @@ fn template_initvim_linux() -> Result<()> {
 	let source = Source::anonymous(TEMPLATE);
 	let template = Template::parse(source)?;
 
-	let vars = UserVars::from_items(vec![("OS", "linux"), ("SYS_ENCODING", "utf-8")]);
+	let vars = Variables::from_items(vec![("OS", "linux"), ("SYS_ENCODING", "utf-8")]);
 
 	// set temporary env variable
 	std::env::set_var("HOME", "/home/Demo");
 
-	let output = template.resolve::<_, UserVars>(Some(&vars), None)?;
+	let output = template.resolve::<_, Variables>(Some(&vars), None)?;
 
 	assert_eq!(
 		output.trim(),

@@ -7,20 +7,20 @@ use std::ops::Deref;
 use serde::{Deserialize, Serialize};
 
 /// Variables that replace values in templates
-pub trait Variables {
+pub trait Vars {
 	/// Get a variable by name
 	fn var<K: AsRef<str>>(&self, key: K) -> Option<&str>;
 }
 
 /// User defined variables
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct UserVars {
+pub struct Variables {
 	/// User defined variables with a name and value.
 	#[serde(flatten)]
 	pub inner: HashMap<String, String>,
 }
 
-impl Variables for UserVars {
+impl Vars for Variables {
 	fn var<K>(&self, key: K) -> Option<&str>
 	where
 		K: AsRef<str>,
@@ -29,7 +29,7 @@ impl Variables for UserVars {
 	}
 }
 
-impl UserVars {
+impl Variables {
 	/// Creates a new instance from an iterator over key, value tuples.
 	pub fn from_items<K, V, I, II>(iter: II) -> Self
 	where
