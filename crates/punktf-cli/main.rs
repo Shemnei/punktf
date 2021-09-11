@@ -186,7 +186,7 @@ fn handle_commands(opts: opt::Opts) -> Result<()> {
 			target,
 			dry_run,
 		}) => {
-			let ptf_src = PunktfSource::from_root(source.into())?;
+			let ptf_src = PunktfSource::from_root(source)?;
 
 			let mut builder = LayeredProfile::build();
 
