@@ -6,6 +6,8 @@ use std::fs::File;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
+use color_eyre::eyre::{eyre, Context};
+use color_eyre::Result;
 use serde::{Deserialize, Serialize};
 
 use crate::hook::Hook;
@@ -55,23 +57,55 @@ impl Profile {
 	///
 	/// An error is returned if the file does not exist or could not be read.
 	/// An error is returned if the file extension is unknown or missing.
-	pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, std::io::Error> {
+	pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
 		let path = path.as_ref();
-		let file = File::open(path)?;
 
-		let extension = path.extension().ok_or_else(|| {
-			std::io::Error::new(
-				std::io::ErrorKind::InvalidData,
-				"Failed to get file extension for profile",
-			)
-		})?;
+		/// Inner function is used to reduce monomorphizes as path here is a
+		/// concrete type and no generic one.
+		fn from_file_inner(path: &Path) -> Result<Profile> {
+			let file = File::open(path)?;
 
-		match extension.to_string_lossy().as_ref() {
-			"json" => serde_json::from_reader(file).map_err(|err| err.to_string()),
-			"yaml" | "yml" => serde_yaml::from_reader(file).map_err(|err| err.to_string()),
-			_ => Err(String::from("Unsupported file extension for profile")),
+			let extension = path.extension().ok_or_else(|| {
+				std::io::Error::new(
+					std::io::ErrorKind::InvalidData,
+					"Failed to get file extension for profile",
+				)
+			})?;
+
+			if extension.eq_ignore_ascii_case("json") {
+				Profile::from_json_file(file)
+			} else if extension.eq_ignore_ascii_case("yaml")
+				|| extension.eq_ignore_ascii_case("yml")
+			{
+				Profile::from_yaml_file(file)
+			} else {
+				Err(eyre!(
+					"Found unsupported file extension for profile (extension: {:?})",
+					extension
+				))
+			}
 		}
-		.map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))
+
+		from_file_inner(path).wrap_err(format!(
+			"Failed to process profile at path `{}`",
+			path.display()
+		))
+	}
+
+	/// Tries to load a profile from a json file.
+	fn from_json_file(file: File) -> Result<Self> {
+		serde_json::from_reader(&file).map_err(|err| {
+			color_eyre::Report::msg(err)
+				.wrap_err(format!("Failed to parse profile from json content.",))
+		})
+	}
+
+	/// Tries to load a profile from a yaml file.
+	fn from_yaml_file(file: File) -> Result<Self> {
+		serde_yaml::from_reader(file).map_err(|err| {
+			color_eyre::Report::msg(err)
+				.wrap_err(format!("Failed to parse profile from yaml content.",))
+		})
 	}
 }
 
@@ -269,7 +303,7 @@ pub fn resolve_profile(
 	source: &PunktfSource,
 	name: &str,
 	resolved_profiles: &mut Vec<OsString>,
-) -> std::io::Result<()> {
+) -> Result<()> {
 	log::trace!("Resolving profile `{}`", name);
 
 	let path = source.find_profile_path(name)?;
@@ -283,15 +317,11 @@ pub fn resolve_profile(
 	if !profile.extends.is_empty() && resolved_profiles.contains(&file_name) {
 		// profile was already resolve and has "children" which will lead to
 		// a loop while resolving
-		return Err(std::io::Error::new(
-			std::io::ErrorKind::FilesystemLoop,
-			format!(
-				"Circular dependency detected while parsing `{}` (required by: `{:?}`) (Stack: \
-				 {:#?})",
-				name,
-				resolved_profiles.last(),
-				resolved_profiles
-			),
+		return Err(eyre!(
+			"Circular dependency detected while parsing `{}` (required by: `{:?}`) (Stack: {:#?})",
+			name,
+			resolved_profiles.last(),
+			resolved_profiles
 		));
 	}
 
