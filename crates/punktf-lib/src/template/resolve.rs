@@ -284,6 +284,7 @@ where
 				Ok(op.eval(&var, &self.template.source[other]))
 			}
 			IfExpr::Exists { var } => Ok(self.resolve_var(var).is_ok()),
+			IfExpr::NotExists { var } => Ok(self.resolve_var(var).is_err()),
 		}
 	}
 
