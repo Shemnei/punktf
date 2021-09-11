@@ -679,7 +679,7 @@ where
 		// Fast Path.
 		if !exec_dotfile.is_template()
 			&& exec_dotfile.transformers().is_empty()
-			&& profile.transformers_origin().is_empty()
+			&& profile.transformers_len() == 0
 		{
 			// File is no template and no transformers are specified. This means
 			// we can take the fast path of just copying via the filesystem.

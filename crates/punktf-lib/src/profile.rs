@@ -196,10 +196,9 @@ impl LayeredProfile {
 		&self.variables
 	}
 
-	/// Returns all collected content transformer for the profile together with
-	/// the index where they came from.
-	pub fn transformers_origin(&self) -> &[(usize, ContentTransformer)] {
-		&self.transformers
+	/// Returns all the count of collected transformers for the profile.
+	pub fn transformers_len(&self) -> usize {
+		self.transformers.len()
 	}
 
 	/// Returns all collected content transformer for the profile.
