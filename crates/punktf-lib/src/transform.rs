@@ -4,16 +4,28 @@ use std::fmt;
 
 use color_eyre::Result;
 
-/// TODO
+/// A transform takes the contents of a dotile, processes it and returns a new
+/// version of the content.
+///
+/// The dotfile is either the text of a resolved template or a non-template
+/// dotfile.
 pub trait Transform {
-	/// TODO
+	/// Takes a string as input, processes it and returns a new version of it.
+	///
+	/// # Errors
+	///
+	/// If any error occurs during the processing it can be returned.
 	fn transform(&self, content: String) -> Result<String>;
 }
 
-/// TODO
+/// List of all available [`Transform`]s.
+///
+/// These can be added to a [`Profile`](`crate::profile::Profile`) or a
+/// [`Dotfile`](`crate::Dotfile`) to modify the text content.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum ContentTransformer {
-	/// TODO
+	/// Transformer which replaces line termination characters with either unix
+	/// style (`\n`) or windows style (`\r\b`).
 	LineTerminator(LineTerminator),
 }
 
@@ -31,13 +43,14 @@ impl fmt::Display for ContentTransformer {
 	}
 }
 
-/// TODO
+/// Transformer which replaces line termination characters with either unix
+/// style (`\n`) or windows style (`\r\b`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum LineTerminator {
-	/// TODO
+	/// Replaces all occurences of `\r\n` with `\n` (unix style).
 	Lf,
 
-	/// TODO
+	/// Replaces all occurences of `\n` with `\r\n` (windows style).
 	Crlf,
 }
 
