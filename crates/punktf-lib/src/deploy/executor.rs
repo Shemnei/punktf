@@ -17,7 +17,7 @@ use crate::{Dotfile, MergeMode, Priority, PunktfSource};
 /// An enum to be generic over both a "real" dotfile and a child of a directory
 /// dotfile.
 enum ExecutorDotfile<'a> {
-	/// A "real" dotile.
+	/// A "real" dotfile.
 	File {
 		/// The dotfile.
 		dotfile: Dotfile,
