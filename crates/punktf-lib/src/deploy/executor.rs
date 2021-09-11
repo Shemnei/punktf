@@ -789,9 +789,9 @@ where
 
 			// Apply transformers.
 			// Order:
-			//   - Dotfile transformers
-			//   - Then profile transformers
-			for transformer in exec_transformers.iter().chain(profile.transformers()) {
+			//   - Profile transformers
+			//   - then dotfile transformers
+			for transformer in profile.transformers().chain(exec_transformers.iter()) {
 				content = match transformer.transform(content) {
 					Ok(content) => content,
 					Err(err) => {
