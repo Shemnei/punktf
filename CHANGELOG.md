@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added new if expression syntax `{{@if !{{VARIABLE}}}}` for templates ([#67](https://github.com/Shemnei/punktf/pull/67))
 - Added informational message when running `deploy` with the `dry-run` flag ([#61](https://github.com/Shemnei/punktf/pull/61))
+- Added better error messages when profile parsing fails ([#62](https://github.com/Shemnei/punktf/pull/62))
+- Added better error messages when punktf source directory or subdirectories are missing ([#65](https://github.com/Shemnei/punktf/pull/65))
 
 ### Changed
 
