@@ -95,16 +95,14 @@ impl Profile {
 	/// Tries to load a profile from a json file.
 	fn from_json_file(file: File) -> Result<Self> {
 		serde_json::from_reader(&file).map_err(|err| {
-			color_eyre::Report::msg(err)
-				.wrap_err(format!("Failed to parse profile from json content.",))
+			color_eyre::Report::msg(err).wrap_err("Failed to parse profile from json content.")
 		})
 	}
 
 	/// Tries to load a profile from a yaml file.
 	fn from_yaml_file(file: File) -> Result<Self> {
 		serde_yaml::from_reader(file).map_err(|err| {
-			color_eyre::Report::msg(err)
-				.wrap_err(format!("Failed to parse profile from yaml content.",))
+			color_eyre::Report::msg(err).wrap_err("Failed to parse profile from yaml content.")
 		})
 	}
 }
