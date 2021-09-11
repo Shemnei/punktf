@@ -50,6 +50,7 @@ use std::path::{Path, PathBuf};
 
 use color_eyre::eyre::Context;
 use serde::{Deserialize, Serialize};
+use transform::ContentTransformer;
 use variables::Variables;
 
 /// This struct represents the source directory used by `punktf`. The source
@@ -226,6 +227,12 @@ pub struct Dotfile {
 	/// [`profile::Profile::variables`].
 	#[serde(skip_serializing_if = "Option::is_none", default)]
 	variables: Option<Variables>,
+
+	/// Content transform defined for the dotfile. These variables will take
+	/// precendence over the ones defined in
+	/// [`profile::Profile::transformers`].
+	#[serde(skip_serializing_if = "Vec::is_empty", default)]
+	pub transformers: Vec<ContentTransformer>,
 
 	/// Merge operation for already existing dotfiles with the same or higher
 	/// priority.

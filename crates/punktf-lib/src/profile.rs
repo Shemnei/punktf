@@ -11,6 +11,7 @@ use color_eyre::Result;
 use serde::{Deserialize, Serialize};
 
 use crate::hook::Hook;
+use crate::transform::ContentTransformer;
 use crate::variables::{Variables, Vars};
 use crate::{Dotfile, PunktfSource};
 
@@ -27,6 +28,10 @@ pub struct Profile {
 	/// Variables of the profile. Each dotfile will have this environment.
 	#[serde(skip_serializing_if = "Option::is_none", default)]
 	pub variables: Option<Variables>,
+
+	/// Content transform of the profile. Each dotfile will have these applied.
+	#[serde(skip_serializing_if = "Vec::is_empty", default)]
+	pub transformers: Vec<ContentTransformer>,
 
 	/// Target root path of the deployment. Will be used as file stem for the dotfiles
 	/// when not overwritten by [`Dotfile::overwrite_target`].
@@ -151,6 +156,9 @@ pub struct LayeredProfile {
 	/// The variables collected from all profiles of the extend chain.
 	variables: LayeredVariables,
 
+	/// The content transformer collected from all profiles of the extend chain.
+	transformers: Vec<(usize, ContentTransformer)>,
+
 	/// The pre-hooks collected from all profiles of the extend chain.
 	pre_hooks: Vec<(usize, Hook)>,
 
@@ -188,6 +196,11 @@ impl LayeredProfile {
 		&self.variables
 	}
 
+	/// Returns all collected content transformer for the profile.
+	pub fn transformers(&self) -> impl Iterator<Item = &ContentTransformer> {
+		self.transformers.iter().map(|(_, transformer)| transformer)
+	}
+
 	/// Returns all collected pre-hooks for the profile.
 	pub fn pre_hooks(&self) -> impl Iterator<Item = &Hook> {
 		self.pre_hooks.iter().map(|(_, hook)| hook)
@@ -210,7 +223,8 @@ pub struct LayeredProfileBuilder {
 	/// All names of the profile which where collected from the extend chain.
 	profile_names: Vec<String>,
 
-	/// The profiles which make up the layered profile.
+	/// The profiles which make up the layered profile. The first is the root
+	/// profile from which the others where imported.
 	profiles: Vec<Profile>,
 }
 
@@ -245,6 +259,21 @@ impl LayeredProfileBuilder {
 					variables
 						.inner
 						.insert(key.to_owned(), (idx, value.to_owned()));
+				}
+			}
+		}
+
+		let mut transformers = Vec::new();
+
+		for (idx, transformer) in self
+			.profiles
+			.iter()
+			.enumerate()
+			.map(|(idx, profile)| (idx, &profile.transformers))
+		{
+			for t in transformer.iter() {
+				if !transformers.iter().any(|(_, tt)| t == tt) {
+					transformers.push((idx, *t));
 				}
 			}
 		}
@@ -296,6 +325,7 @@ impl LayeredProfileBuilder {
 			profile_names: self.profile_names,
 			target,
 			variables,
+			transformers,
 			pre_hooks,
 			post_hooks,
 			dotfiles,
@@ -379,6 +409,7 @@ mod tests {
 			variables: Some(Variables {
 				inner: profile_vars,
 			}),
+			transformers: Vec::new(),
 			target: Some(PathBuf::from("/home/demo/.config")),
 			pre_hooks: vec![Hook::new("echo \"Foo\"")],
 			post_hooks: vec![Hook::new("profiles/test.sh")],
@@ -389,6 +420,7 @@ mod tests {
 					overwrite_target: None,
 					priority: Some(Priority::new(2)),
 					variables: None,
+					transformers: Vec::new(),
 					merge: Some(MergeMode::Overwrite),
 					template: None,
 				},
@@ -400,6 +432,7 @@ mod tests {
 					variables: Some(Variables {
 						inner: dotfile_vars,
 					}),
+					transformers: Vec::new(),
 					merge: Some(MergeMode::Overwrite),
 					template: Some(false),
 				},

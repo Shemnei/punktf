@@ -9,7 +9,14 @@ pub trait Transform {
 }
 
 /// TODO
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub enum ContentTransformer {
+	/// TODO
+	LineTerminator(LineTerminator),
+}
+
+/// TODO
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum LineTerminator {
 	/// TODO
 	Lf,
