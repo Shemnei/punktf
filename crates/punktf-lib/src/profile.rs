@@ -63,6 +63,8 @@ impl Profile {
 		/// Inner function is used to reduce monomorphizes as path here is a
 		/// concrete type and no generic one.
 		fn from_file_inner(path: &Path) -> Result<Profile> {
+			// Allowed in case no feature is present.
+			#[allow(unused_variables)]
 			let file = File::open(path)?;
 
 			let extension = path.extension().ok_or_else(|| {
@@ -72,18 +74,24 @@ impl Profile {
 				)
 			})?;
 
-			if extension.eq_ignore_ascii_case("json") {
-				Profile::from_json_file(file)
-			} else if extension.eq_ignore_ascii_case("yaml")
-				|| extension.eq_ignore_ascii_case("yml")
+			#[cfg(feature = "profile-json")]
 			{
-				Profile::from_yaml_file(file)
-			} else {
-				Err(eyre!(
-					"Found unsupported file extension for profile (extension: {:?})",
-					extension
-				))
+				if extension.eq_ignore_ascii_case("json") {
+					return Profile::from_json_file(file);
+				}
 			}
+
+			#[cfg(feature = "profile-yaml")]
+			{
+				if extension.eq_ignore_ascii_case("yaml") || extension.eq_ignore_ascii_case("yml") {
+					return Profile::from_yaml_file(file);
+				}
+			}
+
+			Err(eyre!(
+				"Found unsupported file extension for profile (extension: {:?})",
+				extension
+			))
 		}
 
 		from_file_inner(path).wrap_err(format!(
@@ -93,6 +101,7 @@ impl Profile {
 	}
 
 	/// Tries to load a profile from a json file.
+	#[cfg(feature = "profile-json")]
 	fn from_json_file(file: File) -> Result<Self> {
 		serde_json::from_reader(&file).map_err(|err| {
 			color_eyre::Report::msg(err).wrap_err("Failed to parse profile from json content.")
@@ -100,6 +109,7 @@ impl Profile {
 	}
 
 	/// Tries to load a profile from a yaml file.
+	#[cfg(feature = "profile-yaml")]
 	fn from_yaml_file(file: File) -> Result<Self> {
 		serde_yaml::from_reader(file).map_err(|err| {
 			color_eyre::Report::msg(err).wrap_err("Failed to parse profile from yaml content.")
@@ -352,6 +362,7 @@ mod tests {
 	use crate::{MergeMode, Priority};
 
 	#[test]
+	#[cfg(feature = "profile-json")]
 	fn profile_serde() {
 		crate::tests::setup_test_env();
 
