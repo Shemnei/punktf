@@ -47,6 +47,7 @@ pub mod variables;
 
 use std::path::{Path, PathBuf};
 
+use color_eyre::eyre::Context;
 use serde::{Deserialize, Serialize};
 use variables::Variables;
 
@@ -86,20 +87,50 @@ impl PunktfSource {
 	/// # Errors
 	///
 	/// If any of the checks fail an error will be returned.
-	pub fn from_root(root: PathBuf) -> std::io::Result<Self> {
-		let _ = root.try_exists()?;
-		let root = root.canonicalize()?;
+	pub fn from_root(root: PathBuf) -> color_eyre::Result<Self> {
+		/// Tries to create a directory if it does not exist.
+		/// Bubbles up any error encountered and add some context to it.
+		macro_rules! try_exists {
+			( $var:ident ) => {
+				let _ = $var.try_exists().wrap_err_with(|| {
+					format!(
+						"punktf's {} directory does not exist and could not be created (path: {})",
+						stringify!($var),
+						$var.display()
+					)
+				})?;
+			};
+		}
 
-		let profiles = root.join("profiles");
-		let _ = profiles.try_exists()?;
-		let profiles = profiles.canonicalize()?;
+		/// Tries to canonicalize/resolve a path.
+		/// Bubbles up any error encountered and add some context to it.
+		macro_rules! try_canonicalize {
+			($var:ident) => {
+				$var.canonicalize().wrap_err_with(|| {
+					format!(
+						"Failed to resolve punktf's {} directory (path: {})",
+						stringify!($var),
+						$var.display()
+					)
+				})?
+			};
+		}
 
-		let dotfiles = root.join("dotfiles");
-		let _ = dotfiles.try_exists()?;
-		let dotfiles = dotfiles.canonicalize()?;
+		// Renames the `root` variable for better error messages
+		let source = root;
+		try_exists!(source);
+		let source = try_canonicalize!(source);
+
+		let profiles = source.join("profiles");
+		try_exists!(profiles);
+		let profiles = try_canonicalize!(profiles);
+
+		let dotfiles = source.join("dotfiles");
+		try_exists!(dotfiles);
+		let dotfiles = try_canonicalize!(dotfiles);
 
 		Ok(Self {
-			root,
+			root: source,
 			profiles,
 			dotfiles,
 		})
