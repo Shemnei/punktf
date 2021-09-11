@@ -1,5 +1,7 @@
 //! TODO
 
+use std::fmt;
+
 use color_eyre::Result;
 
 /// TODO
@@ -13,6 +15,20 @@ pub trait Transform {
 pub enum ContentTransformer {
 	/// TODO
 	LineTerminator(LineTerminator),
+}
+
+impl Transform for ContentTransformer {
+	fn transform(&self, content: String) -> Result<String> {
+		match self {
+			Self::LineTerminator(lt) => lt.transform(content),
+		}
+	}
+}
+
+impl fmt::Display for ContentTransformer {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+		fmt::Display::fmt(&self, f)
+	}
 }
 
 /// TODO
@@ -61,6 +77,12 @@ impl Transform for LineTerminator {
 				Ok(content)
 			}
 		}
+	}
+}
+
+impl fmt::Display for LineTerminator {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+		fmt::Debug::fmt(&self, f)
 	}
 }
 

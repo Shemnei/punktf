@@ -196,6 +196,12 @@ impl LayeredProfile {
 		&self.variables
 	}
 
+	/// Returns all collected content transformer for the profile together with
+	/// the index where they came from.
+	pub fn transformers_origin(&self) -> &[(usize, ContentTransformer)] {
+		&self.transformers
+	}
+
 	/// Returns all collected content transformer for the profile.
 	pub fn transformers(&self) -> impl Iterator<Item = &ContentTransformer> {
 		self.transformers.iter().map(|(_, transformer)| transformer)
