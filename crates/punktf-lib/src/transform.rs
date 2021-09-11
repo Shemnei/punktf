@@ -1,4 +1,11 @@
-//! TODO
+//! Transforms run once for each defined dotile during the deploy process.
+//!
+//! They can either be specified for a whole profile, in which case each dotile
+//! is transformed by them or they can be attached to a specific dotile.
+//!
+//! The transformation takes place after the template resolving and takes the
+//! contents in a textual representation. After processing the text a new text
+//! must be returned.
 
 use std::fmt;
 
