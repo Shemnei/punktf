@@ -20,8 +20,7 @@ Features:
 Install [punktf using Homebrew](https://github.com/michidk/homebrew-tools/blob/main/Formula/punktf.rb) on Linux:
 
 ```sh
-brew tap michidk/tools
-brew install punktf
+brew install michidk/tools/punktf
 ```
 
 ### AUR
