@@ -789,8 +789,8 @@ where
 
 			// Apply transformers.
 			// Order:
-			//   - Profile transformers
-			//   - then dotfile transformers
+			//   - Transformers which are specified in the profile root
+			//   - Transformers which are specified on a specific dotfile of a profile
 			for transformer in profile.transformers().chain(exec_transformers.iter()) {
 				content = match transformer.transform(content) {
 					Ok(content) => content,

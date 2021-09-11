@@ -55,17 +55,17 @@ impl fmt::Display for ContentTransformer {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum LineTerminator {
 	/// Replaces all occurrences of `\r\n` with `\n` (unix style).
-	Lf,
+	LF,
 
 	/// Replaces all occurrences of `\n` with `\r\n` (windows style).
-	Crlf,
+	CRLF,
 }
 
 impl Transform for LineTerminator {
 	fn transform(&self, mut content: String) -> Result<String> {
 		match self {
-			Self::Lf => Ok(content.replace("\r\n", "\n")),
-			Self::Crlf => {
+			Self::LF => Ok(content.replace("\r\n", "\n")),
+			Self::CRLF => {
 				let lf_idxs = content.match_indices('\n');
 				let mut cr_idxs = content.match_indices('\r').peekable();
 
@@ -117,7 +117,7 @@ mod tests {
 		const CONTENT: &str = "Hello\r\nWorld\nHow\nare\r\nyou today?\r\r\r\nLast line\r\\n";
 
 		assert_eq!(
-			LineTerminator::Lf.transform(String::from(CONTENT))?,
+			LineTerminator::LF.transform(String::from(CONTENT))?,
 			"Hello\nWorld\nHow\nare\nyou today?\r\r\nLast line\r\\n"
 		);
 
@@ -129,7 +129,7 @@ mod tests {
 		const CONTENT: &str = "Hello\r\nWorld\nHow\nare\r\nyou today?\r\r\r\nLast line\r\\n";
 
 		assert_eq!(
-			LineTerminator::Crlf.transform(String::from(CONTENT))?,
+			LineTerminator::CRLF.transform(String::from(CONTENT))?,
 			"Hello\r\nWorld\r\nHow\r\nare\r\nyou today?\r\r\r\nLast line\r\\n"
 		);
 
