@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Removed current directory as fallback for the `punktf` source directory when neither `-s/--source` or `PUNKTF_SOURCE` were supplied. This mainly caused confusion and was a undocumented feature.
 
+### Fixed
+
+- Fixed a bug where an empty new line would be emitted if a template file started with an `if` block which was not resolved ([#70](https://github.com/Shemnei/punktf/issues/70))
+
 ## [1.0.1] - 2021-09-03
 
 ### Fixed
