@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added better error messages when profile parsing fails ([#62](https://github.com/Shemnei/punktf/pull/62))
 - Added better error messages when punktf source directory or subdirectories are missing ([#65](https://github.com/Shemnei/punktf/pull/65))
 - Yaml/Json profiles are now separate features and can be added/removed via the `Cargo.toml` of `punktf` ([#69](https://github.com/Shemnei/punktf/pull/69)). For available options see punktf-lib's [Cargo.toml](https://github.com/Shemnei/punktf/blob/main/crates/punktf-lib/Cargo.toml).
+- Added `ContentTransformer` which can modify the contents of a dotfile just before deploying it ([#59](https://github.com/Shemnei/punktf/pull/59))
+- Added `LineTerminator` content transformer which can transform between unix (`\n`) and windows (`\r\n`) style line terminators ([#59](https://github.com/Shemnei/punktf/pull/59))
 
 ### Changed
 
@@ -25,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fixed a bug where an empty new line would be emitted if a template file started with an `if` block which was not resolved ([#70](https://github.com/Shemnei/punktf/issues/70))
+- Fixed a bug where an empty new line would be emitted if a line starting `comment`, `print`, `if` or `escaped` block resolved to an empty string ([#70](https://github.com/Shemnei/punktf/issues/70))
 
 ## [1.0.1] - 2021-09-03
 
