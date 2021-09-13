@@ -420,7 +420,18 @@ there
 {{@fi}}
 !"#,
 			"Hello\n\n\tthere\n!"
-		)
+		),
+		(
+			r#"{{@if {{OS}}}}
+	Hello World
+{{@fi}}
+
+Hello
+"#,
+			r#"
+Hello
+"#
+		),
 	];
 
 	#[test]
