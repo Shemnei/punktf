@@ -10,13 +10,14 @@ use crate::deploy::dotfile::DotfileStatus;
 use crate::profile::LayeredProfile;
 use crate::template::source::Source;
 use crate::template::Template;
+use crate::transform::{ContentTransformer, Transform as _};
 use crate::variables::Variables;
 use crate::{Dotfile, MergeMode, Priority, PunktfSource};
 
 /// An enum to be generic over both a "real" dotfile and a child of a directory
 /// dotfile.
 enum ExecutorDotfile<'a> {
-	/// A "real" dotile.
+	/// A "real" dotfile.
 	File {
 		/// The dotfile.
 		dotfile: Dotfile,
@@ -115,6 +116,16 @@ impl<'a> ExecutorDotfile<'a> {
 		match self {
 			Self::File { dotfile, .. } => dotfile.variables.as_ref(),
 			Self::Child { parent, .. } => parent.variables.as_ref(),
+		}
+	}
+
+	/// Returns the [dotfile transformers][`crate::Dotfile::transformers`].
+	///
+	/// If it is a child, the value of the directory dotfile is used.
+	fn transformers(&self) -> &[ContentTransformer] {
+		match self {
+			Self::File { dotfile, .. } => &dotfile.transformers,
+			Self::Child { parent, .. } => &parent.transformers,
 		}
 	}
 
@@ -665,83 +676,14 @@ where
 			}
 		}
 
-		if exec_dotfile.is_template() {
-			let content = match std::fs::read_to_string(&exec_dotfile.source_path()) {
-				Ok(content) => content,
-				Err(err) => {
-					log::info!(
-						"{}: Failed to read dotfile source content",
-						exec_dotfile.path().display()
-					);
+		// Fast Path.
+		if !exec_dotfile.is_template()
+			&& exec_dotfile.transformers().is_empty()
+			&& profile.transformers_len() == 0
+		{
+			// File is no template and no transformers are specified. This means
+			// we can take the fast path of just copying via the filesystem.
 
-					exec_dotfile.add_to_builder(
-						builder,
-						DotfileStatus::failed(format!(
-							"Failed to read dotfile source content: {}",
-							err
-						)),
-					);
-
-					return Ok(());
-				}
-			};
-
-			let source = Source::file(exec_dotfile.source_path(), &content);
-
-			let template = match Template::parse(source)
-				.with_context(|| format!("File: {}", exec_dotfile.source_path().display()))
-			{
-				Ok(template) => template,
-				Err(err) => {
-					log::error!(
-						"{}: Failed to parse template",
-						exec_dotfile.path().display()
-					);
-
-					exec_dotfile.add_to_builder(
-						builder,
-						DotfileStatus::failed(format!("Failed to parse template: {}", err)),
-					);
-
-					return Ok(());
-				}
-			};
-
-			let content = match template
-				.resolve(Some(profile.variables()), exec_dotfile.variables())
-				.with_context(|| format!("File: {}", exec_dotfile.source_path().display()))
-			{
-				Ok(template) => template,
-				Err(err) => {
-					log::error!(
-						"{}: Failed to resolve template",
-						exec_dotfile.path().display()
-					);
-
-					exec_dotfile.add_to_builder(
-						builder,
-						DotfileStatus::failed(format!("Failed to resolve template: {}", err)),
-					);
-
-					return Ok(());
-				}
-			};
-
-			log::trace!("{}: Resolved:\n{}", exec_dotfile.path().display(), content);
-
-			if !self.options.dry_run {
-				if let Err(err) = std::fs::write(&exec_dotfile.deploy_path(), content.as_bytes()) {
-					log::info!("{}: Failed to write content", exec_dotfile.path().display());
-
-					exec_dotfile.add_to_builder(
-						builder,
-						DotfileStatus::failed(format!("Failed to write content: {}", err)),
-					);
-
-					return Ok(());
-				}
-			}
-		} else {
 			// Allowed for readability
 			#[allow(clippy::collapsible_else_if)]
 			if !self.options.dry_run {
@@ -753,6 +695,133 @@ where
 					exec_dotfile.add_to_builder(
 						builder,
 						DotfileStatus::failed(format!("Failed to copy: {}", err)),
+					);
+
+					return Ok(());
+				}
+			}
+		} else {
+			let mut content = if exec_dotfile.is_template() {
+				let content = match std::fs::read_to_string(&exec_dotfile.source_path()) {
+					Ok(content) => content,
+					Err(err) => {
+						log::info!(
+							"{}: Failed to read dotfile source content",
+							exec_dotfile.path().display()
+						);
+
+						exec_dotfile.add_to_builder(
+							builder,
+							DotfileStatus::failed(format!(
+								"Failed to read dotfile source content: {}",
+								err
+							)),
+						);
+
+						return Ok(());
+					}
+				};
+
+				let source = Source::file(exec_dotfile.source_path(), &content);
+
+				let template = match Template::parse(source)
+					.with_context(|| format!("File: {}", exec_dotfile.source_path().display()))
+				{
+					Ok(template) => template,
+					Err(err) => {
+						log::error!(
+							"{}: Failed to parse template",
+							exec_dotfile.path().display()
+						);
+
+						exec_dotfile.add_to_builder(
+							builder,
+							DotfileStatus::failed(format!("Failed to parse template: {}", err)),
+						);
+
+						return Ok(());
+					}
+				};
+
+				let content = match template
+					.resolve(Some(profile.variables()), exec_dotfile.variables())
+					.with_context(|| format!("File: {}", exec_dotfile.source_path().display()))
+				{
+					Ok(template) => template,
+					Err(err) => {
+						log::error!(
+							"{}: Failed to resolve template",
+							exec_dotfile.path().display()
+						);
+
+						exec_dotfile.add_to_builder(
+							builder,
+							DotfileStatus::failed(format!("Failed to resolve template: {}", err)),
+						);
+
+						return Ok(());
+					}
+				};
+
+				log::trace!("{}: Resolved:\n{}", exec_dotfile.path().display(), content);
+
+				content
+			} else {
+				// We have some transformers to run on the content and thus can not straight copy the
+				// contents.
+				match std::fs::read_to_string(&exec_dotfile.source_path()) {
+					Ok(content) => content,
+					Err(err) => {
+						log::info!("{}: Failed to copy dotfile", exec_dotfile.path().display());
+
+						exec_dotfile.add_to_builder(
+							builder,
+							DotfileStatus::failed(format!("Failed to copy: {}", err)),
+						);
+
+						return Ok(());
+					}
+				}
+			};
+
+			// Copy so we exec_dotfile is not referenced by this in case an error occurs.
+			let exec_transformers: Vec<_> = exec_dotfile.transformers().iter().copied().collect();
+
+			// Apply transformers.
+			// Order:
+			//   - Transformers which are specified in the profile root
+			//   - Transformers which are specified on a specific dotfile of a profile
+			for transformer in profile.transformers().chain(exec_transformers.iter()) {
+				content = match transformer.transform(content) {
+					Ok(content) => content,
+					Err(err) => {
+						log::info!(
+							"{}: Failed to apply content transformer `{}`: `{}`",
+							exec_dotfile.path().display(),
+							transformer,
+							err
+						);
+
+						exec_dotfile.add_to_builder(
+							builder,
+							DotfileStatus::failed(format!(
+								"Failed to apply content transformer `{}`: `{}`",
+								transformer, err
+							)),
+						);
+
+						return Ok(());
+					}
+				};
+			}
+
+			if !self.options.dry_run {
+				if let Err(err) = std::fs::write(&exec_dotfile.deploy_path(), content.as_bytes()) {
+					log::info!("{}: Failed to write content", exec_dotfile.path().display());
+
+					exec_dotfile.add_to_builder(
+						builder,
+						DotfileStatus::failed(format!("Failed to write content: {}", err)),
 					);
 
 					return Ok(());
