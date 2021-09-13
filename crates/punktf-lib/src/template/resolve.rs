@@ -108,8 +108,12 @@ pub struct Resolver<'a, PV, DV> {
 	/// process are recorded to.
 	session: Session,
 
-	/// Number of current block being processed. This is used for internal purposes.
-	current_block: usize,
+	/// Flag that when it is set prevents a leading new line of a text block to
+	/// be emitted.
+	///
+	/// This is implemented to avoid extra empty lines which could be created
+	/// by either a `comment`, `print` or a not taken `if` block.
+	should_skip_next_newline: bool,
 }
 
 impl<'a, PV, DV> Resolver<'a, PV, DV>
@@ -129,7 +133,7 @@ where
 			profile_vars,
 			dotfile_vars,
 			session: Session::new(),
-			current_block: 0,
+			should_skip_next_newline: false,
 		}
 	}
 
@@ -175,43 +179,69 @@ where
 		output: &mut String,
 		block: &Block,
 	) -> Result<(), DiagnosticBuilder> {
-		self.current_block += 1;
-
 		let Block { span, kind } = block;
 
+		// NOTE: `self.should_skip_next_newline` must be reset on every match
+		// branch which is not a text block to avoid remembering it even though
+		// there already was a new non text block between the setting block and
+		// an eventual text block.
 		match kind {
 			BlockKind::Text => {
 				let mut content = &self.template.source[span];
 
-				// Skip new line when second block to be processed starts with
-				// a new line and the first block was not resolved as it
-				// otherwise would leave an extra new line at the start of the
-				// file. This is an extra case just for file starts the other
-				// cases are handled by the `if` match branch directly.
+				// If last block was a block which inserted no content and
+				// started at the beginning of a new line THEN strip a leading
+				// `\n` from the content.
 				// (related #64)
-				if self.current_block == 2
-					&& output.is_empty() && matches!(
-					content.as_bytes(),
-					&[b'\n', ..] | &[b'\r', b'\n', ..]
-				) {
-					content = &content[content
+				if self.should_skip_next_newline
+					&& matches!(content.as_bytes(), &[b'\n', ..] | &[b'\r', b'\n', ..])
+				{
+					// In the if expression above we already checked that there
+					// is an new line character. So if the find fails we messed
+					// something up or the std lib has an error.
+					let lf_idx = content
 						.find('\n')
-						.expect("Failed to find new line character")
-						+ 1..];
+						.expect("Failed to find new line character");
+
+					content = &content[lf_idx + 1..];
+
+					self.should_skip_next_newline = false;
 				}
 
 				output.push_str(content);
 			}
 			BlockKind::Comment => {
+				// Should skip new line if started at the beginning of a line.
+				// As a `print` block has no final `content` is the above the
+				// only condition.
+				self.should_skip_next_newline =
+					self.template.source.get_pos_location(span.low).column() == 0;
+
 				// NOP
 			}
 			BlockKind::Escaped(inner) => {
-				output.push_str(&self.template.source[inner]);
+				let content = &self.template.source[inner];
+
+				// Should skip new line if started at the beginning of a line.
+				// As a `print` block has no final `content` is the above the
+				// only condition.
+				self.should_skip_next_newline = content.is_empty()
+					&& self.template.source.get_pos_location(span.low).column() == 0;
+
+				output.push_str(content);
 			}
 			BlockKind::Var(var) => {
+				self.should_skip_next_newline = false;
+
 				output.push_str(&self.resolve_var(var)?);
 			}
 			BlockKind::Print(inner) => {
+				// Should skip new line if started at the beginning of a line.
+				// As a `print` block has no final `content` is the above the
+				// only condition.
+				self.should_skip_next_newline =
+					self.template.source.get_pos_location(span.low).column() == 0;
+
 				log::info!("Print: {}", &self.template.source[inner]);
 			}
 			BlockKind::If(If {
@@ -288,6 +318,11 @@ where
 						if_output_prepared = &if_output_prepared[..idx];
 					}
 				}
+
+				// Should skip new line if started at the beginning of a line
+				// and no new content was added.
+				self.should_skip_next_newline = if_output_prepared.is_empty()
+					&& self.template.source.get_pos_location(span.low).column() == 0;
 
 				output.push_str(if_output_prepared);
 			}
@@ -487,6 +522,19 @@ Hello
 "#
 		),
 		(
+			r#"Hello
+
+{{@if {{OS}}}}
+	Hello World
+{{@fi}}
+
+World"#,
+			r#"Hello
+
+
+World"#
+		),
+		(
 			r#"{{@print Hello World}}
 
 Hello
@@ -494,6 +542,17 @@ Hello
 			r#"
 Hello
 "#
+		),
+		(
+			r#"Hello
+{{@print Hello World}}
+World"#,
+			r#"Hello
+World"#
+		),
+		(
+			r#"Hello {{@print Hello World}}World"#,
+			r#"Hello World"#
 		),
 		(
 			r#"{{@if {{OS}}}}
@@ -505,6 +564,20 @@ Hello
 			r#"
 DEMO
 "#
+		),
+		(
+			r#"Hello
+{{{}}}
+World"#,
+			r#"Hello
+World"#
+		),
+		(
+			r#"Hello
+{{!-- Comment --}}
+World"#,
+			r#"Hello
+World"#
 		),
 	];
 
@@ -520,7 +593,9 @@ DEMO
 
 			assert_eq!(
 				&template.resolve::<Variables, Variables>(Some(&vars), None)?,
-				should
+				should,
+				"Format test failed for input `{}`",
+				content.escape_debug()
 			);
 		}
 
