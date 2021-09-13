@@ -112,7 +112,7 @@ pub struct Resolver<'a, PV, DV> {
 	/// be emitted.
 	///
 	/// This is implemented to avoid extra empty lines which could be created
-	/// by either a `comment`, `print` or a not taken `if` block.
+	/// by either a `comment`, `escaped`, `print` or a not taken `if` block.
 	should_skip_next_newline: bool,
 }
 
@@ -544,17 +544,6 @@ Hello
 "#
 		),
 		(
-			r#"Hello
-{{@print Hello World}}
-World"#,
-			r#"Hello
-World"#
-		),
-		(
-			r#"Hello {{@print Hello World}}World"#,
-			r#"Hello World"#
-		),
-		(
 			r#"{{@if {{OS}}}}
 	Hello World
 {{@fi}}
@@ -567,6 +556,20 @@ DEMO
 		),
 		(
 			r#"Hello
+{{@if {{OS}}}}Hello World{{@fi}}
+World"#,
+			r#"Hello
+World"#
+		),
+		(
+			r#"Hello
+{{@print Hello World}}
+World"#,
+			r#"Hello
+World"#
+		),
+		(
+			r#"Hello
 {{{}}}
 World"#,
 			r#"Hello
@@ -575,6 +578,30 @@ World"#
 		(
 			r#"Hello
 {{!-- Comment --}}
+World"#,
+			r#"Hello
+World"#
+		),
+		(
+			r#"Hello{{@if {{OS}}}}Hello World{{@fi}}
+World"#,
+			r#"Hello
+World"#
+		),
+		(
+			r#"Hello{{@print Hello World}}
+World"#,
+			r#"Hello
+World"#
+		),
+		(
+			r#"Hello{{{}}}
+World"#,
+			r#"Hello
+World"#
+		),
+		(
+			r#"Hello{{!-- Comment --}}
 World"#,
 			r#"Hello
 World"#
