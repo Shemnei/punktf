@@ -627,7 +627,7 @@ where
 								builder,
 								DotfileStatus::failed(format!(
 									"Failed to execute merge ask function: {}",
-									err.to_string()
+									err
 								)),
 							);
 
@@ -785,7 +785,7 @@ where
 			};
 
 			// Copy so we exec_dotfile is not referenced by this in case an error occurs.
-			let exec_transformers: Vec<_> = exec_dotfile.transformers().iter().copied().collect();
+			let exec_transformers: Vec<_> = exec_dotfile.transformers().to_vec();
 
 			// Apply transformers.
 			// Order:
