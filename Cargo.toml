@@ -1,5 +1,3 @@
-cargo-features = ["strip"]
-
 [package]
 name = "punktf"
 version = "1.0.1"
@@ -48,7 +46,7 @@ lto = "thin"
 # compile.
 opt-level = "s"
 # Strip symbols for the release build to decrease binary size
-strip = true
+# strip = true
 # Reduces parallel code generation units to increase optimizations
 codegen-units = 1
 # Dont retain any debug information; This will speed up the build process
