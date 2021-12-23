@@ -166,14 +166,17 @@ impl DiagnosticBuilder {
 
 	/// Adds a primary span to the builder.
 	pub fn primary_span(mut self, span: ByteSpan) -> Self {
-		self.span.get_or_insert_default().primary.push(span);
+		self.span
+			.get_or_insert(Default::default())
+			.primary
+			.push(span);
 		self
 	}
 
 	/// Adds a label span to the builder.
 	pub fn label_span<L: Into<Cow<'static, str>>>(mut self, span: ByteSpan, label: L) -> Self {
 		self.span
-			.get_or_insert_default()
+			.get_or_insert(Default::default())
 			.labels
 			.push((span, label.into()));
 		self
@@ -282,12 +285,14 @@ impl<'a> LineMap<'a> {
 
 	/// Returns the lowest one-indexed line number this line map has interned.
 	pub fn min_line_nr(&self) -> Option<usize> {
-		self.lines.first_key_value().map(|(idx, _)| idx + 1)
+		// TODO: Replace once `first_key_value` becomes stable
+		self.lines.iter().next().map(|(idx, _)| idx + 1)
 	}
 
 	/// Returns the highest one-indexed line number this line map has interned.
 	pub fn max_line_nr(&self) -> Option<usize> {
-		self.lines.last_key_value().map(|(idx, _)| idx + 1)
+		// TODO: Replace once `last_key_value` becomes stable
+		self.lines.iter().last().map(|(idx, _)| idx + 1)
 	}
 
 	/// Returns the smallest [location](`super::source::Location`) any span
