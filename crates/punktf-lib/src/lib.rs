@@ -1,8 +1,3 @@
-#![feature(exit_status_error)]
-#![feature(option_get_or_insert_default)]
-#![feature(map_first_last)]
-#![feature(path_try_exists)]
-#![feature(io_error_more)]
 #![allow(dead_code, rustdoc::private_intra_doc_links)]
 #![deny(
 	deprecated_in_future,
@@ -20,8 +15,7 @@
 	trivial_casts,
 	trivial_numeric_casts,
 	unsafe_code,
-	// TODO(future): would be nice in the future but not possible for now
-	// unstable_features,
+	unstable_features,
 	unused_import_braces,
 	unused_qualifications,
 
