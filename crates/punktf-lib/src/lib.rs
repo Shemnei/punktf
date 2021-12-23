@@ -88,13 +88,18 @@ impl PunktfSource {
 		/// Bubbles up any error encountered and add some context to it.
 		macro_rules! try_exists {
 			( $var:ident ) => {
-				let _ = $var.try_exists().wrap_err_with(|| {
-					format!(
-						"punktf's {} directory does not exist and could not be created (path: {})",
-						stringify!($var),
-						$var.display()
-					)
-				})?;
+				// TODO: Replace once `try_exists` becomes stable
+				if $var.exists() {
+					// Should check if read/write is possible
+				} else {
+					let _ = std::fs::create_dir(&$var).wrap_err_with(|| {
+						format!(
+							"{} directory does not exist and could not be created (path: {})",
+							stringify!($var),
+							$var.display()
+						)
+					})?;
+				}
 			};
 		}
 
