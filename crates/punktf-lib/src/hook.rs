@@ -26,7 +26,6 @@ impl From<std::process::ExitStatus> for HookError {
 	}
 }
 
-
 // TODO: Replace once `exit_ok` becomes stable
 /// Maps a value to an Result. This is mainly used as a replacement for
 /// [`std::process::ExitStatus::exit_ok`] until it becomes stable.
