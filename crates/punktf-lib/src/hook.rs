@@ -16,8 +16,37 @@ pub enum HookError {
 	IoError(#[from] std::io::Error),
 
 	/// The hook failed to execute successfully.
-	#[error("Process failed")]
-	ExitStatusError(#[from] std::process::ExitStatusError),
+	#[error("Process failed with status `{0}`")]
+	ExitStatusError(std::process::ExitStatus),
+}
+
+impl From<std::process::ExitStatus> for HookError {
+	fn from(value: std::process::ExitStatus) -> Self {
+		Self::ExitStatusError(value)
+	}
+}
+
+// TODO: Replace once `exit_ok` becomes stable
+/// Maps a value to an Result. This is mainly used as a replacement for
+/// [`std::process::ExitStatus::exit_ok`] until it becomes stable.
+trait ExitOk {
+	/// Error type of the returned result.
+	type Error;
+
+	/// Converts `self` to an result.
+	fn exit_ok(self) -> Result<(), Self::Error>;
+}
+
+impl ExitOk for std::process::ExitStatus {
+	type Error = HookError;
+
+	fn exit_ok(self) -> Result<(), <Self as ExitOk>::Error> {
+		if self.success() {
+			Ok(())
+		} else {
+			Err(self.into())
+		}
+	}
 }
 
 /// Implements the `Hook` trait, which is used to run a command after or before a build.

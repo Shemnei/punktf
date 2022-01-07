@@ -1,19 +1,10 @@
-.PHONY: default buildd buildr build check test clippy checkfmt lint run clean
-.PHONY: install doc cic todos timings
-
-# Is set to the directory which contains the Makefile regardless from where
-# the make command is called.
-ROOT_DIR := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))
-
-default: check
-
-buildd:
+build-dev:
 	cargo build
 
-buildr:
+build-release:
 	cargo build --release
 
-build: buildr
+build: build-release
 
 check:
 	cargo check --all

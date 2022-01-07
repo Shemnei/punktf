@@ -1,8 +1,3 @@
-#![feature(exit_status_error)]
-#![feature(option_get_or_insert_default)]
-#![feature(map_first_last)]
-#![feature(path_try_exists)]
-#![feature(io_error_more)]
 #![allow(dead_code, rustdoc::private_intra_doc_links)]
 #![deny(
 	deprecated_in_future,
@@ -20,8 +15,7 @@
 	trivial_casts,
 	trivial_numeric_casts,
 	unsafe_code,
-	// TODO(future): would be nice in the future but not possible for now
-	// unstable_features,
+	unstable_features,
 	unused_import_braces,
 	unused_qualifications,
 
@@ -94,13 +88,18 @@ impl PunktfSource {
 		/// Bubbles up any error encountered and add some context to it.
 		macro_rules! try_exists {
 			( $var:ident ) => {
-				let _ = $var.try_exists().wrap_err_with(|| {
-					format!(
-						"punktf's {} directory does not exist and could not be created (path: {})",
-						stringify!($var),
-						$var.display()
-					)
-				})?;
+				// TODO: Replace once `try_exists` becomes stable
+				if $var.exists() {
+					// Should check if read/write is possible
+				} else {
+					let _ = std::fs::create_dir(&$var).wrap_err_with(|| {
+						format!(
+							"{} directory does not exist and could not be created (path: {})",
+							stringify!($var),
+							$var.display()
+						)
+					})?;
+				}
 			};
 		}
 
