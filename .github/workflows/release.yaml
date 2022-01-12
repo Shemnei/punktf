@@ -98,6 +98,10 @@ jobs:
         run: |
           ${{ env.CARGO }} build --release ${{ env.TARGET_FLAGS }}
 
+      - name: Strip release binary (linux)
+        if: matrix.build == 'linux'
+        run: strip "${{ env.TARGET_DIR }}/release/punktf"
+
       - name: Build archive
         shell: bash
         run: |
