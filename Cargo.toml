@@ -52,3 +52,5 @@ codegen-units = 1
 # Dont retain any debug information; This will speed up the build process
 # and is only used when debugging.
 debug = 0
+# Can decreases build time
+incremental = true
