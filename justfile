@@ -7,13 +7,13 @@ build-release:
 build: build-release
 
 check:
-	cargo check --all
+	cargo check --all-targets
 
 test:
-	cargo test --all
+	cargo test --all-targets
 
 clippy:
-	cargo clippy --all -- -Dwarnings
+	cargo clippy --all-targets -- -Dwarnings
 
 checkfmt:
 	cargo fmt --all -- --check
