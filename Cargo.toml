@@ -54,3 +54,5 @@ codegen-units = 1
 debug = 0
 # Can decreases build time
 incremental = true
+# Strip debuginfo and symbols form release binary (New in version 1.59)
+strip = true
