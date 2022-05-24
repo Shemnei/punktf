@@ -29,9 +29,9 @@ pub struct Shared {
 	///
 	/// The level can be set by repeating the flag `n` times (e.g. `-vv` for 2).
 	/// Levels:
-	///     0 - `Info`;
-	///     1 - `Debug`;
-	///     2 - `Trace`.
+	///     1 - `Info`;
+	///     2 - `Debug`;
+	///     3 - `Trace`.
 	#[clap(short, long, parse(from_occurrences))]
 	pub verbose: u8,
 }
