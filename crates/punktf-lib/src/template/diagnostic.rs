@@ -3,6 +3,7 @@
 use std::borrow::Cow;
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, HashSet};
+use std::fmt::Write as _; // Needed for `write!` calls
 
 use color_eyre::owo_colors::OwoColorize;
 
@@ -469,18 +470,21 @@ impl<'a> DiagnosticFormatter<'a> {
 			left_pad = " ".repeat(line_nr.to_string().len());
 
 			// add file information
-			out.push_str(&format!(
+			write!(
+				out,
 				"\n {}{} {}",
 				left_pad,
 				style("-->"),
 				self.source.origin(),
-			));
+			)
+			.expect("Write to String failed");
+
 			if let Some(min_loc) = self.line_map.min_location() {
-				out.push_str(&format!(":{}", min_loc.display()));
+				write!(out, ":{}", min_loc.display()).expect("Write to String failed");
 			}
 
 			// add code lines and spans
-			out.push_str(&format!("\n {} {}", left_pad, separator));
+			write!(out, "\n {} {}", left_pad, separator).expect("Write to String failed");
 
 			let mut last_line_nr: Option<usize> = None;
 			for line_nr in self.line_map.line_nrs() {
@@ -488,16 +492,18 @@ impl<'a> DiagnosticFormatter<'a> {
 					let line_nr_str = line_nr.to_string();
 
 					if matches!(last_line_nr, Some(lln) if (line_nr - lln) > 1) {
-						out.push_str(&format!("\n {}", style("...")));
+						write!(out, "\n {}", style("...")).expect("Write to String failed");
 					}
 
-					out.push_str(&format!(
+					write!(
+						out,
 						"\n {}{} {} {}",
 						&left_pad[line_nr_str.len()..],
 						line_nr,
 						separator,
 						line.replace('\t', "    ")
-					));
+					)
+					.expect("Write to String failed");
 
 					if let Some(spans) = self.line_map.line_spans_sorted(line_nr) {
 						for (low_loc, high_loc, label) in spans {
@@ -518,13 +524,15 @@ impl<'a> DiagnosticFormatter<'a> {
 							let highlight = if label.is_some() { "-" } else { "^" }
 								.repeat(high_cpos - low_cpos);
 
-							out.push_str(&format!(
+							write!(
+								out,
 								"\n {} {} {}{}",
 								&left_pad,
 								separator,
 								highlight_left_pad,
 								style(highlight)
-							));
+							)
+							.expect("Write to String failed");
 
 							if ends_on_line {
 								if let Some(label) = label {
@@ -539,11 +547,12 @@ impl<'a> DiagnosticFormatter<'a> {
 				}
 			}
 
-			out.push_str(&format!("\n {} {}", left_pad, separator));
+			write!(out, "\n {} {}", left_pad, separator).expect("Write to String failed");
 		}
 
 		for description in self.descriptions {
-			out.push_str(&format!("\n {} {} {}", left_pad, style("="), description));
+			write!(out, "\n {} {} {}", left_pad, style("="), description)
+				.expect("Write to String failed");
 		}
 
 		out

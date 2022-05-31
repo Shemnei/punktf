@@ -123,7 +123,7 @@ where
 {
 	/// Creates a new resolver for `template` with the given `profile_vars` and
 	/// `dotfile_vars`.
-	pub fn new(
+	pub const fn new(
 		template: &'a Template<'a>,
 		profile_vars: Option<&'a PV>,
 		dotfile_vars: Option<&'a DV>,
@@ -265,7 +265,7 @@ where
 
 				if matched {
 					for block in head_nested {
-						let _ = self.process_block(&mut if_output, block)?;
+						self.process_block(&mut if_output, block)?;
 					}
 				} else {
 					let mut found_elif = false;
@@ -282,7 +282,7 @@ where
 							found_elif = true;
 
 							for block in elif_nested {
-								let _ = self.process_block(&mut if_output, block)?;
+								self.process_block(&mut if_output, block)?;
 							}
 
 							break;
@@ -292,7 +292,7 @@ where
 					if !found_elif {
 						if let Some((_, els_nested)) = els {
 							for block in els_nested {
-								let _ = self.process_block(&mut if_output, block)?;
+								self.process_block(&mut if_output, block)?;
 							}
 						}
 					}

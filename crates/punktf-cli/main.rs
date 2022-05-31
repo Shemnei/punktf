@@ -152,7 +152,7 @@ pub const PUNKTF_PROFILE_ENVVAR: &str = "PUNKTF_PROFILE";
 
 /// Entry point for `punktf`.
 fn main() -> Result<()> {
-	let _ = color_eyre::install()?;
+	color_eyre::install()?;
 
 	let opts = opt::Opts::parse();
 
@@ -164,10 +164,8 @@ fn main() -> Result<()> {
 		_ => log::Level::Trace,
 	};
 
-	let _ = env_logger::Builder::from_env(
-		env_logger::Env::default().default_filter_or(log_level.as_str()),
-	)
-	.init();
+	env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level.as_str()))
+		.init();
 
 	log::debug!("Parsed Opts:\n{:#?}", opts);
 

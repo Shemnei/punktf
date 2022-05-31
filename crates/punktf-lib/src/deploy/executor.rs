@@ -188,7 +188,7 @@ where
 	F: Fn(&Path, &Path) -> Result<bool>,
 {
 	/// Creates a new executor with the given `options`.
-	pub fn new(options: ExecutorOptions, f: F) -> Self {
+	pub const fn new(options: ExecutorOptions, f: F) -> Self {
 		Self {
 			options,
 			merge_ask_fn: f,
@@ -240,7 +240,7 @@ where
 
 		for dotfile in profile.dotfiles().cloned() {
 			log::debug!("Deploying dotfile: {}", dotfile.path.display());
-			let _ = self.deploy_dotfile(&mut builder, &source, target_path, profile, dotfile)?;
+			self.deploy_dotfile(&mut builder, &source, target_path, profile, dotfile)?;
 		}
 
 		for hook in profile.post_hooks() {
@@ -466,7 +466,7 @@ where
 					deploy_path: child_deploy_path,
 				};
 
-				let _ = self.deploy_executor_dotfile(builder, source, profile, exec_dotfile)?;
+				self.deploy_executor_dotfile(builder, source, profile, exec_dotfile)?;
 			} else if metadata.is_dir() {
 				if !self.options.dry_run {
 					match std::fs::create_dir_all(&child_deploy_path) {

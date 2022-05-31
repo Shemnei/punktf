@@ -56,7 +56,7 @@ impl<'a> Parser<'a> {
 		}
 
 		self.session.emit(&self.source);
-		let _ = self.session.try_finish()?;
+		self.session.try_finish()?;
 
 		Ok(Template {
 			source: self.source,

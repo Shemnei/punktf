@@ -1,5 +1,6 @@
 //! Various utility functions.
 
+use std::fmt::Write as _; // Needed for `write!` calls
 use std::path::{Path, PathBuf};
 
 use color_eyre::owo_colors::OwoColorize;
@@ -69,10 +70,10 @@ pub fn log_deployment(deployment: &Deployment) {
 		.enumerate()
 	{
 		if idx == 0 {
-			out.push_str(&format!("Dotfiles ({})", "SUCCESS".green()));
+			write!(out, "Dotfiles ({})", "SUCCESS".green()).expect("Write to String failed");
 		}
 
-		out.push_str(&format!("\n\t{}", path.display().bright_black()));
+		write!(out, "\n\t{}", path.display().bright_black()).expect("Write to String failed");
 		files_success += 1;
 	}
 
@@ -95,14 +96,12 @@ pub fn log_deployment(deployment: &Deployment) {
 		.enumerate()
 	{
 		if idx == 0 {
-			out.push_str(&format!("Dotfiles ({})", "SKIPPED".yellow()));
+			write!(out, "Dotfiles ({})", "SKIPPED".yellow()).expect("Write to String failed");
 		}
 
-		out.push_str(&format!(
-			"\n\t{}: {}",
-			path.display(),
-			reason.bright_black()
-		));
+		write!(out, "\n\t{}: {}", path.display(), reason.bright_black())
+			.expect("Write to String failed");
+
 		files_skipped += 1;
 	}
 
@@ -125,14 +124,12 @@ pub fn log_deployment(deployment: &Deployment) {
 		.enumerate()
 	{
 		if idx == 0 {
-			out.push_str(&format!("Dotfiles ({})", "FAILED".red()));
+			write!(out, "Dotfiles ({})", "FAILED".red()).expect("Write to String failed");
 		}
 
-		out.push_str(&format!(
-			"\n\t{}: {}",
-			path.display(),
-			reason.bright_black()
-		));
+		write!(out, "\n\t{}: {}", path.display(), reason.bright_black())
+			.expect("Write to String failed");
+
 		files_failed += 1;
 	}
 
@@ -143,10 +140,11 @@ pub fn log_deployment(deployment: &Deployment) {
 
 	match deployment.status() {
 		DeploymentStatus::Success => {
-			out.push_str(&format!("Status: {}", "SUCCESS".green()));
+			write!(out, "Status: {}", "SUCCESS".green()).expect("Write to String failed");
 		}
 		DeploymentStatus::Failed(reason) => {
-			out.push_str(&format!("Status: {}\n\t{}", "FAILED".red(), reason));
+			write!(out, "Status: {}\n\t{}", "FAILED".red(), reason)
+				.expect("Write to String failed");
 		}
 	};
 
@@ -155,11 +153,11 @@ pub fn log_deployment(deployment: &Deployment) {
 		.duration()
 		.expect("Failed to get duration from deployment");
 
-	out.push_str(&format!("\nTime            : {:?}", elapsed));
-	out.push_str(&format!("\nFiles (deployed): {}", files_success));
-	out.push_str(&format!("\nFiles (skipped) : {}", files_skipped));
-	out.push_str(&format!("\nFiles (failed)  : {}", files_failed));
-	out.push_str(&format!("\nFiles (total)   : {}", files_total));
+	write!(out, "\nTime            : {:?}", elapsed).expect("Write to String failed");
+	write!(out, "\nFiles (deployed): {}", files_success).expect("Write to String failed");
+	write!(out, "\nFiles (skipped) : {}", files_skipped).expect("Write to String failed");
+	write!(out, "\nFiles (failed)  : {}", files_failed).expect("Write to String failed");
+	write!(out, "\nFiles (total)   : {}", files_total).expect("Write to String failed");
 
 	log::info!("{}", out);
 }

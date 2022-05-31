@@ -22,7 +22,8 @@
 	// clippy attributes
 	clippy::missing_const_for_fn,
 	clippy::redundant_pub_crate,
-	clippy::use_self
+	// 2022-05-31: Disabled as this lint appears to have many false positivies
+	// clippy::use_self
 )]
 #![cfg_attr(docsrs, feature(doc_cfg), feature(doc_alias))]
 

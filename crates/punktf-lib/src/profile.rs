@@ -376,7 +376,7 @@ pub fn resolve_profile(
 	resolved_profiles.push(file_name);
 
 	for child in extends {
-		let _ = resolve_profile(builder, source, &child, resolved_profiles)?;
+		resolve_profile(builder, source, &child, resolved_profiles)?;
 	}
 
 	let _ = resolved_profiles
