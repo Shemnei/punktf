@@ -157,8 +157,10 @@ fn main() -> Result<()> {
 	let opts = opt::Opts::parse();
 
 	let log_level = match opts.shared.verbose {
-		0 => log::Level::Info,
-		1 => log::Level::Debug,
+		// Default if no value for `verbose` is given
+		0 => log::Level::Warn,
+		1 => log::Level::Info,
+		2 => log::Level::Debug,
 		_ => log::Level::Trace,
 	};
 
