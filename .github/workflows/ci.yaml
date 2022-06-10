@@ -27,10 +27,10 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: stable
           override: true
 
-      # This pluging should be loaded after toolchain setup
+      # This plugin should be loaded after toolchain setup
       - name: Cache
         uses: Swatinem/rust-cache@v1
 
@@ -59,7 +59,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: stable
           override: true
           components: rustfmt, clippy
 
