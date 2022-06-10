@@ -43,10 +43,18 @@ pikaur -S punktf
 
 ### Chocolatey
 
-Install [`punktf` using Chocolatey](https://community.chocolatey.org/packages/punktf) on Windows:
+Install [punktf using Chocolatey](https://community.chocolatey.org/packages/punktf) on Windows:
 
 ```sh
 choco install punktf
+```
+
+### Cargo & Crates.io
+
+Install [punktf using cargo and crates.io](https://crates.io/crates/punktf) on Windows and Linux:
+
+```sh
+cargo install punktf
 ```
 
 ## Building from source
@@ -62,7 +70,7 @@ git clone https://github.com/Shemnei/punktf
 cd punktf
 
 # Build (cargo)
-cargo +nightly build --release
+cargo build --release
 ```
 
 ## Usage
