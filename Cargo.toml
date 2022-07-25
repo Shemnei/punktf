@@ -25,7 +25,7 @@ members = [
 
 [dependencies]
 clap = "3.0.0-beta.4"
-color-eyre = { version = "0.5.11", default-features = false }
+color-eyre = { version = "0.6.1", default-features = false }
 env_logger = { version = "0.9.0", default-features = false, features = ["termcolor", "atty"] }
 log = "0.4.14"
 punktf-lib = { version = "1.0.0", path = "crates/punktf-lib", features = ["profile-all"] }
