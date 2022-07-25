@@ -626,7 +626,7 @@ fn parse_var(inner: &str, mut offset: usize) -> Result<Var> {
 
 	// check for envs
 	let envs = if matches!(
-		inner.as_bytes().get(0),
+		inner.as_bytes().first(),
 		Some(b'$') | Some(b'#') | Some(b'&')
 	) {
 		let mut env_set = VarEnvSet::empty();
