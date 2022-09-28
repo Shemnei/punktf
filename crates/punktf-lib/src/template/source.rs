@@ -168,7 +168,7 @@ fn analyze_source(content: &'_ str) -> (Vec<BytePos>, Vec<SpecialWidthChar>, Vec
 			}
 		} else if byte > 127 {
 			// bigger than `DEL`, could be multi-byte char
-			let chr = (&content[i..]).chars().next().expect("A valid char");
+			let chr = content[i..].chars().next().expect("A valid char");
 			char_len = chr.len_utf8();
 
 			let pos = BytePos::from_usize(i);

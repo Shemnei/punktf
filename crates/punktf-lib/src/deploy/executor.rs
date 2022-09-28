@@ -688,7 +688,7 @@ where
 			#[allow(clippy::collapsible_else_if)]
 			if !self.options.dry_run {
 				if let Err(err) =
-					std::fs::copy(&exec_dotfile.source_path(), &exec_dotfile.deploy_path())
+					std::fs::copy(exec_dotfile.source_path(), exec_dotfile.deploy_path())
 				{
 					log::info!("{}: Failed to copy dotfile", exec_dotfile.path().display());
 
@@ -702,7 +702,7 @@ where
 			}
 		} else {
 			let mut content = if exec_dotfile.is_template() {
-				let content = match std::fs::read_to_string(&exec_dotfile.source_path()) {
+				let content = match std::fs::read_to_string(exec_dotfile.source_path()) {
 					Ok(content) => content,
 					Err(err) => {
 						log::info!(
@@ -769,7 +769,7 @@ where
 			} else {
 				// We have some transformers to run on the content and thus can not straight copy the
 				// contents.
-				match std::fs::read_to_string(&exec_dotfile.source_path()) {
+				match std::fs::read_to_string(exec_dotfile.source_path()) {
 					Ok(content) => content,
 					Err(err) => {
 						log::info!("{}: Failed to copy dotfile", exec_dotfile.path().display());
@@ -816,7 +816,7 @@ where
 			}
 
 			if !self.options.dry_run {
-				if let Err(err) = std::fs::write(&exec_dotfile.deploy_path(), content.as_bytes()) {
+				if let Err(err) = std::fs::write(exec_dotfile.deploy_path(), content.as_bytes()) {
 					log::info!("{}: Failed to write content", exec_dotfile.path().display());
 
 					exec_dotfile.add_to_builder(

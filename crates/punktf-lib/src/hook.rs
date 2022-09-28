@@ -117,11 +117,11 @@ impl Hook {
 		cfg_if::cfg_if! {
 			if #[cfg(target_family = "windows")] {
 				let mut cmd = Command::new("cmd");
-				cmd.args(&["/C", &self.0]);
+				cmd.args(["/C", &self.0]);
 				Ok(cmd)
 			} else if #[cfg(target_family = "unix")] {
 				let mut cmd = Command::new("sh");
-				cmd.args(&["-c", &self.0]);
+				cmd.args(["-c", &self.0]);
 				Ok(cmd)
 			} else {
 				Err(std::io::Error::new(std::io::ErrorKind::Other, "Hooks are only supported on Windows and Unix-based systems"))
