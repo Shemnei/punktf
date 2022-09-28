@@ -491,11 +491,7 @@ impl<'a> Parser<'a> {
 	fn parse_if_enclosed_blocks(&mut self) -> Vec<Result<Block, DiagnosticBuilder>> {
 		let mut enclosed_blocks = Vec::new();
 
-		while self
-			.peek_block_hint()
-			.map(|hint| !hint.is_if_subblock())
-			.unwrap_or(true)
-		{
+		while let Some(true) = self.peek_block_hint().map(|hint| !hint.is_if_subblock()) {
 			let next_block = self
 				.next_top_level_block()
 				.expect("Some block to be present after peek");
