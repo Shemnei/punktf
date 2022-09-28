@@ -1,6 +1,6 @@
 [package]
 name = "punktf-lib"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Michael Lohr <michael@lohr.dev>", "Shemnei"]
 edition = "2021"
 description = "Library for punktf, a cross-platform multi-target dotfiles manager"

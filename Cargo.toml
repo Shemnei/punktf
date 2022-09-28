@@ -1,6 +1,6 @@
 [package]
 name = "punktf"
-version = "1.0.1"
+version = "1.0.2"
 authors = ["Michael Lohr <michael@lohr.dev>", "Shemnei"]
 edition = "2021"
 description = "A cross-platform multi-target dotfiles manager"
@@ -28,7 +28,7 @@ clap = "3.0.0-beta.4"
 color-eyre = { version = "0.6.1", default-features = false }
 env_logger = { version = "0.9.0", default-features = false, features = ["termcolor", "atty"] }
 log = "0.4.14"
-punktf-lib = { version = "1.0.0", path = "crates/punktf-lib", features = ["profile-all"] }
+punktf-lib = { version = "1.0.1", path = "crates/punktf-lib", features = ["profile-all"] }
 
 [profile.dev]
 opt-level = 0
