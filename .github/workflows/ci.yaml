@@ -40,7 +40,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --no-run --locked
+          args: --no-run
 
       - name: Test
         uses: actions-rs/cargo@v1
