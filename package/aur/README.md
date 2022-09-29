@@ -13,6 +13,7 @@
 Update the fields `pkgver` and `sha512sums`.
 
 The `sha512sums` must the be sha-512 sum of `Source code.tar.gz`.
+To get the source run `mkpkgu` once.
 
 ```bash
 shasum -a 512 ...
