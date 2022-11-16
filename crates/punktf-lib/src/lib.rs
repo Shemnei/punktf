@@ -296,16 +296,16 @@ mod tests {
 
 	static SETUP_GATE: Once = Once::new();
 
-	pub(crate) fn setup_test_env() {
+	pub fn setup_test_env() {
 		SETUP_GATE.call_once(|| {
-			let _ = env_logger::Builder::from_env(
+			env_logger::Builder::from_env(
 				env_logger::Env::default().default_filter_or(log::Level::Debug.as_str()),
 			)
 			.is_test(true)
 			.try_init()
 			.unwrap();
 
-			let _ = color_eyre::install().unwrap();
+			color_eyre::install().unwrap();
 		})
 	}
 
