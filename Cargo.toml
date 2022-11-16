@@ -17,7 +17,7 @@ thiserror = "1.0.37"
 walkdir = "2.3.2"
 unicode-width = "0.1.10"
 cfg-if = "1.0.0"
-pretty_assertions = "0.7.2"
+pretty_assertions = "1.3.0"
 # Member
 punktf-lib = { version = "1.0.1", path = "crates/punktf-lib", features = ["profile-all"] }
 
