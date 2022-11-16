@@ -43,3 +43,9 @@ todos:
 # Compile timings
 timings: clean
 	cargo +nightly build -p punktf --bin punktf -Z timings --release
+
+# Check for outdated dependencies
+#
+# REQUIRES: cargo-edit
+outdated:
+	cargo upgrade --dry-run
