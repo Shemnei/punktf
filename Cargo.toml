@@ -1,31 +1,24 @@
-[package]
-name = "punktf"
-version = "1.0.2"
+[workspace]
+members = ["crates/*"]
+
+[workspace.package]
 authors = ["Michael Lohr <michael@lohr.dev>", "Shemnei"]
 edition = "2021"
-description = "A cross-platform multi-target dotfiles manager"
-documentation = "https://github.com/Shemnei/punktf"
-homepage = "https://github.com/Shemnei/punktf"
-repository = "https://github.com/Shemnei/punktf"
-license= "MIT OR Apache-2.0"
-exclude = ["/package/", "/Makefile", "/.git/", "/.github/"]
-keywords = ["dotfiles", "cli", "dotfile", "dotfiles-manager"]
-categories = ["command-line-utilities", "config"]
+license = "MIT OR Apache-2.0"
+keywords = ["dotfiles", "cli", "dotfile", "dotfiles-manager", "templating"]
 
-[[bin]]
-path = "crates/punktf-cli/main.rs"
-name = "punktf"
-
-[workspace]
-members = [
-	"crates/punktf-lib"
-]
-
-[dependencies]
+[workspace.dependencies]
 clap = "3.0.0-beta.4"
 color-eyre = { version = "0.6.1", default-features = false }
 env_logger = { version = "0.9.0", default-features = false, features = ["termcolor", "atty"] }
 log = "0.4.14"
+serde = { version = "1.0.126", features = ["derive"] }
+thiserror = "1.0.26"
+walkdir = "2.3.2"
+unicode-width = "0.1.8"
+cfg-if = "1.0.0"
+pretty_assertions = "0.7.2"
+# Member
 punktf-lib = { version = "1.0.1", path = "crates/punktf-lib", features = ["profile-all"] }
 
 [profile.dev]
