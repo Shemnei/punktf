@@ -131,7 +131,7 @@
 mod opt;
 mod util;
 
-use clap::Clap;
+use clap::Parser;
 use color_eyre::eyre::eyre;
 use color_eyre::Result;
 use punktf_lib::deploy::executor::{Executor, ExecutorOptions};
