@@ -28,8 +28,8 @@ walkdir.workspace = true
 unicode-width.workspace = true
 cfg-if.workspace = true
 # Optional dependencies can not be in the workspace dependencies
-serde_json = { version = "1.0.64", optional = true }
-serde_yaml = { version = "0.8.17", optional = true }
+serde_json = { version = "1.0.87", optional = true }
+serde_yaml = { version = "0.8.26", optional = true }
 
 [dev-dependencies]
 pretty_assertions.workspace = true
