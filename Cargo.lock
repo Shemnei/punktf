@@ -316,7 +316,7 @@ dependencies = [
 
 [[package]]
 name = "punktf"
-version = "1.0.2"
+version = "1.0.3"
 dependencies = [
  "clap",
  "color-eyre",
@@ -327,7 +327,7 @@ dependencies = [
 
 [[package]]
 name = "punktf-lib"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "cfg-if",
  "color-eyre",

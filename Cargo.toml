@@ -18,8 +18,8 @@ walkdir = "2.3.2"
 unicode-width = "0.1.10"
 cfg-if = "1.0.0"
 pretty_assertions = "1.3.0"
-# Member
-punktf-lib = { version = "1.0.1", path = "crates/punktf-lib", features = ["profile-all"] }
+# Members
+punktf-lib = { version = "1.0.2", path = "crates/punktf-lib", features = ["profile-all"] }
 
 [profile.dev]
 opt-level = 0
