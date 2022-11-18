@@ -1,35 +1,36 @@
 [package]
 name = "punktf-lib"
-version = "1.0.1"
-authors = ["Michael Lohr <michael@lohr.dev>", "Shemnei"]
-edition = "2021"
+version = "1.0.2"
 description = "Library for punktf, a cross-platform multi-target dotfiles manager"
 documentation = "https://github.com/Shemnei/punktf/tree/main/crates/punktf-lib"
 homepage = "https://github.com/Shemnei/punktf/tree/main/crates/punktf-lib"
 repository = "https://github.com/Shemnei/punktf/tree/main/crates/punktf-lib"
-license= "MIT OR Apache-2.0"
-keywords = ["dotfiles", "cli", "dotfile", "dotfiles-manager", "templating"]
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+keywords.workspace = true
 
 [lib]
 name = "punktf_lib"
 
 [features]
-
+default = ["profile-all"]
 profile-all = ["profile-json", "profile-yaml"]
 profile-json = ["serde_json"]
 profile-yaml = ["serde_yaml"]
 
 [dependencies]
-color-eyre = { version = "0.5.11", default-features = false }
-log = "0.4.14"
-serde = { version = "1.0.126", features = ["derive"] }
-serde_json = { version = "1.0.64", optional = true }
-serde_yaml = { version = "0.8.17", optional = true }
-thiserror = "1.0.26"
-walkdir = "2.3.2"
-unicode-width = "0.1.8"
-cfg-if = "1.0.0"
+color-eyre.workspace = true
+log.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+walkdir.workspace = true
+unicode-width.workspace = true
+cfg-if.workspace = true
+# Optional dependencies can not be in the workspace dependencies
+serde_json = { version = "1.0.87", optional = true }
+serde_yaml = { version = "0.9.14", optional = true }
 
 [dev-dependencies]
-pretty_assertions = "0.7.2"
-env_logger = "0.9.0"
+pretty_assertions.workspace = true
+env_logger.workspace = true
