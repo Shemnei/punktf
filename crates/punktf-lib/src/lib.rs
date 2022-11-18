@@ -202,7 +202,7 @@ impl PunktfSource {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Dotfile {
 	/// Relative path inside the [`PunktfSource::dotfiles`] directory.
-	path: PathBuf,
+	pub path: PathBuf,
 
 	/// Alternative relative name/path for the dotfile. This name will be used
 	/// instead of [`Dotfile::path`] when deploying. If this is set and the
@@ -226,7 +226,7 @@ pub struct Dotfile {
 	/// take precendence over the ones defined in
 	/// [`profile::Profile::variables`].
 	#[serde(skip_serializing_if = "Option::is_none", default)]
-	variables: Option<Variables>,
+	pub variables: Option<Variables>,
 
 	/// Content transform defined for the dotfile. These variables will take
 	/// precendence over the ones defined in

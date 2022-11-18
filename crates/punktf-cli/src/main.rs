@@ -130,12 +130,16 @@
 
 mod opt;
 mod util;
+use std::path::PathBuf;
 
 use clap::Parser;
 use color_eyre::eyre::eyre;
 use color_eyre::Result;
 use punktf_lib::deploy::executor::{Executor, ExecutorOptions};
 use punktf_lib::profile::{resolve_profile, LayeredProfile, Profile};
+use punktf_lib::template::source::Source;
+use punktf_lib::template::Template;
+use punktf_lib::variables::Variables;
 use punktf_lib::PunktfSource;
 
 /// Name of the environment variable which defines the default source path for
@@ -174,96 +178,138 @@ fn main() -> Result<()> {
 
 /// Gets the parsed command line arguments and evaluates them.
 fn handle_commands(opts: opt::Opts) -> Result<()> {
-	let opt::Opts {
-		shared: opt::Shared { source, .. },
-		command,
-	} = opts;
+	let opt::Opts { shared, command } = opts;
 
 	match command {
-		opt::Command::Deploy(opt::Deploy {
-			profile: profile_name,
-			target,
-			dry_run,
-		}) => {
-			let ptf_src = PunktfSource::from_root(source)?;
+		opt::Command::Deploy(c) => handle_command_deploy(shared, c),
+		opt::Command::Cat(c) => handle_command_cat(shared, c),
+	}
+}
 
-			let mut builder = LayeredProfile::build();
+fn setup_profile(
+	profile_name: &str,
+	source: &PunktfSource,
+	target: Option<PathBuf>,
+) -> Result<LayeredProfile> {
+	let mut builder = LayeredProfile::build();
 
-			// Add target cli argument to top
-			let target_cli_profile = Profile {
-				target,
-				..Default::default()
-			};
-			builder.add(String::from("target_cli_argument"), target_cli_profile);
+	// Add target cli argument to top
+	let target_cli_profile = Profile {
+		target,
+		..Default::default()
+	};
+	builder.add(String::from("target_cli_argument"), target_cli_profile);
 
-			resolve_profile(
-				&mut builder,
-				&ptf_src,
-				&profile_name,
-				&mut Default::default(),
-			)?;
+	resolve_profile(&mut builder, source, &profile_name, &mut Default::default())?;
 
-			// Add target environment variable to bottom
-			let target_env_profile = Profile {
-				target: util::get_target_path(),
-				..Default::default()
-			};
-			builder.add(
-				String::from("target_environment_variable"),
-				target_env_profile,
-			);
+	// Add target environment variable to bottom
+	let target_env_profile = Profile {
+		target: util::get_target_path(),
+		..Default::default()
+	};
+	builder.add(
+		String::from("target_environment_variable"),
+		target_env_profile,
+	);
 
-			let profile = builder.finish();
+	Ok(builder.finish())
+}
 
-			// Ensure target is set
-			if profile.target_path().is_none() {
-				panic!(
-					"No target path for the deployment set. Either use the command line argument \
+fn prime_env(source: &PunktfSource, profile: &LayeredProfile, profile_name: &str) {
+	// Setup environment
+	std::env::set_var("PUNKTF_CURRENT_SOURCE", source.root());
+	if let Some(target) = profile.target_path() {
+		std::env::set_var("PUNKTF_CURRENT_TARGET", target);
+	}
+	std::env::set_var("PUNKTF_CURRENT_PROFILE", profile_name);
+}
+
+fn handle_command_deploy(
+	opt::Shared { source, .. }: opt::Shared,
+	opt::Deploy {
+		profile: profile_name,
+		target,
+		dry_run,
+	}: opt::Deploy,
+) -> Result<()> {
+	let ptf_src = PunktfSource::from_root(source)?;
+	let profile = setup_profile(&profile_name, &ptf_src, target)?;
+
+	// Ensure target is set
+	if profile.target_path().is_none() {
+		panic!(
+			"No target path for the deployment set. Either use the command line argument \
 					 `-t/--target`, the profile attribute `target` or the environment variable \
 					 `{}`",
-					PUNKTF_TARGET_ENVVAR
-				)
+			PUNKTF_TARGET_ENVVAR
+		)
+	}
+
+	log::debug!("Profile:\n{:#?}", profile);
+	log::debug!("Source: {}", ptf_src.root().display());
+	log::debug!("Target: {:?}", profile.target_path());
+
+	prime_env(&ptf_src, &profile, &profile_name);
+
+	let options = ExecutorOptions { dry_run };
+
+	let deployer = Executor::new(options, util::ask_user_merge);
+
+	let deployment = deployer.deploy(ptf_src, &profile);
+
+	match deployment {
+		Ok(deployment) => {
+			log::debug!("Deployment:\n{:#?}", deployment);
+			util::log_deployment(&deployment);
+
+			if options.dry_run {
+				log::info!("Note: No files were actually deployed, since dry run mode was enabled");
 			}
 
-			log::debug!("Profile:\n{:#?}", profile);
-			log::debug!("Source: {}", ptf_src.root().display());
-			log::debug!("Target: {:?}", profile.target_path());
-
-			// Setup environment
-			std::env::set_var("PUNKTF_CURRENT_SOURCE", ptf_src.root());
-			if let Some(target) = profile.target_path() {
-				std::env::set_var("PUNKTF_CURRENT_TARGET", target);
-			}
-			std::env::set_var("PUNKTF_CURRENT_PROFILE", profile_name);
-
-			let options = ExecutorOptions { dry_run };
-
-			let deployer = Executor::new(options, util::ask_user_merge);
-
-			let deployment = deployer.deploy(ptf_src, &profile);
-
-			match deployment {
-				Ok(deployment) => {
-					log::debug!("Deployment:\n{:#?}", deployment);
-					util::log_deployment(&deployment);
-
-					if options.dry_run {
-						log::info!(
-							"Note: No files were actually deployed, since dry run mode was enabled"
-						);
-					}
-
-					if deployment.status().is_failed() {
-						Err(eyre!("Some dotfiles failed to deploy"))
-					} else {
-						Ok(())
-					}
-				}
-				Err(err) => {
-					log::error!("Deployment aborted: {}", err);
-					Err(err)
-				}
+			if deployment.status().is_failed() {
+				Err(eyre!("Some dotfiles failed to deploy"))
+			} else {
+				Ok(())
 			}
 		}
+		Err(err) => {
+			log::error!("Deployment aborted: {}", err);
+			Err(err)
+		}
 	}
+}
+
+fn handle_command_cat(
+	opt::Shared { source, .. }: opt::Shared,
+	opt::Cat {
+		profile: profile_name,
+		file,
+	}: opt::Cat,
+) -> Result<()> {
+	let ptf_src = PunktfSource::from_root(source)?;
+	let profile = setup_profile(&profile_name, &ptf_src, None)?;
+
+	log::debug!("Profile:\n{:#?}", profile);
+	log::debug!("Source: {}", ptf_src.root().display());
+	log::debug!("Target: {:?}", profile.target_path());
+
+	prime_env(&ptf_src, &profile, &profile_name);
+
+	let dotfile_vars = if let Some(dotfile) = profile.dotfiles().find(|d| d.path == file) {
+		log::debug!("Dotfile found in profile");
+		dotfile.variables.as_ref()
+	} else {
+		log::warn!("Dotfile not found in profile");
+		None
+	};
+
+	let file = ptf_src.dotfiles().join(file);
+	let content = std::fs::read_to_string(&file)?;
+	let file_source = Source::file(&file, &content);
+	let template = Template::parse(file_source)?;
+	let resolved = template.resolve(Some(profile.variables()), dotfile_vars)?;
+
+	println!("{resolved}");
+
+	Ok(())
 }

@@ -39,6 +39,7 @@ pub struct Shared {
 #[derive(Debug, Subcommand)]
 pub enum Command {
 	Deploy(Deploy),
+	Cat(Cat),
 }
 
 /// Deploys a profile.
@@ -64,4 +65,22 @@ pub struct Deploy {
 	/// be applied when run without this flag.
 	#[arg(short, long)]
 	pub dry_run: bool,
+}
+
+/// Prints the resolved dotfile to stdout.
+#[derive(Debug, Parser)]
+pub struct Cat {
+	/// Name of the profile to deploy.
+	///
+	/// The name should be the file name of the profile without an extension (e.g.
+	/// `profiles/arch.json` should be given as `arch`).
+	#[arg(env = super::PUNKTF_PROFILE_ENVVAR)]
+	pub profile: String,
+
+	/// Alternative deployment target path.
+	///
+	/// This path will take precedence over all other ways to define a deployment
+	/// path.
+	#[arg(short, long)]
+	pub file: PathBuf,
 }
