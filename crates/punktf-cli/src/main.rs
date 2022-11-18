@@ -139,7 +139,6 @@ use punktf_lib::deploy::executor::{Executor, ExecutorOptions};
 use punktf_lib::profile::{resolve_profile, LayeredProfile, Profile};
 use punktf_lib::template::source::Source;
 use punktf_lib::template::Template;
-use punktf_lib::variables::Variables;
 use punktf_lib::PunktfSource;
 
 /// Name of the environment variable which defines the default source path for
@@ -200,7 +199,7 @@ fn setup_profile(
 	};
 	builder.add(String::from("target_cli_argument"), target_cli_profile);
 
-	resolve_profile(&mut builder, source, &profile_name, &mut Default::default())?;
+	resolve_profile(&mut builder, source, profile_name, &mut Default::default())?;
 
 	// Add target environment variable to bottom
 	let target_env_profile = Profile {
