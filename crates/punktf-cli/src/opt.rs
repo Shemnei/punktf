@@ -7,7 +7,7 @@
 
 use std::path::PathBuf;
 
-use clap::{Args, Parser, Subcommand};
+use clap::{ArgGroup, Args, Parser, Subcommand};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
@@ -20,6 +20,13 @@ pub struct Opts {
 }
 
 #[derive(Debug, Args)]
+#[command(
+	group(
+		ArgGroup::new("verobsity")
+			.required(false)
+			.args(["verbose", "quite"]),
+	)
+)]
 pub struct Shared {
 	/// The source directory where the profiles and dotfiles are located.
 	#[arg(short, long, env = super::PUNKTF_SOURCE_ENVVAR)]
@@ -34,6 +41,12 @@ pub struct Shared {
 	///     3 - `Trace`.
 	#[arg(short, long, action = clap::ArgAction::Count)]
 	pub verbose: u8,
+
+	/// Quite mode
+	///
+	/// Will only print errors
+	#[arg(short, long)]
+	pub quite: bool,
 }
 
 #[derive(Debug, Subcommand)]
