@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added new `render` cli command to display resolved template dotfile ([#82](https://github.com/Shemnei/punktf/pull/82))
+- Added new `verify` cli command to verify a given profile ([#82](https://github.com/Shemnei/punktf/pull/82))
+- Added `-q/--quite` cli flag to only display errors ([#82](https://github.com/Shemnei/punktf/pull/82))
+
+### Changed
+
+- **CLI BREAKING** The profile cli argument now must be given with the `-p/--profile` specifier ([#82](https://github.com/Shemnei/punktf/pull/82))
+- Made `punktf-cli` crate a workspace member ([#81](https://github.com/Shemnei/punktf/pull/81))
+- Moved dependencies and some metadata to workspace ([#81](https://github.com/Shemnei/punktf/pull/81))
+
+## [1.0.2] - 2022-09-29
+
+### Added
+
 - Added new if expression syntax `{{@if !{{VARIABLE}}}}` for templates ([#67](https://github.com/Shemnei/punktf/pull/67))
 - Added informational message when running `deploy` with the `dry-run` flag ([#61](https://github.com/Shemnei/punktf/pull/61))
 - Added better error messages when profile parsing fails ([#62](https://github.com/Shemnei/punktf/pull/62))
@@ -43,7 +57,8 @@ Initial release
 
 Initial alpha release
 
-[Unreleased]: https://github.com/Shemnei/punktf/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/Shemnei/punktf/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/Shemnei/punktf/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/Shemnei/punktf/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/Shemnei/punktf/compare/v1.0.0-alpha...v1.0.0
 [1.0.0-alpha]: https://github.com/Shemnei/punktf/releases/tag/v1.0.0-alpha
