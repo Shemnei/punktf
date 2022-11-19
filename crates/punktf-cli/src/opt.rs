@@ -49,7 +49,7 @@ pub struct Deploy {
 	///
 	/// The name should be the file name of the profile without an extension (e.g.
 	/// `profiles/arch.json` should be given as `arch`).
-	#[arg(env = super::PUNKTF_PROFILE_ENVVAR)]
+	#[arg(short, long, env = super::PUNKTF_PROFILE_ENVVAR)]
 	pub profile: String,
 
 	/// Alternative deployment target path.
@@ -77,7 +77,7 @@ pub struct Render {
 	///
 	/// The name should be the file name of the profile without an extension (e.g.
 	/// `profiles/arch.json` should be given as `arch`).
-	#[arg(env = super::PUNKTF_PROFILE_ENVVAR)]
+	#[arg(short, long, env = super::PUNKTF_PROFILE_ENVVAR)]
 	pub profile: String,
 
 	/// Dotfile to render.

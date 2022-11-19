@@ -185,6 +185,7 @@ fn handle_commands(opts: opt::Opts) -> Result<()> {
 	}
 }
 
+/// Reads and creates a profile from a path.
 fn setup_profile(
 	profile_name: &str,
 	source: &PunktfSource,
@@ -214,7 +215,8 @@ fn setup_profile(
 	Ok(builder.finish())
 }
 
-fn prime_env(source: &PunktfSource, profile: &LayeredProfile, profile_name: &str) {
+/// Sets up the environment with PUNKTF specific variables.
+fn setup_env(source: &PunktfSource, profile: &LayeredProfile, profile_name: &str) {
 	// Setup environment
 	std::env::set_var("PUNKTF_CURRENT_SOURCE", source.root());
 	if let Some(target) = profile.target_path() {
@@ -223,6 +225,7 @@ fn prime_env(source: &PunktfSource, profile: &LayeredProfile, profile_name: &str
 	std::env::set_var("PUNKTF_CURRENT_PROFILE", profile_name);
 }
 
+/// Handles the `deploy` command processing.
 fn handle_command_deploy(
 	opt::Shared { source, .. }: opt::Shared,
 	opt::Deploy {
@@ -248,7 +251,7 @@ fn handle_command_deploy(
 	log::debug!("Source: {}", ptf_src.root().display());
 	log::debug!("Target: {:?}", profile.target_path());
 
-	prime_env(&ptf_src, &profile, &profile_name);
+	setup_env(&ptf_src, &profile, &profile_name);
 
 	let options = ExecutorOptions { dry_run };
 
@@ -278,6 +281,7 @@ fn handle_command_deploy(
 	}
 }
 
+/// Handles the `render` command processing.
 fn handle_command_render(
 	opt::Shared { source, .. }: opt::Shared,
 	opt::Render {
@@ -292,7 +296,7 @@ fn handle_command_render(
 	log::debug!("Source: {}", ptf_src.root().display());
 	log::debug!("Target: {:?}", profile.target_path());
 
-	prime_env(&ptf_src, &profile, &profile_name);
+	setup_env(&ptf_src, &profile, &profile_name);
 
 	let dotfile_vars = if let Some(dotfile) = profile.dotfiles().find(|d| d.path == dotfile) {
 		log::debug!("Dotfile found in profile");
@@ -308,7 +312,7 @@ fn handle_command_render(
 	let template = Template::parse(file_source)?;
 	let resolved = template.resolve(Some(profile.variables()), dotfile_vars)?;
 
-	println!("{resolved}");
+	print!("{resolved}");
 
 	Ok(())
 }
