@@ -163,6 +163,7 @@ fn main() -> Result<()> {
 		log::Level::Error
 	} else {
 		match opts.shared.verbose {
+			// Default if no value for `verbose` is given
 			0 => log::Level::Warn,
 			1 => log::Level::Info,
 			2 => log::Level::Debug,
@@ -185,6 +186,7 @@ fn handle_commands(opts: opt::Opts) -> Result<()> {
 	match command {
 		opt::Command::Deploy(c) => handle_command_deploy(shared, c),
 		opt::Command::Render(c) => handle_command_render(shared, c),
+		opt::Command::Verify(c) => handle_command_verify(shared, c),
 	}
 }
 
@@ -265,7 +267,7 @@ fn handle_command_deploy(
 	match deployment {
 		Ok(deployment) => {
 			log::debug!("Deployment:\n{:#?}", deployment);
-			util::log_deployment(&deployment);
+			util::log_deployment(&deployment, true);
 
 			if options.dry_run {
 				log::info!("Note: No files were actually deployed, since dry run mode was enabled");
@@ -318,4 +320,43 @@ fn handle_command_render(
 	print!("{resolved}");
 
 	Ok(())
+}
+
+/// Handles the `deploy` command processing.
+fn handle_command_verify(
+	opt::Shared { source, .. }: opt::Shared,
+	opt::Verify {
+		profile: profile_name,
+	}: opt::Verify,
+) -> Result<()> {
+	let ptf_src = PunktfSource::from_root(source)?;
+	let profile = setup_profile(&profile_name, &ptf_src, None)?;
+
+	log::debug!("Profile:\n{:#?}", profile);
+	log::debug!("Source: {}", ptf_src.root().display());
+	log::debug!("Target: {:?}", profile.target_path());
+
+	setup_env(&ptf_src, &profile, &profile_name);
+
+	let options = ExecutorOptions { dry_run: true };
+
+	let deployer = Executor::new(options, |_, _| Ok(true));
+
+	let deployment = deployer.deploy(ptf_src, &profile);
+
+	match deployment {
+		Ok(deployment) => {
+			util::log_deployment(&deployment, true);
+
+			if deployment.status().is_failed() {
+				Err(eyre!("Some dotfiles failed to verify"))
+			} else {
+				Ok(())
+			}
+		}
+		Err(err) => {
+			log::error!("Verification aborted: {}", err);
+			Err(err)
+		}
+	}
 }

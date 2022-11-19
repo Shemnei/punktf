@@ -55,11 +55,13 @@ pub fn ask_user_merge(source_path: &Path, deploy_path: &Path) -> Result<bool> {
 }
 
 /// Logs the finished state of the
-/// [deployment](`punktf_lib::deploy::deployment::Deployment`) using the crate
-/// [`log`]. This includes amount, state and the names of the deployed
+/// [deployment](`punktf_lib::deploy::deployment::Deployment`). If the `print`
+/// argument is `true` then stdout will be used, otherwise the crate
+/// [`log`] is used.
+/// This includes amount, state and the names of the deployed
 /// [dotfiles](`punktf_lib::Dotfile`) and also the total time the deployment
 /// took to execute.
-pub fn log_deployment(deployment: &Deployment) {
+pub fn log_deployment(deployment: &Deployment, print: bool) {
 	let mut out = String::new();
 
 	let mut files_success = 0;
@@ -78,7 +80,12 @@ pub fn log_deployment(deployment: &Deployment) {
 	}
 
 	if !out.is_empty() {
-		log::info!("{}", out);
+		if print {
+			println!("{}", out);
+		} else {
+			log::info!("{}", out);
+		}
+
 		out.clear();
 	}
 
@@ -106,7 +113,12 @@ pub fn log_deployment(deployment: &Deployment) {
 	}
 
 	if !out.is_empty() {
-		log::warn!("{}", out);
+		if print {
+			println!("{}", out);
+		} else {
+			log::warn!("{}", out);
+		}
+
 		out.clear();
 	}
 
@@ -134,7 +146,12 @@ pub fn log_deployment(deployment: &Deployment) {
 	}
 
 	if !out.is_empty() {
-		log::error!("{}", out);
+		if print {
+			println!("{}", out);
+		} else {
+			log::error!("{}", out);
+		}
+
 		out.clear();
 	}
 
@@ -159,5 +176,9 @@ pub fn log_deployment(deployment: &Deployment) {
 	write!(out, "\nFiles (failed)  : {}", files_failed).expect("Write to String failed");
 	write!(out, "\nFiles (total)   : {}", files_total).expect("Write to String failed");
 
-	log::info!("{}", out);
+	if print {
+		println!("{}", out);
+	} else {
+		log::info!("{}", out);
+	}
 }
