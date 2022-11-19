@@ -12,10 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added new `render` cli command to display resolved template dotfile ([#82](https://github.com/Shemnei/punktf/pull/82))
 - Added new `verify` cli command to verify a given profile ([#82](https://github.com/Shemnei/punktf/pull/82))
 - Added `-q/--quite` cli flag to only display errors ([#82](https://github.com/Shemnei/punktf/pull/82))
+- Added `rust-toolchain.toml` file to pin rust version for better reproducible builds ([#81](https://github.com/Shemnei/punktf/pull/81))
 
 ### Changed
 
-- **CLI BREAKING** The profile cli argument now must be given with the `-p/--profile` specifier ([#82](https://github.com/Shemnei/punktf/pull/82))
+- **BREAKING** The profile cli argument now must be given with the `-p/--profile` specifier ([#82](https://github.com/Shemnei/punktf/pull/82))
 - Made `punktf-cli` crate a workspace member ([#81](https://github.com/Shemnei/punktf/pull/81))
 - Moved dependencies and some metadata to workspace ([#81](https://github.com/Shemnei/punktf/pull/81))
 
