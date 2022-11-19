@@ -159,12 +159,15 @@ fn main() -> Result<()> {
 
 	let opts = opt::Opts::parse();
 
-	let log_level = match opts.shared.verbose {
-		// Default if no value for `verbose` is given
-		0 => log::Level::Warn,
-		1 => log::Level::Info,
-		2 => log::Level::Debug,
-		_ => log::Level::Trace,
+	let log_level = if opts.shared.quite {
+		log::Level::Error
+	} else {
+		match opts.shared.verbose {
+			0 => log::Level::Warn,
+			1 => log::Level::Info,
+			2 => log::Level::Debug,
+			_ => log::Level::Trace,
+		}
 	};
 
 	env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level.as_str()))
