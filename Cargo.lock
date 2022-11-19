@@ -323,6 +323,9 @@ dependencies = [
  "env_logger",
  "log",
  "punktf-lib",
+ "serde",
+ "serde_json",
+ "serde_yaml",
 ]
 
 [[package]]

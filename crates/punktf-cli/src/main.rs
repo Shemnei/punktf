@@ -130,11 +130,13 @@
 
 mod opt;
 mod util;
-use std::path::PathBuf;
+use std::fs::{File, OpenOptions};
+use std::path::{Path, PathBuf};
 
 use clap::Parser;
 use color_eyre::eyre::eyre;
 use color_eyre::Result;
+use punktf_lib::deploy::deployment::Deployment;
 use punktf_lib::deploy::executor::{Executor, ExecutorOptions};
 use punktf_lib::profile::{resolve_profile, LayeredProfile, Profile};
 use punktf_lib::template::source::Source;
@@ -237,6 +239,7 @@ fn handle_command_deploy(
 		profile: profile_name,
 		target,
 		dry_run,
+		output,
 	}: opt::Deploy,
 ) -> Result<()> {
 	let ptf_src = PunktfSource::from_root(source)?;
@@ -268,6 +271,8 @@ fn handle_command_deploy(
 		Ok(deployment) => {
 			log::debug!("Deployment:\n{:#?}", deployment);
 			util::log_deployment(&deployment, true);
+
+			handle_output(output, &deployment);
 
 			if options.dry_run {
 				log::info!("Note: No files were actually deployed, since dry run mode was enabled");
@@ -327,6 +332,7 @@ fn handle_command_verify(
 	opt::Shared { source, .. }: opt::Shared,
 	opt::Verify {
 		profile: profile_name,
+		output,
 	}: opt::Verify,
 ) -> Result<()> {
 	let ptf_src = PunktfSource::from_root(source)?;
@@ -348,6 +354,8 @@ fn handle_command_verify(
 		Ok(deployment) => {
 			util::log_deployment(&deployment, true);
 
+			handle_output(output, &deployment);
+
 			if deployment.status().is_failed() {
 				Err(eyre!("Some dotfiles failed to verify"))
 			} else {
@@ -357,6 +365,56 @@ fn handle_command_verify(
 		Err(err) => {
 			log::error!("Verification aborted: {}", err);
 			Err(err)
+		}
+	}
+}
+
+/// Handles the writting of the deployment status to output files/formats.
+fn handle_output(
+	opt::OutputShared {
+		json_output,
+		yaml_output,
+	}: opt::OutputShared,
+	deployment: &Deployment,
+) {
+	/// Creates a new file. Fails if the file exists.
+	///
+	/// TODO: replace with `std/fs/struct.File.html#method.create_new` once stable.
+	fn create_file(path: &Path) -> std::io::Result<File> {
+		OpenOptions::new().create_new(true).write(true).open(path)
+	}
+
+	'json: {
+		if let Some(json_path) = json_output {
+			let mut file = match create_file(&json_path) {
+				Ok(file) => file,
+				Err(err) => {
+					log::error!("Failed to create json output file: {err}");
+					break 'json;
+				}
+			};
+
+			if let Err(err) = serde_json::to_writer_pretty(&mut file, deployment) {
+				log::error!("Failed to write deployment status to json output file: {err}");
+				break 'json;
+			}
+		}
+	}
+
+	'yaml: {
+		if let Some(yaml_path) = yaml_output {
+			let mut file = match create_file(&yaml_path) {
+				Ok(file) => file,
+				Err(err) => {
+					log::error!("Failed to create yaml output file: {err}");
+					break 'yaml;
+				}
+			};
+
+			if let Err(err) = serde_yaml::to_writer(&mut file, deployment) {
+				log::error!("Failed to write deployment status to yaml output file: {err}");
+				break 'yaml;
+			}
 		}
 	}
 }

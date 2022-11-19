@@ -49,6 +49,17 @@ pub struct Shared {
 	pub quite: bool,
 }
 
+#[derive(Debug, Args)]
+pub struct OutputShared {
+	/// Writes the deployment status as json to the given path.
+	#[arg(long)]
+	pub json_output: Option<PathBuf>,
+
+	/// Writes the deployment status as yaml to the given path.
+	#[arg(long)]
+	pub yaml_output: Option<PathBuf>,
+}
+
 #[derive(Debug, Subcommand)]
 pub enum Command {
 	Deploy(Deploy),
@@ -79,6 +90,9 @@ pub struct Deploy {
 	/// be applied when run without this flag.
 	#[arg(short, long)]
 	pub dry_run: bool,
+
+	#[command(flatten)]
+	pub output: OutputShared,
 }
 
 /// Prints the resolved dotfile to stdout.
@@ -112,4 +126,7 @@ pub struct Verify {
 	/// `profiles/arch.json` should be given as `arch`).
 	#[arg(short, long, env = super::PUNKTF_PROFILE_ENVVAR)]
 	pub profile: String,
+
+	#[command(flatten)]
+	pub output: OutputShared,
 }

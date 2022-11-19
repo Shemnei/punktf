@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added new `verify` cli command to verify a given profile ([#82](https://github.com/Shemnei/punktf/pull/82))
 - Added `-q/--quite` cli flag to only display errors ([#82](https://github.com/Shemnei/punktf/pull/82))
 - Added `rust-toolchain.toml` file to pin rust version for better reproducible builds ([#81](https://github.com/Shemnei/punktf/pull/81))
+- Added `--json-output/--yaml-output` cli argument to write the deployment status to files ([#82](https://github.com/Shemnei/punktf/pull/82))
 
 ### Changed
 
