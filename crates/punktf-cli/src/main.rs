@@ -181,7 +181,7 @@ fn handle_commands(opts: opt::Opts) -> Result<()> {
 
 	match command {
 		opt::Command::Deploy(c) => handle_command_deploy(shared, c),
-		opt::Command::Cat(c) => handle_command_cat(shared, c),
+		opt::Command::Render(c) => handle_command_render(shared, c),
 	}
 }
 
@@ -278,12 +278,12 @@ fn handle_command_deploy(
 	}
 }
 
-fn handle_command_cat(
+fn handle_command_render(
 	opt::Shared { source, .. }: opt::Shared,
-	opt::Cat {
+	opt::Render {
 		profile: profile_name,
-		file,
-	}: opt::Cat,
+		dotfile,
+	}: opt::Render,
 ) -> Result<()> {
 	let ptf_src = PunktfSource::from_root(source)?;
 	let profile = setup_profile(&profile_name, &ptf_src, None)?;
@@ -294,7 +294,7 @@ fn handle_command_cat(
 
 	prime_env(&ptf_src, &profile, &profile_name);
 
-	let dotfile_vars = if let Some(dotfile) = profile.dotfiles().find(|d| d.path == file) {
+	let dotfile_vars = if let Some(dotfile) = profile.dotfiles().find(|d| d.path == dotfile) {
 		log::debug!("Dotfile found in profile");
 		dotfile.variables.as_ref()
 	} else {
@@ -302,7 +302,7 @@ fn handle_command_cat(
 		None
 	};
 
-	let file = ptf_src.dotfiles().join(file);
+	let file = ptf_src.dotfiles().join(dotfile);
 	let content = std::fs::read_to_string(&file)?;
 	let file_source = Source::file(&file, &content);
 	let template = Template::parse(file_source)?;

@@ -39,7 +39,7 @@ pub struct Shared {
 #[derive(Debug, Subcommand)]
 pub enum Command {
 	Deploy(Deploy),
-	Cat(Cat),
+	Render(Render),
 }
 
 /// Deploys a profile.
@@ -68,8 +68,11 @@ pub struct Deploy {
 }
 
 /// Prints the resolved dotfile to stdout.
+///
+/// This is mainly intended for template dotifles to see the what the real content
+/// would look like once it is deployed.
 #[derive(Debug, Parser)]
-pub struct Cat {
+pub struct Render {
 	/// Name of the profile to deploy.
 	///
 	/// The name should be the file name of the profile without an extension (e.g.
@@ -77,10 +80,8 @@ pub struct Cat {
 	#[arg(env = super::PUNKTF_PROFILE_ENVVAR)]
 	pub profile: String,
 
-	/// Alternative deployment target path.
+	/// Dotfile to render.
 	///
-	/// This path will take precedence over all other ways to define a deployment
-	/// path.
-	#[arg(short, long)]
-	pub file: PathBuf,
+	/// Relative path starting from the `dotfiles` directory.
+	pub dotfile: PathBuf,
 }
