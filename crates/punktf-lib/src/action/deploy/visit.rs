@@ -11,43 +11,31 @@ use std::path::Path;
 
 use crate::profile::visit::{ResolvingVisitor, TemplateVisitor};
 
-macro_rules! add_to_builder {
-	($item:ty) => {
-		impl $item {
-			fn add_to_builder<S: Into<DotfileStatus>>(
-				&self,
-				builder: &mut DeploymentBuilder,
-				status: S,
-			) {
-				let status = status.into();
+impl<'a> DeployableDotfile<'a> {
+	fn add_to_builder<S: Into<DotfileStatus>>(&self, builder: &mut DeploymentBuilder, status: S) {
+		let status = status.into();
 
-				let resolved_target_path = self
-					.target_path
-					.canonicalize()
-					.unwrap_or_else(|_| self.target_path.clone());
+		let resolved_target_path = self
+			.target_path
+			.canonicalize()
+			.unwrap_or_else(|_| self.target_path.clone());
 
-				match &self.kind {
-					Kind::Root(dotfile) => {
-						builder.add_dotfile(resolved_target_path, (*dotfile).clone(), status)
-					}
-					Kind::Child {
-						root_target_path, ..
-					} => {
-						let resolved_root_target_path = root_target_path
-							.canonicalize()
-							.unwrap_or_else(|_| root_target_path.clone());
-
-						builder.add_child(resolved_target_path, resolved_root_target_path, status)
-					}
-				};
+		match &self.kind {
+			Kind::Root(dotfile) => {
+				builder.add_dotfile(resolved_target_path, (*dotfile).clone(), status)
 			}
-		}
-	};
-}
+			Kind::Child {
+				root_target_path, ..
+			} => {
+				let resolved_root_target_path = root_target_path
+					.canonicalize()
+					.unwrap_or_else(|_| root_target_path.clone());
 
-add_to_builder!(File<'_>);
-add_to_builder!(Directory<'_>);
-add_to_builder!(Rejected<'_>);
+				builder.add_child(resolved_target_path, resolved_root_target_path, status)
+			}
+		};
+	}
+}
 
 /// Configuration options for the [`DeployingVisitor`].
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -156,28 +144,14 @@ where
 		this.into_deployment()
 	}
 
-	fn pre_deploy_checks(
-		&mut self,
-		source: &PunktfSource,
-		file: &File<'_>,
-	) -> color_eyre::Result<bool> {
-		let relative_source_path = file
-			.source_path
-			.strip_prefix(&source.dotfiles)
-			.with_context(|| {
-				format!(
-					"{}: Failed to resolve relative source path",
-					file.source_path.display(),
-				)
-			})?;
-
+	fn pre_deploy_checks(&mut self, file: &File<'_>) -> color_eyre::Result<bool> {
 		let other_priority = self.builder.get_priority(&file.target_path);
 
 		match (file.dotfile().priority.as_ref(), other_priority) {
 			(Some(a), Some(b)) if b > a => {
 				log::info!(
 					"{}: Dotfile with higher priority is already deployed at {}",
-					relative_source_path.display(),
+					file.relative_source_path.display(),
 					file.target_path.display()
 				);
 
@@ -196,7 +170,7 @@ where
 
 			log::debug!(
 				"{}: Dotfile already exists at {}",
-				relative_source_path.display(),
+				file.relative_source_path.display(),
 				file.target_path.display()
 			);
 
@@ -204,13 +178,13 @@ where
 				MergeMode::Overwrite => {
 					log::info!(
 						"{}: Overwritting existing dotfile",
-						relative_source_path.display()
+						file.relative_source_path.display()
 					)
 				}
 				MergeMode::Keep => {
 					log::info!(
 						"{}: Skipping existing dotfile",
-						relative_source_path.display()
+						file.relative_source_path.display()
 					);
 
 					file.add_to_builder(
@@ -224,7 +198,7 @@ where
 					return Ok(false);
 				}
 				MergeMode::Ask => {
-					log::info!("{}: Asking for action", relative_source_path.display());
+					log::info!("{}: Asking for action", file.relative_source_path.display());
 
 					let should_deploy =
 						match (self.merge_ask_fn)(&file.source_path, file.target_path.borrow())
@@ -234,7 +208,7 @@ where
 							Err(err) => {
 								log::error!(
 									"{}: Failed to execute ask function ({})",
-									relative_source_path.display(),
+									file.relative_source_path.display(),
 									err
 								);
 
@@ -251,7 +225,7 @@ where
 						};
 
 					if !should_deploy {
-						log::info!("{}: Merge was denied", relative_source_path.display());
+						log::info!("{}: Merge was denied", file.relative_source_path.display());
 
 						file.add_to_builder(
 							&mut self.builder,
@@ -273,7 +247,7 @@ where
 					Err(err) => {
 						log::error!(
 							"{}: Failed to create directory ({})",
-							relative_source_path.display(),
+							file.relative_source_path.display(),
 							err
 						);
 
@@ -298,7 +272,6 @@ where
 		&mut self,
 		profile: &LayeredProfile,
 		file: &File<'_>,
-		relative_source_path: &Path,
 		content: String,
 	) -> color_eyre::Result<String> {
 		let mut content = content;
@@ -316,7 +289,7 @@ where
 				Err(err) => {
 					log::info!(
 						"{}: Failed to apply content transformer `{}`: `{}`",
-						relative_source_path.display(),
+						file.relative_source_path.display(),
 						transformer,
 						err
 					);
@@ -344,25 +317,15 @@ where
 {
 	fn accept_file<'a>(
 		&mut self,
-		source: &PunktfSource,
+		_: &PunktfSource,
 		profile: &LayeredProfile,
 		file: &File<'a>,
 	) -> Result {
-		let cont = self.pre_deploy_checks(source, file)?;
+		let cont = self.pre_deploy_checks(file)?;
 
 		if !cont {
 			return Ok(());
 		}
-
-		let relative_source_path = file
-			.source_path
-			.strip_prefix(&source.dotfiles)
-			.with_context(|| {
-				format!(
-					"{}: Failed to resolve relative source path",
-					file.source_path.display(),
-				)
-			})?;
 
 		// Fast path
 		if profile.transformers_len() == 0 && file.dotfile().transformers.is_empty() {
@@ -373,7 +336,10 @@ where
 			#[allow(clippy::collapsible_else_if)]
 			if !self.options.dry_run {
 				if let Err(err) = std::fs::copy(&file.source_path, &file.target_path) {
-					log::info!("{}: Failed to copy dotfile", relative_source_path.display());
+					log::info!(
+						"{}: Failed to copy dotfile",
+						file.relative_source_path.display()
+					);
 
 					file.add_to_builder(
 						&mut self.builder,
@@ -387,7 +353,10 @@ where
 			let content = match std::fs::read_to_string(&file.source_path) {
 				Ok(content) => content,
 				Err(err) => {
-					log::info!("{}: Failed to read dotfile", relative_source_path.display());
+					log::info!(
+						"{}: Failed to read dotfile",
+						file.relative_source_path.display()
+					);
 
 					file.add_to_builder(
 						&mut self.builder,
@@ -398,7 +367,7 @@ where
 				}
 			};
 
-			let Ok(content) = self.transform_content(profile, file, relative_source_path, content) else {
+			let Ok(content) = self.transform_content(profile, file, content) else {
 				// Error is already recorded
 				return Ok(());
 			};
@@ -407,7 +376,7 @@ where
 				if let Err(err) = std::fs::write(&file.target_path, content.as_bytes()) {
 					log::info!(
 						"{}: Failed to write content",
-						relative_source_path.display()
+						file.relative_source_path.display()
 					);
 
 					file.add_to_builder(
@@ -422,7 +391,7 @@ where
 
 		log::info!(
 			"{}: Dotfile successfully deployed",
-			relative_source_path.display()
+			file.relative_source_path.display()
 		);
 
 		file.add_to_builder(&mut self.builder, DotfileStatus::Success);
@@ -432,20 +401,10 @@ where
 
 	fn accept_directory<'a>(
 		&mut self,
-		source: &PunktfSource,
-		profile: &LayeredProfile,
+		_: &PunktfSource,
+		_: &LayeredProfile,
 		directory: &Directory<'a>,
 	) -> Result {
-		let relative_source_path = directory
-			.source_path
-			.strip_prefix(&source.dotfiles)
-			.with_context(|| {
-				format!(
-					"{}: Failed to resolve relative source path",
-					directory.source_path.display(),
-				)
-			})?;
-
 		let target_path = directory
 			.target_path
 			.canonicalize()
@@ -455,7 +414,7 @@ where
 			if let Err(err) = std::fs::create_dir_all(target_path) {
 				log::error!(
 					"{}: Failed to create directory ({})",
-					relative_source_path.display(),
+					directory.relative_source_path.display(),
 					err
 				);
 
@@ -463,25 +422,24 @@ where
 					&mut self.builder,
 					DotfileStatus::failed(format!("Failed to create directory: {}", err)),
 				);
+			} else {
+				directory.add_to_builder(&mut self.builder, DotfileStatus::success());
 			}
+		} else {
+			directory.add_to_builder(&mut self.builder, DotfileStatus::success());
 		}
 
 		Ok(())
 	}
 
-	fn accept_link(
-		&mut self,
-		source: &PunktfSource,
-		profile: &LayeredProfile,
-		symlink: &Symlink,
-	) -> Result {
+	fn accept_link(&mut self, _: &PunktfSource, _: &LayeredProfile, _: &Symlink) -> Result {
 		todo!()
 	}
 
 	fn accept_rejected<'a>(
 		&mut self,
-		source: &PunktfSource,
-		profile: &LayeredProfile,
+		_: &PunktfSource,
+		_: &LayeredProfile,
 		rejected: &Rejected<'a>,
 	) -> Result {
 		rejected.add_to_builder(
@@ -494,8 +452,8 @@ where
 
 	fn accept_errored<'a>(
 		&mut self,
-		source: &PunktfSource,
-		profile: &LayeredProfile,
+		_: &PunktfSource,
+		_: &LayeredProfile,
 		errored: &Errored<'a>,
 	) -> Result {
 		todo!("ERRORED: {:#?}", errored);
@@ -508,33 +466,26 @@ where
 {
 	fn accept_template<'a>(
 		&mut self,
-		source: &PunktfSource,
+		_: &PunktfSource,
 		profile: &LayeredProfile,
 		file: &File<'a>,
 		// Returns a function to resolve the content to make the resolving lazy
 		// for upstream visitors.
 		resolve_content: impl FnOnce(&str) -> color_eyre::Result<String>,
 	) -> Result {
-		let cont = self.pre_deploy_checks(source, file)?;
+		let cont = self.pre_deploy_checks(file)?;
 
 		if !cont {
 			return Ok(());
 		}
 
-		let relative_source_path = file
-			.source_path
-			.strip_prefix(&source.dotfiles)
-			.with_context(|| {
-				format!(
-					"{}: Failed to resolve relative source path",
-					file.source_path.display(),
-				)
-			})?;
-
 		let content = match std::fs::read_to_string(&file.source_path) {
 			Ok(content) => content,
 			Err(err) => {
-				log::info!("{}: Failed read dotfile", relative_source_path.display());
+				log::info!(
+					"{}: Failed read dotfile",
+					file.relative_source_path.display()
+				);
 
 				file.add_to_builder(
 					&mut self.builder,
@@ -550,7 +501,7 @@ where
 			Err(err) => {
 				log::info!(
 					"{}: Failed to resolve template",
-					relative_source_path.display()
+					file.relative_source_path.display()
 				);
 
 				file.add_to_builder(
@@ -562,7 +513,7 @@ where
 			}
 		};
 
-		let Ok(content) = self.transform_content(profile, file, relative_source_path, content) else {
+		let Ok(content) = self.transform_content(profile, file, content) else {
 				// Error is already recorded
 				return Ok(());
 			};
@@ -571,7 +522,7 @@ where
 			if let Err(err) = std::fs::write(&file.target_path, content.as_bytes()) {
 				log::info!(
 					"{}: Failed to write content",
-					relative_source_path.display()
+					file.relative_source_path.display()
 				);
 
 				file.add_to_builder(
@@ -585,7 +536,7 @@ where
 
 		log::info!(
 			"{}: Dotfile successfully deployed",
-			relative_source_path.display()
+			file.relative_source_path.display()
 		);
 
 		file.add_to_builder(&mut self.builder, DotfileStatus::Success);

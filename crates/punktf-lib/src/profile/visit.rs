@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use crate::profile::LayeredProfile;
@@ -98,7 +99,7 @@ pub enum Kind<'a> {
 }
 
 impl<'a> Kind<'a> {
-	fn from_paths<'b>(paths: &'b Paths, dotfile: &'a Dotfile) -> Self {
+	fn from_paths(paths: Paths, dotfile: &'a Dotfile) -> Self {
 		if paths.is_root() {
 			Self::Root(dotfile)
 		} else {
@@ -119,28 +120,57 @@ impl<'a> Kind<'a> {
 }
 
 #[derive(Debug)]
-pub struct File<'a> {
+pub struct DeployableDotfile<'a> {
+	pub relative_source_path: PathBuf,
 	pub source_path: PathBuf,
 	pub target_path: PathBuf,
 	pub kind: Kind<'a>,
 }
 
-impl File<'_> {
+impl<'a> DeployableDotfile<'a> {
+	fn new(source: &PunktfSource, paths: Paths, dotfile: &'a Dotfile) -> Self {
+		let source_path = paths.child_source_path().into_owned();
+		let target_path = paths.child_target_path().into_owned();
+		let relative_source_path = source_path
+			.strip_prefix(&source.dotfiles)
+			.expect("Dotfile is not in the dotfile root")
+			.to_path_buf();
+		let kind = Kind::from_paths(paths, dotfile);
+
+		Self {
+			relative_source_path,
+			source_path,
+			target_path,
+			kind,
+		}
+	}
+}
+
+impl DeployableDotfile<'_> {
 	pub fn dotfile(&self) -> &Dotfile {
 		self.kind.dotfile()
 	}
 }
 
 #[derive(Debug)]
-pub struct Directory<'a> {
-	pub source_path: PathBuf,
-	pub target_path: PathBuf,
-	pub kind: Kind<'a>,
+pub struct File<'a>(DeployableDotfile<'a>);
+
+impl<'a> Deref for File<'a> {
+	type Target = DeployableDotfile<'a>;
+
+	fn deref(&self) -> &Self::Target {
+		&self.0
+	}
 }
 
-impl Directory<'_> {
-	pub fn dotfile(&self) -> &Dotfile {
-		self.kind.dotfile()
+#[derive(Debug)]
+pub struct Directory<'a>(DeployableDotfile<'a>);
+
+impl<'a> Deref for Directory<'a> {
+	type Target = DeployableDotfile<'a>;
+
+	fn deref(&self) -> &Self::Target {
+		&self.0
 	}
 }
 
@@ -152,15 +182,15 @@ pub struct Symlink {
 
 #[derive(Debug)]
 pub struct Rejected<'a> {
-	pub source_path: PathBuf,
-	pub target_path: PathBuf,
-	pub kind: Kind<'a>,
+	pub dotfile: DeployableDotfile<'a>,
 	pub reason: Cow<'static, str>,
 }
 
-impl Rejected<'_> {
-	pub fn dotfile(&self) -> &Dotfile {
-		self.kind.dotfile()
+impl<'a> Deref for Rejected<'a> {
+	type Target = DeployableDotfile<'a>;
+
+	fn deref(&self) -> &Self::Target {
+		&self.dotfile
 	}
 }
 
@@ -294,6 +324,10 @@ impl Walker {
 	) -> Result {
 		let source_path = paths.child_source_path();
 
+		if !self.accept(&source_path) {
+			return self.walk_rejected(source, visitor, paths, dotfile);
+		}
+
 		if source_path.is_file() {
 			self.walk_file(source, visitor, paths, dotfile)
 		} else if source_path.is_dir() {
@@ -311,18 +345,7 @@ impl Walker {
 		paths: Paths,
 		dotfile: &Dotfile,
 	) -> Result {
-		let source_path = paths.child_source_path();
-		let target_path = paths.child_target_path();
-
-		if !self.accept(&source_path) {
-			return self.walk_rejected(source, visitor, paths, dotfile);
-		}
-
-		let file = File {
-			source_path: source_path.into_owned(),
-			target_path: target_path.into_owned(),
-			kind: Kind::from_paths(&paths, dotfile),
-		};
+		let file = File(DeployableDotfile::new(source, paths, dotfile));
 
 		visitor.accept_file(source, &self.profile, &file)
 	}
@@ -335,17 +358,8 @@ impl Walker {
 		dotfile: &Dotfile,
 	) -> Result {
 		let source_path = paths.child_source_path();
-		let target_path = paths.child_target_path();
 
-		if !self.accept(&source_path) {
-			return self.walk_rejected(source, visitor, paths, dotfile);
-		}
-
-		let directory = Directory {
-			source_path: source_path.to_path_buf(),
-			target_path: target_path.to_path_buf(),
-			kind: Kind::from_paths(&paths, dotfile),
-		};
+		let directory = Directory(DeployableDotfile::new(source, paths.clone(), dotfile));
 
 		visitor.accept_directory(source, &self.profile, &directory)?;
 
@@ -396,13 +410,8 @@ impl Walker {
 		paths: Paths,
 		dotfile: &Dotfile,
 	) -> Result {
-		let source_path = paths.child_source_path();
-		let target_path = paths.child_target_path();
-
 		let rejected = Rejected {
-			source_path: source_path.into_owned(),
-			target_path: target_path.into_owned(),
-			kind: Kind::from_paths(&paths, dotfile),
+			dotfile: DeployableDotfile::new(source, paths, dotfile),
 			reason: Cow::Borrowed("Rejected by filter"),
 		};
 
@@ -425,7 +434,7 @@ impl Walker {
 			Errored {
 				source_path: Some(source_path.into_owned()),
 				target_path: Some(target_path.into_owned()),
-				kind: Kind::from_paths(&paths, dotfile),
+				kind: Kind::from_paths(paths, dotfile),
 				error,
 				context,
 			}
