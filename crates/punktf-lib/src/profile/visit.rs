@@ -66,7 +66,7 @@ pub struct Walker {
 }
 
 impl Walker {
-	pub fn new(profile: LayeredProfile) -> Self {
+	pub const fn new(profile: LayeredProfile) -> Self {
 		Self { profile }
 	}
 
@@ -266,7 +266,7 @@ impl Walker {
 		visitor.accept_errored(&self.profile, &errored)
 	}
 
-	fn resolve_path(&self, path: PathBuf) -> std::io::Result<PathBuf> {
+	const fn resolve_path(&self, path: PathBuf) -> std::io::Result<PathBuf> {
 		// TODO: Replace envs/~
 		Ok(path)
 	}
@@ -283,7 +283,7 @@ impl Walker {
 		let path = dotfile
 			.overwrite_target
 			.as_deref()
-			.unwrap_or(self.profile.target_path().expect("No target path set"))
+			.unwrap_or_else(|| self.profile.target_path().expect("No target path set"))
 			.join(dotfile.rename.as_ref().unwrap_or(&dotfile.path));
 
 		// NOTE: Do not call canonicalize as the path migh not exist which would cause an error.
@@ -291,7 +291,7 @@ impl Walker {
 		self.resolve_path(path)
 	}
 
-	fn accept(&self, path: &Path) -> bool {
+	const fn accept(&self, _path: &Path) -> bool {
 		// TODO: Apply filter
 		true
 	}
