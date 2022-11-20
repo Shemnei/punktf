@@ -309,7 +309,7 @@ impl DeploymentBuilder {
 	/// This function only evaluates a dotfile with [`DotfileStatus::Success`].
 	pub fn get_priority<P: AsRef<Path>>(&self, path: P) -> Option<&Priority> {
 		self.get_deployed_dotfile(path)
-			.map_or(None, |d| d.priority.as_ref())
+			.and_then(|d| d.priority.as_ref())
 	}
 
 	/// Checks if a dotfile was already successfully deployed at `path`.

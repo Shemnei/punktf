@@ -17,7 +17,7 @@ struct PathLink {
 }
 
 impl PathLink {
-	fn new(source: PathBuf, target: PathBuf) -> Self {
+	const fn new(source: PathBuf, target: PathBuf) -> Self {
 		Self { source, target }
 	}
 
@@ -36,7 +36,7 @@ struct Paths {
 }
 
 impl Paths {
-	fn new(root_source: PathBuf, root_target: PathBuf) -> Self {
+	const fn new(root_source: PathBuf, root_target: PathBuf) -> Self {
 		Self {
 			root: PathLink::new(root_source, root_target),
 			child: None,
@@ -59,8 +59,12 @@ impl Paths {
 		}
 	}
 
-	pub fn is_root(&self) -> bool {
+	pub const fn is_root(&self) -> bool {
 		self.child.is_none()
+	}
+
+	pub const fn is_child(&self) -> bool {
+		self.child.is_some()
 	}
 
 	pub fn root_source_path(&self) -> &Path {
@@ -111,7 +115,7 @@ impl<'a> Kind<'a> {
 		}
 	}
 
-	pub fn dotfile(&self) -> &Dotfile {
+	pub const fn dotfile(&self) -> &Dotfile {
 		match self {
 			Self::Root(dotfile) => dotfile,
 			Self::Child { root: dotfile, .. } => dotfile,
@@ -147,7 +151,7 @@ impl<'a> DeployableDotfile<'a> {
 }
 
 impl DeployableDotfile<'_> {
-	pub fn dotfile(&self) -> &Dotfile {
+	pub const fn dotfile(&self) -> &Dotfile {
 		self.kind.dotfile()
 	}
 }
@@ -204,7 +208,7 @@ pub struct Errored<'a> {
 }
 
 impl Errored<'_> {
-	pub fn dotfile(&self) -> &Dotfile {
+	pub const fn dotfile(&self) -> &Dotfile {
 		self.kind.dotfile()
 	}
 }
@@ -510,10 +514,11 @@ impl<V> ResolvingVisitor<V>
 where
 	V: TemplateVisitor,
 {
-	pub fn new(visitor: V) -> Self {
+	pub const fn new(visitor: V) -> Self {
 		Self { visitor }
 	}
 
+	#[allow(clippy::missing_const_for_fn)]
 	pub fn into_inner(self) -> V {
 		self.visitor
 	}

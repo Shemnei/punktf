@@ -34,12 +34,12 @@
 //! - [Templating engine](`template`)
 //! - [Hooks](`hook`)
 
+pub mod action;
 pub mod hook;
 pub mod profile;
 pub mod template;
 pub mod transform;
 pub mod variables;
-pub mod action;
 
 use std::path::{Path, PathBuf};
 

@@ -54,7 +54,7 @@ pub fn ask_user_merge(source_path: &Path, deploy_path: &Path) -> Result<bool> {
 }
 
 /// Logs the finished state of the
-/// [deployment](`punktf_lib::deploy::deployment::Deployment`). If the `print`
+/// [deployment](`punktf_lib::action::deploy::Deployment`). If the `print`
 /// argument is `true` then stdout will be used, otherwise the crate
 /// [`log`] is used.
 /// This includes amount, state and the names of the deployed

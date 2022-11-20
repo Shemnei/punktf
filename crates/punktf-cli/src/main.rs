@@ -323,7 +323,7 @@ fn handle_command_verify(
 	opt::Shared { source, .. }: opt::Shared,
 	opt::Verify {
 		profile: profile_name,
-		output,
+		..
 	}: opt::Verify,
 ) -> Result<()> {
 	let ptf_src = PunktfSource::from_root(source)?;

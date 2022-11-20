@@ -37,7 +37,7 @@ impl<'a> DeployableDotfile<'a> {
 	}
 }
 
-/// Configuration options for the [`DeployingVisitor`].
+/// Configuration options for the [`Deployer`].
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DeployOptions {
 	/// If this flag is set, it will prevent any write operations from occurring
@@ -87,7 +87,7 @@ where
 	/// # Errors
 	///
 	/// Only hard errors will be returned as error, everthing else will be
-	/// recorded in the [Deployment](`super::deployment::Deployment`) on a
+	/// recorded in the [Deployment](`crate::action::deploy::Deployment`) on a
 	/// dotfile level.
 	pub fn deploy(self, source: &PunktfSource, profile: LayeredProfile) -> Deployment {
 		// General flow:
@@ -408,7 +408,7 @@ where
 		let target_path = directory
 			.target_path
 			.canonicalize()
-			.unwrap_or(directory.target_path.clone());
+			.unwrap_or_else(|_| directory.target_path.clone());
 
 		if !self.options.dry_run {
 			if let Err(err) = std::fs::create_dir_all(target_path) {
@@ -444,7 +444,7 @@ where
 	) -> Result {
 		rejected.add_to_builder(
 			&mut self.builder,
-			DotfileStatus::skipped(rejected.reason.to_owned()),
+			DotfileStatus::skipped(rejected.reason.clone()),
 		);
 
 		Ok(())
