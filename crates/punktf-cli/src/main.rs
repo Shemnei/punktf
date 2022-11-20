@@ -245,7 +245,7 @@ fn handle_command_deploy(
 	}: opt::Deploy,
 ) -> Result<()> {
 	let ptf_src = PunktfSource::from_root(source)?;
-	let profile = setup_profile(&profile_name, &ptf_src, target)?;
+	let mut profile = setup_profile(&profile_name, &ptf_src, target)?;
 
 	// Ensure target is set
 	if profile.target_path().is_none() {
@@ -264,7 +264,7 @@ fn handle_command_deploy(
 	setup_env(&ptf_src, &profile, &profile_name);
 
 	let options = DeployOptions { dry_run };
-	let deployment = Deployer::new(options, util::ask_user_merge).deploy(&ptf_src, profile);
+	let deployment = Deployer::new(options, util::ask_user_merge).deploy(&ptf_src, &mut profile);
 
 	log::debug!("Deployment:\n{:#?}", deployment);
 	util::log_deployment(&deployment, true);

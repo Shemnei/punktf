@@ -89,7 +89,7 @@ where
 	/// Only hard errors will be returned as error, everthing else will be
 	/// recorded in the [Deployment](`crate::action::deploy::Deployment`) on a
 	/// dotfile level.
-	pub fn deploy(self, source: &PunktfSource, profile: LayeredProfile) -> Deployment {
+	pub fn deploy(self, source: &PunktfSource, profile: &mut LayeredProfile) -> Deployment {
 		// General flow:
 		//	- get deployment path
 		//	- check if dotfile already deployed
@@ -123,8 +123,6 @@ where
 			};
 		}
 
-		let post_hooks: Vec<_> = profile.post_hooks().cloned().collect();
-
 		let mut resolver = ResolvingVisitor::new(self);
 		let walker = Walker::new(profile);
 		if let Err(err) = walker.walk(source, &mut resolver) {
@@ -133,7 +131,7 @@ where
 
 		let this = resolver.into_inner();
 
-		for hook in post_hooks {
+		for hook in profile.post_hooks() {
 			log::info!("Executing post-hook: {}", hook.command());
 			if let Err(err) = hook.execute(source.profiles()) {
 				log::error!("Failed to execute post-hook ({})", err);

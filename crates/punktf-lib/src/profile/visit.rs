@@ -253,24 +253,24 @@ pub trait Visitor {
 }
 
 #[derive(Debug)]
-pub struct Walker {
+pub struct Walker<'a> {
 	// Filter? "--filter='name=*'"
 	// Sort by priority and eliminate duplicate lower ones
-	profile: LayeredProfile,
+	profile: &'a LayeredProfile,
 }
 
-impl Walker {
-	pub const fn new(profile: LayeredProfile) -> Self {
-		Self { profile }
-	}
-
-	pub fn walk(mut self, source: &PunktfSource, visitor: &mut impl Visitor) -> Result {
+impl<'a> Walker<'a> {
+	pub fn new(profile: &'a mut LayeredProfile) -> Self {
 		{
-			let dotfiles = &mut self.profile.dotfiles;
+			let dotfiles = &mut profile.dotfiles;
 			// Sorty highest to lowest by priority
 			dotfiles.sort_by_key(|(_, d)| -(d.priority.map(|p| p.0).unwrap_or(0) as i64));
 		};
 
+		Self { profile }
+	}
+
+	pub fn walk(&self, source: &PunktfSource, visitor: &mut impl Visitor) -> Result {
 		for dotfile in self.profile.dotfiles() {
 			self.walk_dotfile(source, visitor, dotfile)?;
 		}
