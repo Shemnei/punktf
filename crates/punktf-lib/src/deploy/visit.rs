@@ -50,6 +50,8 @@ impl<V: TemplateVisitor> Visitor for ResolvingVisitor<V> {
 		profile: &LayeredProfile,
 		file: &File<'a>,
 	) -> Result {
+		println!("F: {:#?}", file);
+
 		if file.dotfile().is_template() {
 			let resolve_fn = |content: &str| {
 				let source = Source::file(&file.source_path, content);
@@ -74,6 +76,8 @@ impl<V: TemplateVisitor> Visitor for ResolvingVisitor<V> {
 		profile: &LayeredProfile,
 		directory: &Directory<'a>,
 	) -> Result {
+		println!("D: {:#?}", directory);
+
 		self.visitor.accept_directory(source, profile, directory)
 	}
 

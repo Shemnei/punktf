@@ -261,7 +261,7 @@ impl Walker {
 			}
 		};
 
-		let target_path = match self.resolve_target_path(dotfile) {
+		let target_path = match self.resolve_target_path(dotfile, source_path.is_dir()) {
 			Ok(path) => path,
 			Err(err) => {
 				return self.walk_errored(
@@ -330,18 +330,7 @@ impl Walker {
 		dotfile: &Dotfile,
 	) -> Result {
 		let source_path = paths.child_source_path();
-
-		// Directory special path logic
-		let target_path = if dotfile.rename.is_some() {
-			paths.child_target_path().into_owned()
-		} else {
-			dotfile.overwrite_target.clone().unwrap_or_else(|| {
-				self.profile
-					.target_path()
-					.expect("No target path set")
-					.to_path_buf()
-			})
-		};
+		let target_path = paths.child_target_path();
 
 		if !self.accept(&source_path) {
 			return self.walk_rejected(source, visitor, paths, dotfile);
@@ -349,7 +338,7 @@ impl Walker {
 
 		let directory = Directory {
 			source_path: source_path.to_path_buf(),
-			target_path: target_path.clone(),
+			target_path: target_path.to_path_buf(),
 			kind: Kind::from_paths(&paths, dotfile),
 		};
 
@@ -461,12 +450,19 @@ impl Walker {
 		self.resolve_path(source.dotfiles.join(&dotfile.path).canonicalize()?)
 	}
 
-	fn resolve_target_path(&self, dotfile: &Dotfile) -> std::io::Result<PathBuf> {
-		let path = dotfile
-			.overwrite_target
-			.as_deref()
-			.unwrap_or_else(|| self.profile.target_path().expect("No target path set"))
-			.join(dotfile.rename.as_ref().unwrap_or(&dotfile.path));
+	fn resolve_target_path(&self, dotfile: &Dotfile, is_dir: bool) -> std::io::Result<PathBuf> {
+		let path = if is_dir && dotfile.rename.is_none() && dotfile.overwrite_target.is_none() {
+			self.profile
+				.target_path()
+				.expect("No target path set")
+				.to_path_buf()
+		} else {
+			dotfile
+				.overwrite_target
+				.as_deref()
+				.unwrap_or_else(|| self.profile.target_path().expect("No target path set"))
+				.join(dotfile.rename.as_ref().unwrap_or(&dotfile.path))
+		};
 
 		// NOTE: Do not call canonicalize as the path migh not exist which would cause an error.
 
