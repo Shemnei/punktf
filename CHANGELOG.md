@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING** The profile cli argument now must be given with the `-p/--profile` specifier ([#82](https://github.com/Shemnei/punktf/pull/82))
 - Made `punktf-cli` crate a workspace member ([#81](https://github.com/Shemnei/punktf/pull/81))
 - Moved dependencies and some metadata to workspace ([#81](https://github.com/Shemnei/punktf/pull/81))
+- Added internal workings of the deployment process to make it more flexible ([#82](https://github.com/Shemnei/punktf/pull/82))
 
 ## [1.0.2] - 2022-09-29
 
