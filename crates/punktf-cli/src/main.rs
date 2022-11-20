@@ -140,6 +140,7 @@ use punktf_lib::action::deploy::{
 	visit::{DeployOptions, Deployer},
 	Deployment,
 };
+use punktf_lib::action::diff::Diff;
 use punktf_lib::profile::{resolve_profile, LayeredProfile, Profile};
 use punktf_lib::template::source::Source;
 use punktf_lib::template::Template;
@@ -191,6 +192,7 @@ fn handle_commands(opts: opt::Opts) -> Result<()> {
 		opt::Command::Deploy(c) => handle_command_deploy(shared, c),
 		opt::Command::Render(c) => handle_command_render(shared, c),
 		opt::Command::Verify(c) => handle_command_verify(shared, c),
+		opt::Command::Diff(c) => handle_command_diff(shared, c),
 	}
 }
 
@@ -362,6 +364,27 @@ fn handle_command_verify(
 		}
 	}
 		*/
+}
+
+/// Handles the `diff` command processing.
+fn handle_command_diff(
+	opt::Shared { source, .. }: opt::Shared,
+	opt::Diff {
+		profile: profile_name,
+	}: opt::Diff,
+) -> Result<()> {
+	let ptf_src = PunktfSource::from_root(source)?;
+	let mut profile = setup_profile(&profile_name, &ptf_src, None)?;
+
+	log::debug!("Profile:\n{:#?}", profile);
+	log::debug!("Source: {}", ptf_src.root().display());
+	log::debug!("Target: {:?}", profile.target_path());
+
+	setup_env(&ptf_src, &profile, &profile_name);
+
+	Diff::default().diff(&ptf_src, &mut profile);
+
+	Ok(())
 }
 
 /// Handles the writting of the deployment status to output files/formats.

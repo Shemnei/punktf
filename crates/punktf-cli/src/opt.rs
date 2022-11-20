@@ -65,6 +65,7 @@ pub enum Command {
 	Deploy(Deploy),
 	Render(Render),
 	Verify(Verify),
+	Diff(Diff),
 }
 
 /// Deploys a profile.
@@ -129,4 +130,18 @@ pub struct Verify {
 
 	#[command(flatten)]
 	pub output: OutputShared,
+}
+
+/// Prints differences to already deployed files for a profile.
+///
+/// Similar to `deploy --dry-run` but does not require the `target` or `dry-run`
+/// arguments.
+#[derive(Debug, Parser)]
+pub struct Diff {
+	/// Name of the profile to deploy.
+	///
+	/// The name should be the file name of the profile without an extension (e.g.
+	/// `profiles/arch.json` should be given as `arch`).
+	#[arg(short, long, env = super::PUNKTF_PROFILE_ENVVAR)]
+	pub profile: String,
 }
