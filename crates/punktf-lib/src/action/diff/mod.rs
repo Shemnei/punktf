@@ -1,4 +1,4 @@
-use similar::{ChangeTag, TextDiff};
+use similar::{ChangeTag, TextDiff, udiff::unified_diff};
 
 use crate::{
 	profile::{visit::*, LayeredProfile},
@@ -141,6 +141,12 @@ fn diff(target: &Path, old: &str, new: &str) {
 			println!("{}", ">".repeat(80));
 			println!("Diff of {}", target.display());
 			println!("{}", ">".repeat(80));
+
+			let diff = unified_diff(similar::Algorithm::Lcs, old, new, 3, None);
+
+			println!("{}", "=".repeat(80));
+			println!("{diff}");
+			println!("{}", "=".repeat(80));
 		}
 
 		if idx > 0 {
