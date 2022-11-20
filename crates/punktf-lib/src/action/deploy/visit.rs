@@ -11,8 +11,6 @@ use std::path::Path;
 
 use crate::profile::visit::{ResolvingVisitor, TemplateVisitor};
 
-use super::DeploymentStatus;
-
 impl<'a> DeployableDotfile<'a> {
 	fn add_to_builder<S: Into<DotfileStatus>>(&self, builder: &mut DeploymentBuilder, status: S) {
 		let status = status.into();

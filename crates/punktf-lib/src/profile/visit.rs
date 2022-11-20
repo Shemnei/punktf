@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::ops::Deref;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 use crate::profile::LayeredProfile;
 use crate::{Dotfile, PunktfSource};
@@ -326,7 +326,7 @@ impl<'a> Walker<'a> {
 	) -> Result {
 		let file = File(DeployableDotfile::new(source, paths, dotfile));
 
-		visitor.accept_file(source, &self.profile, &file)
+		visitor.accept_file(source, self.profile, &file)
 	}
 
 	fn walk_directory(
@@ -340,7 +340,7 @@ impl<'a> Walker<'a> {
 
 		let directory = Directory(DeployableDotfile::new(source, paths.clone(), dotfile));
 
-		visitor.accept_directory(source, &self.profile, &directory)?;
+		visitor.accept_directory(source, self.profile, &directory)?;
 
 		let read_dir = match std::fs::read_dir(&source_path) {
 			Ok(path) => path,
@@ -394,7 +394,7 @@ impl<'a> Walker<'a> {
 			reason: Cow::Borrowed("Rejected by filter"),
 		};
 
-		visitor.accept_rejected(source, &self.profile, &rejected)
+		visitor.accept_rejected(source, self.profile, &rejected)
 	}
 
 	fn walk_errored(
@@ -412,7 +412,7 @@ impl<'a> Walker<'a> {
 			context,
 		};
 
-		visitor.accept_errored(source, &self.profile, &errored)
+		visitor.accept_errored(source, self.profile, &errored)
 	}
 
 	fn resolve_path(&self, path: PathBuf) -> PathBuf {
