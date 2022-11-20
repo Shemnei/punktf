@@ -11,6 +11,8 @@ use std::path::Path;
 
 use crate::profile::visit::{ResolvingVisitor, TemplateVisitor};
 
+use super::DeploymentStatus;
+
 impl<'a> DeployableDotfile<'a> {
 	fn add_to_builder<S: Into<DotfileStatus>>(&self, builder: &mut DeploymentBuilder, status: S) {
 		let status = status.into();
@@ -319,6 +321,8 @@ where
 		profile: &LayeredProfile,
 		file: &File<'a>,
 	) -> Result {
+		log::info!("{}: Deploying file", file.relative_source_path.display());
+
 		let cont = self.pre_deploy_checks(file)?;
 
 		if !cont {
@@ -403,13 +407,13 @@ where
 		_: &LayeredProfile,
 		directory: &Directory<'a>,
 	) -> Result {
-		let target_path = directory
-			.target_path
-			.canonicalize()
-			.unwrap_or_else(|_| directory.target_path.clone());
+		log::info!(
+			"{}: Deploying directory",
+			directory.relative_source_path.display()
+		);
 
 		if !self.options.dry_run {
-			if let Err(err) = std::fs::create_dir_all(target_path) {
+			if let Err(err) = std::fs::create_dir_all(&directory.target_path) {
 				log::error!(
 					"{}: Failed to create directory ({})",
 					directory.relative_source_path.display(),
@@ -454,7 +458,12 @@ where
 		_: &LayeredProfile,
 		errored: &Errored<'a>,
 	) -> Result {
-		todo!("ERRORED: {:#?}", errored);
+		errored.add_to_builder(
+			&mut self.builder,
+			DotfileStatus::failed(format!("{}: {}", errored.context, errored.error)),
+		);
+
+		Ok(())
 	}
 }
 

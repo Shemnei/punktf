@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::ops::Deref;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use crate::profile::LayeredProfile;
 use crate::{Dotfile, PunktfSource};
@@ -200,16 +200,16 @@ impl<'a> Deref for Rejected<'a> {
 
 #[derive(Debug)]
 pub struct Errored<'a> {
-	pub source_path: Option<PathBuf>,
-	pub target_path: Option<PathBuf>,
-	pub kind: Kind<'a>,
+	pub dotfile: DeployableDotfile<'a>,
 	pub error: Box<dyn std::error::Error>,
 	pub context: &'static str,
 }
 
-impl Errored<'_> {
-	pub const fn dotfile(&self) -> &Dotfile {
-		self.kind.dotfile()
+impl<'a> Deref for Errored<'a> {
+	type Target = DeployableDotfile<'a>;
+
+	fn deref(&self) -> &Self::Target {
+		&self.dotfile
 	}
 }
 
@@ -286,33 +286,8 @@ impl<'a> Walker<'a> {
 		visitor: &mut impl Visitor,
 		dotfile: &Dotfile,
 	) -> Result {
-		let source_path = match self.resolve_source_path(source, dotfile) {
-			Ok(path) => path,
-			Err(err) => {
-				return self.walk_errored(
-					source,
-					visitor,
-					None,
-					dotfile,
-					Box::new(err),
-					"Failed to resolve source path",
-				);
-			}
-		};
-
-		let target_path = match self.resolve_target_path(dotfile, source_path.is_dir()) {
-			Ok(path) => path,
-			Err(err) => {
-				return self.walk_errored(
-					source,
-					visitor,
-					None,
-					dotfile,
-					Box::new(err),
-					"Failed to resolve target path",
-				);
-			}
-		};
+		let source_path = self.resolve_source_path(source, dotfile);
+		let target_path = self.resolve_target_path(dotfile, source_path.is_dir());
 
 		let paths = Paths::new(source_path, target_path);
 
@@ -373,7 +348,7 @@ impl<'a> Walker<'a> {
 				return self.walk_errored(
 					source,
 					visitor,
-					Some(paths),
+					paths,
 					dotfile,
 					Box::new(err),
 					"Failed to read directory",
@@ -388,7 +363,7 @@ impl<'a> Walker<'a> {
 					return self.walk_errored(
 						source,
 						visitor,
-						Some(paths),
+						paths,
 						dotfile,
 						Box::new(err),
 						"Failed to read directory",
@@ -426,49 +401,30 @@ impl<'a> Walker<'a> {
 		&self,
 		source: &PunktfSource,
 		visitor: &mut impl Visitor,
-		paths: Option<Paths>,
+		paths: Paths,
 		dotfile: &Dotfile,
 		error: Box<dyn std::error::Error>,
 		context: &'static str,
 	) -> Result {
-		let errored = if let Some(paths) = paths {
-			let source_path = paths.child_source_path();
-			let target_path = paths.child_target_path();
-
-			Errored {
-				source_path: Some(source_path.into_owned()),
-				target_path: Some(target_path.into_owned()),
-				kind: Kind::from_paths(paths, dotfile),
-				error,
-				context,
-			}
-		} else {
-			Errored {
-				source_path: None,
-				target_path: None,
-				kind: Kind::Root(dotfile),
-				error,
-				context,
-			}
+		let errored = Errored {
+			dotfile: DeployableDotfile::new(source, paths, dotfile),
+			error,
+			context,
 		};
 
 		visitor.accept_errored(source, &self.profile, &errored)
 	}
 
-	const fn resolve_path(&self, path: PathBuf) -> std::io::Result<PathBuf> {
+	fn resolve_path(&self, path: PathBuf) -> PathBuf {
 		// TODO: Replace envs/~
-		Ok(path)
+		path.canonicalize().unwrap_or(path)
 	}
 
-	fn resolve_source_path(
-		&self,
-		source: &PunktfSource,
-		dotfile: &Dotfile,
-	) -> std::io::Result<PathBuf> {
-		self.resolve_path(source.dotfiles.join(&dotfile.path).canonicalize()?)
+	fn resolve_source_path(&self, source: &PunktfSource, dotfile: &Dotfile) -> PathBuf {
+		self.resolve_path(source.dotfiles.join(&dotfile.path))
 	}
 
-	fn resolve_target_path(&self, dotfile: &Dotfile, is_dir: bool) -> std::io::Result<PathBuf> {
+	fn resolve_target_path(&self, dotfile: &Dotfile, is_dir: bool) -> PathBuf {
 		let path = if is_dir && dotfile.rename.is_none() && dotfile.overwrite_target.is_none() {
 			self.profile
 				.target_path()
