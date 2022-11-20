@@ -134,12 +134,12 @@ use std::fs::{File, OpenOptions};
 use std::path::{Path, PathBuf};
 
 use clap::Parser;
-use color_eyre::eyre::{bail, eyre};
+use color_eyre::eyre::eyre;
 use color_eyre::Result;
-use punktf_lib::deploy::deployment::Deployment;
-use punktf_lib::deploy::executor::{Executor, ExecutorOptions};
-use punktf_lib::deploy::visit::{DeployingVisitor, ResolvingVisitor};
-use punktf_lib::profile::visit::Walker;
+use punktf_lib::action::deploy::{
+	visit::{DeployOptions, Deployer},
+	Deployment,
+};
 use punktf_lib::profile::{resolve_profile, LayeredProfile, Profile};
 use punktf_lib::template::source::Source;
 use punktf_lib::template::Template;
@@ -263,22 +263,8 @@ fn handle_command_deploy(
 
 	setup_env(&ptf_src, &profile, &profile_name);
 
-	let options = ExecutorOptions { dry_run };
-
-	let walker = Walker::new(profile);
-	let deploying_visitor = DeployingVisitor::new(options, util::ask_user_merge);
-	let mut resolving_visitor = ResolvingVisitor::new(deploying_visitor);
-
-	if let Err(err) = walker.walk(&ptf_src, &mut resolving_visitor) {
-		log::error!("Deployment aborted: {}", err);
-		return Err(eyre!("{:?}", err));
-	};
-
-	let deployment = resolving_visitor.into_inner().into_deployment();
-
-	//let deployer = Executor::new(options, util::ask_user_merge);
-
-	//let deployment = deployer.deploy(ptf_src, &profile);
+	let options = DeployOptions { dry_run };
+	let deployment = Deployer::new(options, util::ask_user_merge).deploy(&ptf_src, profile);
 
 	log::debug!("Deployment:\n{:#?}", deployment);
 	util::log_deployment(&deployment, true);
@@ -347,6 +333,9 @@ fn handle_command_verify(
 	log::debug!("Source: {}", ptf_src.root().display());
 	log::debug!("Target: {:?}", profile.target_path());
 
+	todo!()
+	/*
+
 	setup_env(&ptf_src, &profile, &profile_name);
 
 	let options = ExecutorOptions { dry_run: true };
@@ -372,6 +361,7 @@ fn handle_command_verify(
 			Err(err)
 		}
 	}
+		*/
 }
 
 /// Handles the writting of the deployment status to output files/formats.

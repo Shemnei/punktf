@@ -153,33 +153,11 @@ impl<'a> ExecutorDotfile<'a> {
 	}
 }
 
-/// Configuration options for the [`Executor`].
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ExecutorOptions {
-	/// If this flag is set, it will prevent any write operations from occurring
-	/// during the deployment.
-	///
-	/// This includes write, copy and directory creation operations.
-	pub dry_run: bool,
-}
-
-/// The executor is responsible for deploying a
-/// [profile](`crate::profile::Profile`).
-///
-/// This includes checking for merge conflicts, resolving children of a
-/// directory dotfile, parsing and resolving of templates and the actual
-/// writing of the dotfile to the target destination.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Executor<F> {
 	/// Configuration options for the executor.
 	options: ExecutorOptions,
 
-	/// This function gets called when a dotfile at the target destination
-	/// already exists and the merge mode is
-	/// [MergeMode::Ask](`crate::MergeMode::Ask`).
-	///
-	/// The arguments for the function are (dotfile_source_path,
-	/// dotfile_deploy_path).
 	merge_ask_fn: F,
 }
 
@@ -202,56 +180,7 @@ where
 	/// Only hard errors will be returned as error, everthing else will be
 	/// recorded in the [Deployment](`super::deployment::Deployment`) on a
 	/// dotfile level.
-	pub fn deploy(&self, source: PunktfSource, profile: &LayeredProfile) -> Result<Deployment> {
-		// General flow:
-		//	- get deployment path
-		//	- check if dotfile already deployed
-		//	- YES:
-		//		- compare priorities
-		//		- LOWER: continue next dotfile
-		//		- SAME/HIGHER: next step
-		//	- check if dotfile exists
-		//	- YES:
-		//		- check merge operation
-		//		- if merge operation == ASK
-		//			- Run merge_ask_fn
-		//			- FALSE: continue next dotfile
-		//	- check if template
-		//	- YES: resolve template
-		//	- IF FILE: write dotfile
-		//	- IF DIR: for each dotfile in dir START AT TOP
-
-		let target_path = &profile
-			.target_path()
-			.expect("No target path set")
-			.to_path_buf();
-
-		let mut builder = Deployment::build();
-
-		for hook in profile.pre_hooks() {
-			log::info!("Executing pre-hook: {}", hook.command());
-			// No files are deployed yet, meaning if an error during hook
-			// execution occurs it will return with an error instead of just
-			// logging it.
-
-			hook.execute(source.profiles())
-				.wrap_err("Failed to execute pre-hook")?;
-		}
-
-		for dotfile in profile.dotfiles().cloned() {
-			log::debug!("Deploying dotfile: {}", dotfile.path.display());
-			self.deploy_dotfile(&mut builder, &source, target_path, profile, dotfile)?;
-		}
-
-		for hook in profile.post_hooks() {
-			log::info!("Executing post-hook: {}", hook.command());
-			if let Err(err) = hook.execute(source.profiles()) {
-				log::error!("Failed to execute post-hook ({})", err);
-			}
-		}
-
-		Ok(builder.finish())
-	}
+	pub fn deploy(&self, source: PunktfSource, profile: &LayeredProfile) -> Result<Deployment> {}
 
 	/// Resolves all necessary paths to deploy the dotfile and tries to deploys it.
 	///

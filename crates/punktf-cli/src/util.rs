@@ -5,8 +5,7 @@ use std::path::{Path, PathBuf};
 
 use color_eyre::owo_colors::OwoColorize;
 use color_eyre::Result;
-use punktf_lib::deploy::deployment::{Deployment, DeploymentStatus};
-use punktf_lib::deploy::dotfile::DotfileStatus;
+use punktf_lib::action::deploy::{Deployment, DeploymentStatus, DotfileStatus};
 
 /// Retrieves the target path for the deployment by reading the environment
 /// variable with the name determined by [`super::PUNKTF_TARGET_ENVVAR`].

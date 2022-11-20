@@ -4,6 +4,11 @@ use std::path::{Path, PathBuf};
 use crate::profile::LayeredProfile;
 use crate::{Dotfile, PunktfSource};
 
+use color_eyre::eyre::Context;
+
+use crate::template::source::Source;
+use crate::template::Template;
+
 #[derive(Debug, Clone)]
 struct PathLink {
 	source: PathBuf,
@@ -472,5 +477,97 @@ impl Walker {
 	const fn accept(&self, _path: &Path) -> bool {
 		// TODO: Apply filter
 		true
+	}
+}
+
+pub trait TemplateVisitor: Visitor {
+	fn accept_template<'a>(
+		&mut self,
+		source: &PunktfSource,
+		profile: &LayeredProfile,
+		file: &File<'a>,
+		// Returns a function to resolve the content to make the resolving lazy
+		// for upstream visitors.
+		resolve_content: impl FnOnce(&str) -> color_eyre::Result<String>,
+	) -> Result;
+}
+
+#[derive(Debug)]
+pub struct ResolvingVisitor<V> {
+	visitor: V,
+}
+
+impl<V> ResolvingVisitor<V>
+where
+	V: TemplateVisitor,
+{
+	pub fn new(visitor: V) -> Self {
+		Self { visitor }
+	}
+
+	pub fn into_inner(self) -> V {
+		self.visitor
+	}
+}
+
+impl<V: TemplateVisitor> Visitor for ResolvingVisitor<V> {
+	fn accept_file<'a>(
+		&mut self,
+		source: &PunktfSource,
+		profile: &LayeredProfile,
+		file: &File<'a>,
+	) -> Result {
+		if file.dotfile().is_template() {
+			let resolve_fn = |content: &str| {
+				let source = Source::file(&file.source_path, content);
+				let template = Template::parse(source)
+					.with_context(|| format!("File: {}", file.source_path.display()))?;
+
+				template
+					.resolve(Some(profile.variables()), file.dotfile().variables.as_ref())
+					.with_context(|| format!("File: {}", file.source_path.display()))
+			};
+
+			self.visitor
+				.accept_template(source, profile, file, resolve_fn)
+		} else {
+			self.visitor.accept_file(source, profile, file)
+		}
+	}
+
+	fn accept_directory<'a>(
+		&mut self,
+		source: &PunktfSource,
+		profile: &LayeredProfile,
+		directory: &Directory<'a>,
+	) -> Result {
+		self.visitor.accept_directory(source, profile, directory)
+	}
+
+	fn accept_link(
+		&mut self,
+		source: &PunktfSource,
+		profile: &LayeredProfile,
+		symlink: &Symlink,
+	) -> Result {
+		self.visitor.accept_link(source, profile, symlink)
+	}
+
+	fn accept_rejected<'a>(
+		&mut self,
+		source: &PunktfSource,
+		profile: &LayeredProfile,
+		rejected: &Rejected<'a>,
+	) -> Result {
+		self.visitor.accept_rejected(source, profile, rejected)
+	}
+
+	fn accept_errored<'a>(
+		&mut self,
+		source: &PunktfSource,
+		profile: &LayeredProfile,
+		errored: &Errored<'a>,
+	) -> Result {
+		self.visitor.accept_errored(source, profile, errored)
 	}
 }
