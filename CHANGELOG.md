@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added new `render` cli command to display resolved template dotfile ([#19](https://github.com/Shemnei/punktf/issues/19))
 - Added new `verify` cli command to verify a given profile ([#19](https://github.com/Shemnei/punktf/issues/19))
+- Added new `diff` cli command to print the potential diffs of a given profile ([#82](https://github.com/Shemnei/punktf/pull/82))
 - Added `-q/--quite` cli flag to only display errors ([#42](https://github.com/Shemnei/punktf/issues/42))
 - Added `rust-toolchain.toml` file to pin rust version for better reproducible builds ([#81](https://github.com/Shemnei/punktf/pull/81))
 - Added `--json-output/--yaml-output` cli argument to write the deployment status to files ([#47](https://github.com/Shemnei/punktf/issues/47))
@@ -20,7 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING** The profile cli argument now must be given with the `-p/--profile` specifier ([#82](https://github.com/Shemnei/punktf/pull/82))
 - Made `punktf-cli` crate a workspace member ([#81](https://github.com/Shemnei/punktf/pull/81))
 - Moved dependencies and some metadata to workspace ([#81](https://github.com/Shemnei/punktf/pull/81))
-- Added internal workings of the deployment process to make it more flexible ([#82](https://github.com/Shemnei/punktf/pull/82))
+- Updated internal workings of the deployment process to make it more flexible ([#82](https://github.com/Shemnei/punktf/pull/82))
+- Dotfiles are now sorted by descending priority to maybe reduce disk read/writes ([#27](https://github.com/Shemnei/punktf/issues/27))
 
 ## [1.0.2] - 2022-09-29
 
