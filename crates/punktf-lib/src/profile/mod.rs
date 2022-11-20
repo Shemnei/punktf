@@ -1,5 +1,7 @@
 //! Defines profiles and ways to layer multiple of them.
 
+pub mod visit;
+
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
 use std::fs::File;
