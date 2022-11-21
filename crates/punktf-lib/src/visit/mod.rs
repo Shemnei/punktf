@@ -1,9 +1,12 @@
+pub mod deploy;
+pub mod diff;
+
 use std::borrow::Cow;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use crate::profile::LayeredProfile;
-use crate::{Dotfile, PunktfSource};
+use crate::profile::{dotfile::Dotfile, source::PunktfSource};
 
 use color_eyre::eyre::Context;
 

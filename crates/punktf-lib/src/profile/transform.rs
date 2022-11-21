@@ -25,10 +25,10 @@ pub trait Transform {
 	fn transform(&self, content: String) -> Result<String>;
 }
 
-/// List of all available [`Transform`]s.
+/// List of all available [`Transform`s](`crate::profile::transform::Transform`).
 ///
 /// These can be added to a [`Profile`](`crate::profile::Profile`) or a
-/// [`Dotfile`](`crate::Dotfile`) to modify the text content.
+/// [`Dotfile`](`crate::profile::dotfile::Dotfile`) to modify the text content.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum ContentTransformer {
 	/// Transformer which replaces line termination characters with either unix

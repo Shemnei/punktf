@@ -1,6 +1,10 @@
 //! Defines profiles and ways to layer multiple of them.
 
-pub mod visit;
+pub mod dotfile;
+pub mod hook;
+pub mod source;
+pub mod transform;
+pub mod variables;
 
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
@@ -12,10 +16,47 @@ use color_eyre::eyre::{eyre, Context};
 use color_eyre::Result;
 use serde::{Deserialize, Serialize};
 
-use crate::hook::Hook;
-use crate::transform::ContentTransformer;
-use crate::variables::{Variables, Vars};
-use crate::{Dotfile, PunktfSource};
+use crate::profile::hook::Hook;
+use crate::profile::transform::ContentTransformer;
+use crate::profile::variables::{Variables, Vars};
+use crate::profile::{dotfile::Dotfile, source::PunktfSource};
+
+/// This enum represents all available merge modes `punktf` supports. The merge
+/// mode is important when a file already exists at the target location of a
+/// [`Dotfile`](`crate::profile::dotfile::Dotfile`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum MergeMode {
+	/// Overwrites the existing file.
+	Overwrite,
+
+	/// Keeps the existing file.
+	Keep,
+
+	/// Asks the user for input to decide what to do.
+	Ask,
+}
+
+impl Default for MergeMode {
+	fn default() -> Self {
+		Self::Overwrite
+	}
+}
+
+/// This struct represents the priority a
+/// [`Dotfile`](`crate::profile::dotfile::Dotfile`)
+/// can have. A bigger value means a higher priority. Dotfiles with lower priority
+/// won't be able to overwrite already deployed dotfiles with a higher one.
+#[derive(
+	Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
+pub struct Priority(pub u32);
+
+impl Priority {
+	/// Creates a new instance with the given `priority`.
+	pub const fn new(priority: u32) -> Self {
+		Self(priority)
+	}
+}
 
 /// A profile is a collection of dotfiles and variables, options and hooks.
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -36,7 +77,8 @@ pub struct Profile {
 	pub transformers: Vec<ContentTransformer>,
 
 	/// Target root path of the deployment. Will be used as file stem for the dotfiles
-	/// when not overwritten by [`Dotfile::overwrite_target`].
+	/// when not overwritten by
+	/// [`Dotfile::overwrite_target`](`crate::profile::dotfile::Dotfile::overwrite_target`).
 	#[serde(skip_serializing_if = "Option::is_none", default)]
 	pub target: Option<PathBuf>,
 
@@ -129,8 +171,8 @@ impl Profile {
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct LayeredVariables {
 	/// Stores the variables together with the index, which indexed
-	/// [`LayeredProfile::profile_names`] to retrieve the name of the profile,
-	/// the variable came from.
+	/// [`LayeredProfile::profile_names`](`crate::profile::LayeredProfile::profile_names`)
+	/// to retrieve the name of the profile, the variable came from.
 	pub inner: HashMap<String, (usize, String)>,
 }
 
@@ -147,31 +189,32 @@ impl Vars for LayeredVariables {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LayeredProfile {
 	/// All names of the profile which where collected from the extend chain.
-	profile_names: Vec<String>,
+	pub profile_names: Vec<String>,
 
 	/// The target of the deployment.
 	///
 	/// This is the first value found by traversing the extend chain from the
 	/// top.
-	target: Option<(usize, PathBuf)>,
+	pub target: Option<(usize, PathBuf)>,
 
 	/// The variables collected from all profiles of the extend chain.
-	variables: LayeredVariables,
+	pub variables: LayeredVariables,
 
 	/// The content transformer collected from all profiles of the extend chain.
-	transformers: Vec<(usize, ContentTransformer)>,
+	pub transformers: Vec<(usize, ContentTransformer)>,
 
 	/// The pre-hooks collected from all profiles of the extend chain.
-	pre_hooks: Vec<(usize, Hook)>,
+	pub pre_hooks: Vec<(usize, Hook)>,
 
 	/// The post-hooks collected from all profiles of the extend chain.
-	post_hooks: Vec<(usize, Hook)>,
+	pub post_hooks: Vec<(usize, Hook)>,
 
 	/// The dotfiles collected from all profiles of the extend chain.
 	///
-	/// The index indexes into [`LayeredProfile::profile_names`] to retrieve
-	/// the name of the profile from which the dotfile came from.
-	dotfiles: Vec<(usize, Dotfile)>,
+	/// The index indexes into
+	/// [`LayeredProfile::profile_names`](`crate::profile::LayeredProfile::profile_names`)
+	/// to retrieve the name of the profile from which the dotfile came from.
+	pub dotfiles: Vec<(usize, Dotfile)>,
 }
 
 impl LayeredProfile {
@@ -181,7 +224,7 @@ impl LayeredProfile {
 	}
 
 	/// Returns the target path for the profile together with the index into
-	/// [`LayeredProfile::profile_names`].
+	/// [`LayeredProfile::profile_names`](`crate::profile::LayeredProfile::profile_names`).
 	pub fn target(&self) -> Option<(&str, &Path)> {
 		self.target
 			.as_ref()
@@ -393,10 +436,19 @@ mod tests {
 	use std::collections::HashMap;
 
 	use super::*;
-	use crate::hook::Hook;
+	use crate::profile::hook::Hook;
+	use crate::profile::variables::Variables;
 	use crate::profile::Profile;
-	use crate::variables::Variables;
-	use crate::{MergeMode, Priority};
+	use crate::profile::{MergeMode, Priority};
+
+	#[test]
+	fn priority_order() {
+		crate::tests::setup_test_env();
+
+		assert!(Priority::default() == Priority::new(0));
+		assert!(Priority::new(0) == Priority::new(0));
+		assert!(Priority::new(2) > Priority::new(1));
+	}
 
 	#[test]
 	#[cfg(feature = "profile-json")]

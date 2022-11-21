@@ -1,13 +1,11 @@
-pub mod visit;
-
 use std::borrow::Cow;
 use std::fmt;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::Dotfile;
-use crate::Priority;
+use crate::profile::dotfile::Dotfile;
+use crate::profile::Priority;
 
 /// Contains the status of the dotfile operation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

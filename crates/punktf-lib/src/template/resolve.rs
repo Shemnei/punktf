@@ -10,8 +10,8 @@ use color_eyre::eyre::Result;
 use super::block::{Block, BlockKind, If, IfExpr, Var, VarEnv};
 use super::session::Session;
 use super::Template;
+use crate::profile::variables::Vars;
 use crate::template::diagnostic::{Diagnostic, DiagnosticBuilder, DiagnosticLevel};
-use crate::variables::Vars;
 
 /// This macro resolves to the target architecture string of the compiling
 /// system. All possible values can be found here
@@ -101,7 +101,8 @@ pub struct Resolver<'a, PV, DV> {
 	/// Variables defined in the profile.
 	profile_vars: Option<&'a PV>,
 
-	/// Variables defined by the [dotfile](`crate::Dotfile`) which corresponds to the template.
+	/// Variables defined by the [dotfile](`crate::profile::dotfile::Dotfile`)
+	/// which corresponds to the template.
 	dotfile_vars: Option<&'a DV>,
 
 	/// Session where all errors/diagnostic which occur during the resolving
@@ -410,9 +411,9 @@ mod tests {
 	use pretty_assertions::assert_eq;
 
 	use super::*;
+	use crate::profile::variables::Variables;
 	use crate::template::source::Source;
 	use crate::template::Template;
-	use crate::variables::Variables;
 
 	#[rustfmt::skip]
 	const IF_FMT_TEST_CASES: &[(&str, &str)] = &[

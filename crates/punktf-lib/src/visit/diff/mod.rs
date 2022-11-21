@@ -1,7 +1,7 @@
 use crate::{
-	profile::{visit::*, LayeredProfile},
-	transform::Transform,
-	PunktfSource,
+	profile::LayeredProfile,
+	profile::{source::PunktfSource, transform::Transform},
+	visit::*,
 };
 use std::path::Path;
 

@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use color_eyre::owo_colors::OwoColorize;
 use color_eyre::Result;
-use punktf_lib::action::deploy::{Deployment, DeploymentStatus, DotfileStatus};
+use punktf_lib::visit::deploy::deployment::{Deployment, DeploymentStatus, DotfileStatus};
 
 /// Retrieves the target path for the deployment by reading the environment
 /// variable with the name determined by [`super::PUNKTF_TARGET_ENVVAR`].
@@ -14,9 +14,9 @@ pub fn get_target_path() -> Option<PathBuf> {
 }
 
 /// Function which get's called when a merge conflict arises and the merge mode
-/// of the [dotfile](`punktf_lib::Dotfile`) is set to
-/// [MergeMode::Ask](`punktf_lib::MergeMode::Ask`).  The function will ask the
-/// user to accept the merge (`y`) or deny it (`n`) via the command line
+/// of the [dotfile](`punktf_lib::profile::dotfile::Dotfile`) is set to
+/// [MergeMode::Ask](`punktf_lib::profile::MergeMode::Ask`). The function will
+/// ask the user to accept the merge (`y`) or deny it (`n`) via the command line
 /// ([`std::io::stdout`]/[`std::io::stdin`]). If an invalid answer is given it
 /// will ask again until a valid answer is given.
 pub fn ask_user_merge(source_path: &Path, deploy_path: &Path) -> Result<bool> {
@@ -54,12 +54,12 @@ pub fn ask_user_merge(source_path: &Path, deploy_path: &Path) -> Result<bool> {
 }
 
 /// Logs the finished state of the
-/// [deployment](`punktf_lib::action::deploy::Deployment`). If the `print`
-/// argument is `true` then stdout will be used, otherwise the crate
-/// [`log`] is used.
+/// [deployment](`punktf_lib::visit::deploy::deployment::Deployment`).
+/// If the `print` argument is `true` then stdout will be used, otherwise the
+/// crate [`log`] is used.
 /// This includes amount, state and the names of the deployed
-/// [dotfiles](`punktf_lib::Dotfile`) and also the total time the deployment
-/// took to execute.
+/// [dotfiles](`punktf_lib::profile::dotfile::Dotfile`) and also the total time
+/// the deployment took to execute.
 pub fn log_deployment(deployment: &Deployment, print: bool) {
 	let mut out = String::new();
 

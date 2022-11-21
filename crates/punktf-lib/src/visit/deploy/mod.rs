@@ -1,15 +1,17 @@
+pub mod deployment;
+
 use color_eyre::eyre::Context;
 
-use crate::profile::visit::*;
-use crate::{MergeMode, PunktfSource};
+use crate::profile::{source::PunktfSource, MergeMode};
+use crate::visit::*;
 
-use crate::action::deploy::{Deployment, DeploymentBuilder, DotfileStatus};
+use crate::profile::transform::Transform as _;
 use crate::profile::LayeredProfile;
-use crate::transform::Transform as _;
+use crate::visit::deploy::deployment::{Deployment, DeploymentBuilder, DotfileStatus};
 use std::borrow::Borrow;
 use std::path::Path;
 
-use crate::profile::visit::{ResolvingVisitor, TemplateVisitor};
+use crate::visit::{ResolvingVisitor, TemplateVisitor};
 
 impl<'a> DeployableDotfile<'a> {
 	fn add_to_builder<S: Into<DotfileStatus>>(&self, builder: &mut DeploymentBuilder, status: S) {
@@ -59,7 +61,7 @@ pub struct Deployer<F> {
 
 	/// This function gets called when a dotfile at the target destination
 	/// already exists and the merge mode is
-	/// [MergeMode::Ask](`crate::MergeMode::Ask`).
+	/// [MergeMode::Ask](`crate::profile::MergeMode::Ask`).
 	///
 	/// The arguments for the function are (dotfile_source_path, dotfile_target_path).
 	merge_ask_fn: F,
@@ -87,8 +89,8 @@ where
 	/// # Errors
 	///
 	/// Only hard errors will be returned as error, everthing else will be
-	/// recorded in the [Deployment](`crate::action::deploy::Deployment`) on a
-	/// dotfile level.
+	/// recorded in the [Deployment](`crate::visit::deploy::deployment::Deployment`)
+	/// on a dotfile level.
 	pub fn deploy(self, source: &PunktfSource, profile: &mut LayeredProfile) -> Deployment {
 		// General flow:
 		//	- get deployment path

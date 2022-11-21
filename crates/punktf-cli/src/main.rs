@@ -137,15 +137,12 @@ use std::path::{Path, PathBuf};
 use clap::Parser;
 use color_eyre::eyre::eyre;
 use color_eyre::Result;
-use punktf_lib::action::deploy::{
-	visit::{DeployOptions, Deployer},
-	Deployment,
-};
-use punktf_lib::action::diff::Diff;
+use punktf_lib::profile::source::PunktfSource;
 use punktf_lib::profile::{resolve_profile, LayeredProfile, Profile};
 use punktf_lib::template::source::Source;
 use punktf_lib::template::Template;
-use punktf_lib::PunktfSource;
+use punktf_lib::visit::deploy::{deployment::Deployment, *};
+use punktf_lib::visit::diff::Diff;
 
 /// Name of the environment variable which defines the default source path for
 /// `punktf`.

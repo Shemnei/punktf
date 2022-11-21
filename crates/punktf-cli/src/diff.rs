@@ -1,13 +1,13 @@
 //! Functions and utilities for the [`Diff`](`crate::opt::Diff`) command
-//! and [`Diff`](`punktf_lib::action::diff::Diff`) visitor.
+//! and [`Diff`](`punktf_lib::visit::diff::Diff`) visitor.
 
 use crate::opt::DiffFormat;
 use console::{style, Style};
-use punktf_lib::action::diff::Event;
+use punktf_lib::visit::diff::Event;
 use similar::{ChangeTag, TextDiff};
 use std::{fmt, path::Path};
 
-/// Processes diff [`Event`s](`punktf_lib::action::diff::Event`) from the visitor.
+/// Processes diff [`Event`s](`punktf_lib::visit::diff::Event`) from the visitor.
 pub fn diff(format: DiffFormat, event: Event<'_>) {
 	match event {
 		Event::NewFile(path) => println!("[{}] New file", path.display()),
