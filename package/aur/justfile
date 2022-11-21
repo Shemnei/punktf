@@ -1,0 +1,7 @@
+# Builds the package
+build:
+	./mkpkgu
+
+# Checks the build script
+check:
+	shellcheck -o all -s bash -S style PKGBUILD
