@@ -35,7 +35,6 @@ build() {
   "target/release/${pkgname}" completions bash
   "target/release/${pkgname}" completions zsh
   "target/release/${pkgname}" completions fish
-  "target/release/${pkgname}" completions powershell
 }
 
 package() {
