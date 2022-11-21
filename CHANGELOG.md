@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved dependencies and some metadata to workspace ([#81](https://github.com/Shemnei/punktf/pull/81))
 - Updated internal workings of the deployment process to make it more flexible ([#82](https://github.com/Shemnei/punktf/pull/82))
 - Dotfiles are now sorted by descending priority to maybe reduce disk read/writes ([#27](https://github.com/Shemnei/punktf/issues/27))
+- Improved aur package installation; Now includes man page and shell completions ([#82](https://github.com/Shemnei/punktf/pull/82))
 
 ## [1.0.2] - 2022-09-29
 
