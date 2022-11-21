@@ -34,7 +34,7 @@ pub enum Event<'a> {
 }
 
 impl Event<'_> {
-	pub fn target_path(&self) -> &Path {
+	pub const fn target_path(&self) -> &Path {
 		match self {
 			Self::NewFile(p) => p,
 			Self::NewDirectory(p) => p,
@@ -50,7 +50,7 @@ impl<F> Diff<F>
 where
 	F: Fn(Event<'_>),
 {
-	pub fn new(f: F) -> Self {
+	pub const fn new(f: F) -> Self {
 		Self(f)
 	}
 

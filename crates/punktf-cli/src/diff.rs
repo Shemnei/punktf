@@ -1,10 +1,14 @@
+//! Functions and utilities for the [`Diff`](`crate::opt::Diff`) command
+//! and [`Diff`](`punktf_lib::action::diff::Diff`) visitor.
+
 use crate::opt::DiffFormat;
 use console::{style, Style};
 use punktf_lib::action::diff::Event;
-use similar::{udiff::unified_diff, ChangeTag, TextDiff};
+use similar::{ChangeTag, TextDiff};
 use std::{fmt, path::Path};
 
-pub(crate) fn diff(format: DiffFormat, event: Event<'_>) {
+/// Processes diff [`Event`s](`punktf_lib::action::diff::Event`) from the visitor.
+pub fn diff(format: DiffFormat, event: Event<'_>) {
 	match event {
 		Event::NewFile(path) => println!("[{}] New file", path.display()),
 		Event::NewDirectory(path) => println!("[{}] New directory", path.display()),
@@ -22,6 +26,7 @@ pub(crate) fn diff(format: DiffFormat, event: Event<'_>) {
 	}
 }
 
+/// Prints a file diff with the gnu unified format.
 fn print_udiff(target: &Path, old: &str, new: &str) {
 	let diff = TextDiff::from_lines(old, new);
 
@@ -29,6 +34,7 @@ fn print_udiff(target: &Path, old: &str, new: &str) {
 	diff.unified_diff().to_writer(std::io::stdout()).unwrap();
 }
 
+/// Used to pretty print diff line numbers.
 struct Line(Option<usize>);
 
 impl fmt::Display for Line {
@@ -40,6 +46,7 @@ impl fmt::Display for Line {
 	}
 }
 
+/// Prints a file diff with ansii escape codes.
 fn print_pretty(target: &Path, old: &str, new: &str) {
 	let diff = TextDiff::from_lines(old, new);
 
