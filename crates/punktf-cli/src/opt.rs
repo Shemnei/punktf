@@ -7,7 +7,7 @@
 
 use std::path::PathBuf;
 
-use clap::{ArgGroup, Args, Parser, Subcommand};
+use clap::{ArgGroup, Args, Parser, Subcommand, ValueEnum};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
@@ -144,4 +144,20 @@ pub struct Diff {
 	/// `profiles/arch.json` should be given as `arch`).
 	#[arg(short, long, env = super::PUNKTF_PROFILE_ENVVAR)]
 	pub profile: String,
+
+	/// Defines the ouput format for the diffs.
+	#[arg(value_enum, short, long, default_value_t = DiffFormat::Pretty)]
+	pub format: DiffFormat,
+}
+
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum DiffFormat {
+	/// Pretty prints the diffs to stdout.
+	#[default]
+	Pretty,
+
+	/// Print the diffs as the gnu unified diff format.
+	///
+	/// Can be used to pipe into pagers.
+	Unified,
 }

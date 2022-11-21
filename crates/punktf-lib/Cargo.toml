@@ -27,7 +27,6 @@ thiserror.workspace = true
 walkdir.workspace = true
 unicode-width.workspace = true
 cfg-if.workspace = true
-similar.workspace = true
 # Optional dependencies can not be in the workspace dependencies
 serde_json = { version = "1.0.87", optional = true }
 serde_yaml = { version = "0.9.14", optional = true }

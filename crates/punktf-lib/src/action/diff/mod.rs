@@ -1,5 +1,3 @@
-use similar::{ChangeTag, TextDiff, udiff::unified_diff};
-
 use crate::{
 	profile::{visit::*, LayeredProfile},
 	transform::Transform,
@@ -24,18 +22,53 @@ fn transform_content(profile: &LayeredProfile, file: &File<'_>, content: String)
 	content
 }
 
-#[derive(Default, Debug, Clone, Copy)]
-pub struct Diff;
+#[derive(Debug)]
+pub enum Event<'a> {
+	NewFile(&'a Path),
+	NewDirectory(&'a Path),
+	Diff {
+		target_path: &'a Path,
+		old_content: String,
+		new_contnet: String,
+	},
+}
 
-impl Diff {
+impl Event<'_> {
+	pub fn target_path(&self) -> &Path {
+		match self {
+			Self::NewFile(p) => p,
+			Self::NewDirectory(p) => p,
+			Self::Diff { target_path, .. } => target_path,
+		}
+	}
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Diff<F>(F);
+
+impl<F> Diff<F>
+where
+	F: Fn(Event<'_>),
+{
+	pub fn new(f: F) -> Self {
+		Self(f)
+	}
+
 	pub fn diff(self, source: &PunktfSource, profile: &mut LayeredProfile) {
 		let mut resolver = ResolvingVisitor::new(self);
 		let walker = Walker::new(profile);
 		walker.walk(source, &mut resolver).unwrap();
 	}
+
+	fn dispatch(&self, event: Event<'_>) {
+		(self.0)(event)
+	}
 }
 
-impl Visitor for Diff {
+impl<F> Visitor for Diff<F>
+where
+	F: Fn(Event<'_>),
+{
 	fn accept_file<'a>(
 		&mut self,
 		_: &PunktfSource,
@@ -50,9 +83,15 @@ impl Visitor for Diff {
 			);
 			let old = std::fs::read_to_string(&file.target_path).unwrap();
 
-			diff(&file.target_path, &old, &new);
+			if new != old {
+				self.dispatch(Event::Diff {
+					target_path: &file.target_path,
+					old_content: old,
+					new_contnet: new,
+				});
+			}
 		} else {
-			println!("[{}]: New file", file.target_path.display());
+			self.dispatch(Event::NewFile(&file.target_path))
 		}
 
 		Ok(())
@@ -65,7 +104,7 @@ impl Visitor for Diff {
 		directory: &Directory<'a>,
 	) -> Result {
 		if !directory.target_path.exists() {
-			println!("[{}]: New directory", directory.target_path.display());
+			self.dispatch(Event::NewDirectory(&directory.target_path))
 		}
 
 		Ok(())
@@ -106,7 +145,10 @@ impl Visitor for Diff {
 	}
 }
 
-impl TemplateVisitor for Diff {
+impl<F> TemplateVisitor for Diff<F>
+where
+	F: Fn(Event<'_>),
+{
 	fn accept_template<'a>(
 		&mut self,
 		_: &PunktfSource,
@@ -124,61 +166,17 @@ impl TemplateVisitor for Diff {
 			);
 			let old = std::fs::read_to_string(&file.target_path).unwrap();
 
-			diff(&file.target_path, &old, &new);
+			if new != old {
+				self.dispatch(Event::Diff {
+					target_path: &file.target_path,
+					old_content: old,
+					new_contnet: new,
+				});
+			}
 		} else {
-			println!("[{}]: New file", file.target_path.display());
+			self.dispatch(Event::NewFile(&file.target_path))
 		}
 
 		Ok(())
-	}
-}
-
-fn diff(target: &Path, old: &str, new: &str) {
-	let diff = TextDiff::from_lines(old, new);
-
-	for (idx, group) in diff.grouped_ops(3).iter().enumerate() {
-		if idx == 0 {
-			println!("{}", ">".repeat(80));
-			println!("Diff of {}", target.display());
-			println!("{}", ">".repeat(80));
-
-			let diff = unified_diff(similar::Algorithm::Lcs, old, new, 3, None);
-
-			println!("{}", "=".repeat(80));
-			println!("{diff}");
-			println!("{}", "=".repeat(80));
-		}
-
-		if idx > 0 {
-			println!("{:-^1$}", "-", 80);
-		}
-
-		for op in group {
-			for change in diff.iter_changes(op) {
-				let sign = match change.tag() {
-					ChangeTag::Delete => "-",
-					ChangeTag::Insert => "+",
-					ChangeTag::Equal => " ",
-				};
-
-				print!(
-					"{} {} |{} {}",
-					change
-						.old_index()
-						.map(|d| d.to_string())
-						.unwrap_or_else(|| " ".into()),
-					change
-						.new_index()
-						.map(|d| d.to_string())
-						.unwrap_or_else(|| " ".into()),
-					sign,
-					change.to_string_lossy()
-				);
-
-				if change.missing_newline() {
-					println!();
-				}
-			}
-		}
 	}
 }

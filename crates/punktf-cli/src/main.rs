@@ -128,6 +128,7 @@
 )]
 #![cfg_attr(docsrs, feature(doc_cfg), feature(doc_alias))]
 
+mod diff;
 mod opt;
 mod util;
 use std::fs::{File, OpenOptions};
@@ -371,6 +372,7 @@ fn handle_command_diff(
 	opt::Shared { source, .. }: opt::Shared,
 	opt::Diff {
 		profile: profile_name,
+		format,
 	}: opt::Diff,
 ) -> Result<()> {
 	let ptf_src = PunktfSource::from_root(source)?;
@@ -382,7 +384,7 @@ fn handle_command_diff(
 
 	setup_env(&ptf_src, &profile, &profile_name);
 
-	Diff::default().diff(&ptf_src, &mut profile);
+	Diff::new(|event| diff::diff(format, event)).diff(&ptf_src, &mut profile);
 
 	Ok(())
 }
