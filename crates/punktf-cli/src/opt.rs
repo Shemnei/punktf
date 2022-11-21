@@ -23,7 +23,7 @@ pub struct Opts {
 #[derive(Debug, Args)]
 #[command(
 	group(
-		ArgGroup::new("verobsity")
+		ArgGroup::new("verbosity")
 			.required(false)
 			.args(["verbose", "quite"]),
 	)
