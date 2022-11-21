@@ -8,6 +8,7 @@
 use std::path::PathBuf;
 
 use clap::{ArgGroup, Args, Parser, Subcommand, ValueEnum};
+use clap_complete::Shell;
 
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
@@ -67,6 +68,7 @@ pub enum Command {
 	Verify(Verify),
 	Diff(Diff),
 	Man(Man),
+	Completions(Completions),
 }
 
 /// Deploys a profile.
@@ -173,6 +175,17 @@ pub struct Diff {
 /// Generates man pages for this application.
 #[derive(Debug, Parser)]
 pub struct Man {
+	/// Output path for the man pages.
+	#[arg(short, long, default_value = ".")]
+	pub output: PathBuf,
+}
+
+/// Generates shell completions for this application.
+#[derive(Debug, Parser)]
+pub struct Completions {
+	/// Shell for which to generate the completions.
+	pub shell: Shell,
+
 	/// Output path for the man pages.
 	#[arg(short, long, default_value = ".")]
 	pub output: PathBuf,

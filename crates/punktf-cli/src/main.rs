@@ -144,6 +144,9 @@ use punktf_lib::template::Template;
 use punktf_lib::visit::deploy::{deployment::Deployment, *};
 use punktf_lib::visit::diff::Diff;
 
+/// Name of this binary.
+const BINARY_NAME: &str = env!("CARGO_BIN_NAME");
+
 /// Name of the environment variable which defines the default source path for
 /// `punktf`.
 pub const PUNKTF_SOURCE_ENVVAR: &str = "PUNKTF_SOURCE";
@@ -192,6 +195,7 @@ fn handle_commands(opts: opt::Opts) -> Result<()> {
 		opt::Command::Verify(c) => handle_command_verify(shared, c),
 		opt::Command::Diff(c) => handle_command_diff(shared, c),
 		opt::Command::Man(c) => handle_command_man(shared, c),
+		opt::Command::Completions(c) => handle_command_completions(shared, c),
 	}
 }
 
@@ -423,8 +427,6 @@ fn handle_command_diff(
 
 /// Handles the `man` command processing.
 fn handle_command_man(_: opt::Shared, opt::Man { output }: opt::Man) -> Result<()> {
-	const BINARY_NAME: &str = env!("CARGO_BIN_NAME");
-
 	let output = output.join(format!("{}.1", BINARY_NAME));
 
 	let man = clap_mangen::Man::new(opt::Opts::command());
@@ -432,6 +434,16 @@ fn handle_command_man(_: opt::Shared, opt::Man { output }: opt::Man) -> Result<(
 	man.render(&mut buffer)?;
 
 	std::fs::write(output, buffer)?;
+
+	Ok(())
+}
+
+/// Handles the `completions` command processing.
+fn handle_command_completions(
+	_: opt::Shared,
+	opt::Completions { shell, output }: opt::Completions,
+) -> Result<()> {
+	clap_complete::generate_to(shell, &mut opt::Opts::command(), BINARY_NAME, output)?;
 
 	Ok(())
 }
