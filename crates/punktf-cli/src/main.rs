@@ -134,7 +134,7 @@ mod util;
 use std::fs::{File, OpenOptions};
 use std::path::{Path, PathBuf};
 
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use color_eyre::eyre::eyre;
 use color_eyre::Result;
 use punktf_lib::profile::source::PunktfSource;
@@ -191,6 +191,7 @@ fn handle_commands(opts: opt::Opts) -> Result<()> {
 		opt::Command::Render(c) => handle_command_render(shared, c),
 		opt::Command::Verify(c) => handle_command_verify(shared, c),
 		opt::Command::Diff(c) => handle_command_diff(shared, c),
+		opt::Command::Man(c) => handle_command_man(shared, c),
 	}
 }
 
@@ -232,6 +233,56 @@ fn setup_env(source: &PunktfSource, profile: &LayeredProfile, profile_name: &str
 		std::env::set_var("PUNKTF_CURRENT_TARGET", target);
 	}
 	std::env::set_var("PUNKTF_CURRENT_PROFILE", profile_name);
+}
+
+/// Handles the writting of the deployment status to output files/formats.
+fn handle_output(
+	opt::OutputShared {
+		json_output,
+		yaml_output,
+	}: opt::OutputShared,
+	deployment: &Deployment,
+) {
+	/// Creates a new file. Fails if the file exists.
+	///
+	/// TODO: replace with `std/fs/struct.File.html#method.create_new` once stable.
+	fn create_file(path: &Path) -> std::io::Result<File> {
+		OpenOptions::new().create_new(true).write(true).open(path)
+	}
+
+	'json: {
+		if let Some(json_path) = json_output {
+			let mut file = match create_file(&json_path) {
+				Ok(file) => file,
+				Err(err) => {
+					log::error!("Failed to create json output file: {err}");
+					break 'json;
+				}
+			};
+
+			if let Err(err) = serde_json::to_writer_pretty(&mut file, deployment) {
+				log::error!("Failed to write deployment status to json output file: {err}");
+				break 'json;
+			}
+		}
+	}
+
+	'yaml: {
+		if let Some(yaml_path) = yaml_output {
+			let mut file = match create_file(&yaml_path) {
+				Ok(file) => file,
+				Err(err) => {
+					log::error!("Failed to create yaml output file: {err}");
+					break 'yaml;
+				}
+			};
+
+			if let Err(err) = serde_yaml::to_writer(&mut file, deployment) {
+				log::error!("Failed to write deployment status to yaml output file: {err}");
+				break 'yaml;
+			}
+		}
+	}
 }
 
 /// Handles the `deploy` command processing.
@@ -370,52 +421,17 @@ fn handle_command_diff(
 	Ok(())
 }
 
-/// Handles the writting of the deployment status to output files/formats.
-fn handle_output(
-	opt::OutputShared {
-		json_output,
-		yaml_output,
-	}: opt::OutputShared,
-	deployment: &Deployment,
-) {
-	/// Creates a new file. Fails if the file exists.
-	///
-	/// TODO: replace with `std/fs/struct.File.html#method.create_new` once stable.
-	fn create_file(path: &Path) -> std::io::Result<File> {
-		OpenOptions::new().create_new(true).write(true).open(path)
-	}
+/// Handles the `man` command processing.
+fn handle_command_man(_: opt::Shared, opt::Man { output }: opt::Man) -> Result<()> {
+	const BINARY_NAME: &str = env!("CARGO_BIN_NAME");
 
-	'json: {
-		if let Some(json_path) = json_output {
-			let mut file = match create_file(&json_path) {
-				Ok(file) => file,
-				Err(err) => {
-					log::error!("Failed to create json output file: {err}");
-					break 'json;
-				}
-			};
+	let output = output.join(format!("{}.1", BINARY_NAME));
 
-			if let Err(err) = serde_json::to_writer_pretty(&mut file, deployment) {
-				log::error!("Failed to write deployment status to json output file: {err}");
-				break 'json;
-			}
-		}
-	}
+	let man = clap_mangen::Man::new(opt::Opts::command());
+	let mut buffer: Vec<u8> = Default::default();
+	man.render(&mut buffer)?;
 
-	'yaml: {
-		if let Some(yaml_path) = yaml_output {
-			let mut file = match create_file(&yaml_path) {
-				Ok(file) => file,
-				Err(err) => {
-					log::error!("Failed to create yaml output file: {err}");
-					break 'yaml;
-				}
-			};
+	std::fs::write(output, buffer)?;
 
-			if let Err(err) = serde_yaml::to_writer(&mut file, deployment) {
-				log::error!("Failed to write deployment status to yaml output file: {err}");
-				break 'yaml;
-			}
-		}
-	}
+	Ok(())
 }

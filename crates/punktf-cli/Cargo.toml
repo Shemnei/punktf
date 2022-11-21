@@ -23,6 +23,7 @@ log.workspace = true
 punktf-lib.workspace = true
 similar.workspace = true
 console.workspace = true
+clap_mangen.workspace = true
 serde.workspace = true
 # Optional dependencies can not be in the workspace dependencies
 serde_json = "1.0.87"

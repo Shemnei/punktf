@@ -66,6 +66,7 @@ pub enum Command {
 	Render(Render),
 	Verify(Verify),
 	Diff(Diff),
+	Man(Man),
 }
 
 /// Deploys a profile.
@@ -138,6 +139,19 @@ pub struct Verify {
 	pub output: OutputShared,
 }
 
+/// Format of the output of the [`Diff`] command.
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum DiffFormat {
+	/// Pretty prints the diffs to stdout.
+	#[default]
+	Pretty,
+
+	/// Print the diffs as the gnu unified diff format.
+	///
+	/// Can be used to pipe into pagers.
+	Unified,
+}
+
 /// Prints differences to already deployed files for a profile.
 ///
 /// Similar to `deploy --dry-run` but does not require the `target` or `dry-run`
@@ -156,14 +170,10 @@ pub struct Diff {
 	pub format: DiffFormat,
 }
 
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub enum DiffFormat {
-	/// Pretty prints the diffs to stdout.
-	#[default]
-	Pretty,
-
-	/// Print the diffs as the gnu unified diff format.
-	///
-	/// Can be used to pipe into pagers.
-	Unified,
+/// Generates man pages for this application.
+#[derive(Debug, Parser)]
+pub struct Man {
+	/// Output path for the man pages.
+	#[arg(short, long, default_value = ".")]
+	pub output: PathBuf,
 }
