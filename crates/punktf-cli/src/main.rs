@@ -318,50 +318,34 @@ fn handle_command_render(
 	Ok(())
 }
 
-/// Handles the `deploy` command processing.
+/// Handles the `verify` command processing.
+///
+/// This is basically a alias for `deploy --dry-run`.
 fn handle_command_verify(
 	opt::Shared { source, .. }: opt::Shared,
 	opt::Verify {
 		profile: profile_name,
-		..
+		output,
 	}: opt::Verify,
 ) -> Result<()> {
 	let ptf_src = PunktfSource::from_root(source)?;
-	let profile = setup_profile(&profile_name, &ptf_src, None)?;
+	let mut profile = setup_profile(&profile_name, &ptf_src, None)?;
 
 	log::debug!("Profile:\n{:#?}", profile);
 	log::debug!("Source: {}", ptf_src.root().display());
 	log::debug!("Target: {:?}", profile.target_path());
 
-	todo!()
-	/*
-
 	setup_env(&ptf_src, &profile, &profile_name);
 
-	let options = ExecutorOptions { dry_run: true };
+	let options = DeployOptions { dry_run: true };
+	let deployment = Deployer::new(options, util::ask_user_merge).deploy(&ptf_src, &mut profile);
 
-	let deployer = Executor::new(options, |_, _| Ok(true));
+	log::debug!("Deployment:\n{:#?}", deployment);
+	util::log_deployment(&deployment, true);
 
-	let deployment = deployer.deploy(ptf_src, &profile);
+	handle_output(output, &deployment);
 
-	match deployment {
-		Ok(deployment) => {
-			util::log_deployment(&deployment, true);
-
-			handle_output(output, &deployment);
-
-			if deployment.status().is_failed() {
-				Err(eyre!("Some dotfiles failed to verify"))
-			} else {
-				Ok(())
-			}
-		}
-		Err(err) => {
-			log::error!("Verification aborted: {}", err);
-			Err(err)
-		}
-	}
-		*/
+	Ok(())
 }
 
 /// Handles the `diff` command processing.

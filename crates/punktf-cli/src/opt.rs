@@ -117,6 +117,12 @@ pub struct Render {
 
 /// Verifies a profile.
 ///
+/// This includes checking and resolving templates, running hooks.
+/// No actual file operations will be executed.
+///
+/// # NOTE
+/// This will run pre-, and post-hooks.
+///
 /// Similar to `deploy --dry-run` but does not require the `target` or `dry-run`
 /// arguments.
 #[derive(Debug, Parser)]
