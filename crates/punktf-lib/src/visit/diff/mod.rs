@@ -135,10 +135,9 @@ where
 		errored: &Errored<'a>,
 	) -> Result {
 		log::error!(
-			"[{}] Error - {}: {}",
+			"[{}] Error - {}",
 			errored.relative_source_path.display(),
-			errored.context,
-			errored.error
+			errored
 		);
 
 		Ok(())

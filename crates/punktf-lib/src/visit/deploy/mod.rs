@@ -460,7 +460,7 @@ where
 	) -> Result {
 		errored.add_to_builder(
 			&mut self.builder,
-			DotfileStatus::failed(format!("{}: {}", errored.context, errored.error)),
+			DotfileStatus::failed(format!("{}", errored)),
 		);
 
 		Ok(())

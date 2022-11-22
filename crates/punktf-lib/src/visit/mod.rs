@@ -2,6 +2,7 @@ pub mod deploy;
 pub mod diff;
 
 use std::borrow::Cow;
+use std::fmt;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
@@ -204,8 +205,8 @@ impl<'a> Deref for Rejected<'a> {
 #[derive(Debug)]
 pub struct Errored<'a> {
 	pub dotfile: DeployableDotfile<'a>,
-	pub error: Box<dyn std::error::Error>,
-	pub context: &'static str,
+	pub error: Option<Box<dyn std::error::Error>>,
+	pub context: Option<Cow<'a, str>>,
 }
 
 impl<'a> Deref for Errored<'a> {
@@ -213,6 +214,26 @@ impl<'a> Deref for Errored<'a> {
 
 	fn deref(&self) -> &Self::Target {
 		&self.dotfile
+	}
+}
+
+impl fmt::Display for Errored<'_> {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let has_context = if let Some(context) = &self.context {
+			f.write_str(&context)?;
+			true
+		} else {
+			false
+		};
+
+		if let Some(err) = &self.error {
+			if has_context {
+				f.write_str(": ")?;
+			}
+			write!(f, "{}", err)?;
+		}
+
+		Ok(())
 	}
 }
 
@@ -310,13 +331,30 @@ impl<'a> Walker<'a> {
 			return self.walk_rejected(source, visitor, paths, dotfile);
 		}
 
-		if source_path.is_file() {
+		// For now dont follow symlinks (`metadata()` would get the metadata of the target of a
+		// link).
+		let metadata = match source_path.symlink_metadata() {
+			Ok(metadata) => metadata,
+			Err(err) => {
+				return self.walk_errored(
+					source,
+					visitor,
+					paths,
+					dotfile,
+					Some(err),
+					Some("Failed to resolve metadata"),
+				);
+			}
+		};
+
+		if metadata.is_file() {
 			self.walk_file(source, visitor, paths, dotfile)
-		} else if source_path.is_dir() {
+		} else if metadata.is_dir() {
 			self.walk_directory(source, visitor, paths, dotfile)
 		} else {
-			// TODO: Better handling
-			panic!("Symlinks are not supported")
+			let err = std::io::Error::new(std::io::ErrorKind::Unsupported, "Invalid file type");
+
+			self.walk_errored(source, visitor, paths, dotfile, Some(err), None::<&str>)
 		}
 	}
 
@@ -353,8 +391,8 @@ impl<'a> Walker<'a> {
 					visitor,
 					paths,
 					dotfile,
-					Box::new(err),
-					"Failed to read directory",
+					Some(err),
+					Some("Failed to read directory"),
 				);
 			}
 		};
@@ -368,8 +406,8 @@ impl<'a> Walker<'a> {
 						visitor,
 						paths,
 						dotfile,
-						Box::new(err),
-						"Failed to read directory",
+						Some(err),
+						Some("Failed to read directory"),
 					);
 				}
 			};
@@ -406,13 +444,13 @@ impl<'a> Walker<'a> {
 		visitor: &mut impl Visitor,
 		paths: Paths,
 		dotfile: &Dotfile,
-		error: Box<dyn std::error::Error>,
-		context: &'static str,
+		error: Option<impl std::error::Error + 'static>,
+		context: Option<impl Into<Cow<'a, str>>>,
 	) -> Result {
 		let errored = Errored {
 			dotfile: DeployableDotfile::new(source, paths, dotfile),
-			error,
-			context,
+			error: error.map(|e| e.into()),
+			context: context.map(|c| c.into()),
 		};
 
 		visitor.accept_errored(source, self.profile, &errored)
@@ -440,8 +478,6 @@ impl<'a> Walker<'a> {
 				.unwrap_or_else(|| self.profile.target_path().expect("No target path set"))
 				.join(dotfile.rename.as_ref().unwrap_or(&dotfile.path))
 		};
-
-		// NOTE: Do not call canonicalize as the path migh not exist which would cause an error.
 
 		self.resolve_path(path)
 	}

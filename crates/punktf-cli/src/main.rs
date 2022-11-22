@@ -137,6 +137,7 @@ use std::path::{Path, PathBuf};
 use clap::{CommandFactory, Parser};
 use color_eyre::eyre::eyre;
 use color_eyre::Result;
+use punktf_lib::profile::dotfile::Dotfile;
 use punktf_lib::profile::source::PunktfSource;
 use punktf_lib::profile::{resolve_profile, LayeredProfile, Profile};
 use punktf_lib::template::source::Source;
@@ -345,6 +346,36 @@ fn handle_command_render(
 		dotfile,
 	}: opt::Render,
 ) -> Result<()> {
+	fn find_dotfile<'a, 'b>(
+		dotfiles: impl Iterator<Item = &'a Dotfile>,
+		relative_source_path: &'b Path,
+	) -> Option<&'a Dotfile> {
+		dotfiles
+			.filter_map(|d| {
+				relative_source_path
+					.strip_prefix(&d.path)
+					.map(|p| (d, p))
+					.ok()
+			})
+			.reduce(|a, i| {
+				// First sort by tiniest differance to dotfile path
+				// then by highest priority.
+
+				if i.1.as_os_str().len() == a.1.as_os_str().len() {
+					match (i.0.priority, a.0.priority) {
+						(Some(ip), Some(ap)) if ip >= ap => i,
+						(Some(_), None) | (None, None) => i,
+						_ => a,
+					}
+				} else if i.1.as_os_str().len() < a.1.as_os_str().len() {
+					i
+				} else {
+					a
+				}
+			})
+			.map(|(d, _)| d)
+	}
+
 	let ptf_src = PunktfSource::from_root(source)?;
 	let profile = setup_profile(&profile_name, &ptf_src, None)?;
 
@@ -354,7 +385,7 @@ fn handle_command_render(
 
 	setup_env(&ptf_src, &profile, &profile_name);
 
-	let dotfile_vars = if let Some(dotfile) = profile.dotfiles().find(|d| d.path == dotfile) {
+	let dotfile_vars = if let Some(dotfile) = find_dotfile(profile.dotfiles(), &dotfile) {
 		log::debug!("Dotfile found in profile");
 		dotfile.variables.as_ref()
 	} else {
