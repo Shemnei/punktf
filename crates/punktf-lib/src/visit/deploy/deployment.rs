@@ -1,3 +1,5 @@
+//! Models and structs used by and for the deployment process.
+
 use std::borrow::Cow;
 use std::fmt;
 use std::path::{Path, PathBuf};

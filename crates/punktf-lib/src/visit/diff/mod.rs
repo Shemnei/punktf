@@ -1,3 +1,6 @@
+//! A [`Visitor`](`crate::visit::Visitor`) implementation which creates events for
+//! files which differ from the content it would have once deployed.
+
 use crate::{
 	profile::LayeredProfile,
 	profile::{source::PunktfSource, transform::Transform},
@@ -5,6 +8,8 @@ use crate::{
 };
 use std::path::Path;
 
+/// Applies any relevant [`Transform`](`crate::profile::transform::Transform`)
+/// for the given file.
 fn transform_content(profile: &LayeredProfile, file: &File<'_>, content: String) -> String {
 	let mut content = content;
 
@@ -22,18 +27,30 @@ fn transform_content(profile: &LayeredProfile, file: &File<'_>, content: String)
 	content
 }
 
+/// An event which is emitted for every differing item.
 #[derive(Debug)]
 pub enum Event<'a> {
+	/// File does currently not exist but would be created.
 	NewFile(&'a Path),
+
+	/// Directory does currently not exist but would be created.
 	NewDirectory(&'a Path),
+
+	/// File does exist but the contents would changed.
 	Diff {
+		/// Absoulte path to the target location.
 		target_path: &'a Path,
+
+		/// Contents of the current file on the filesystem.
 		old_content: String,
+
+		/// Contents of the file after a deployment.
 		new_contnet: String,
 	},
 }
 
 impl Event<'_> {
+	/// Returns the absolute target path for the diff.
 	pub const fn target_path(&self) -> &Path {
 		match self {
 			Self::NewFile(p) => p,
@@ -43,6 +60,9 @@ impl Event<'_> {
 	}
 }
 
+/// A [`Visitor`](`crate::visit::Visitor`) implementation which checks for
+/// changes which would be made by a deployment.
+/// For each change an [`Event`] is emitted which can be processed by [`Diff.0`].
 #[derive(Debug, Clone, Copy)]
 pub struct Diff<F>(F);
 
@@ -50,16 +70,19 @@ impl<F> Diff<F>
 where
 	F: Fn(Event<'_>),
 {
+	/// Creates a new instance of the visitor.
 	pub const fn new(f: F) -> Self {
 		Self(f)
 	}
 
+	/// Runs the visitor to completion for a given profile.
 	pub fn diff(self, source: &PunktfSource, profile: &mut LayeredProfile) {
-		let mut resolver = ResolvingVisitor::new(self);
+		let mut resolver = ResolvingVisitor(self);
 		let walker = Walker::new(profile);
 		walker.walk(source, &mut resolver).unwrap();
 	}
 
+	/// Emits the given event.
 	fn dispatch(&self, event: Event<'_>) {
 		(self.0)(event)
 	}

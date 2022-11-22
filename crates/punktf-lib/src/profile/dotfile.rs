@@ -1,3 +1,6 @@
+//! Defines definitions for a [`Dotfile`] which is the basic building block
+//! to define required/deployable items in a [`Profile`](`crate::profile::Profile`).
+
 use serde::{Deserialize, Serialize};
 
 use crate::profile::{transform::ContentTransformer, variables::Variables, MergeMode, Priority};

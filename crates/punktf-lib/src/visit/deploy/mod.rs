@@ -1,3 +1,5 @@
+//! A [`Visit`](`crate::visit::Visitor`) implementation which deploys the items.
+
 pub mod deployment;
 
 use color_eyre::eyre::Context;
@@ -13,7 +15,9 @@ use std::path::Path;
 
 use crate::visit::{ResolvingVisitor, TemplateVisitor};
 
-impl<'a> DeployableDotfile<'a> {
+impl<'a> Item<'a> {
+	/// Adds this item to the given
+	/// [`DeploymentBuilder`](`crate::visit::deploy::deployment::DeploymentBuilder`).
 	fn add_to_builder<S: Into<DotfileStatus>>(&self, builder: &mut DeploymentBuilder, status: S) {
 		let status = status.into();
 
@@ -65,6 +69,11 @@ pub struct Deployer<F> {
 	///
 	/// The arguments for the function are (dotfile_source_path, dotfile_target_path).
 	merge_ask_fn: F,
+
+	/// Builder for the deployment.
+	///
+	/// This holds information about each item which was processed,
+	/// keeps track of the time and also stores a overall status of the deployment.
 	builder: DeploymentBuilder,
 }
 
@@ -72,6 +81,7 @@ impl<F> Deployer<F>
 where
 	F: Fn(&Path, &Path) -> color_eyre::Result<bool>,
 {
+	/// Creates a new instance.
 	pub fn new(options: DeployOptions, merge_ask_fn: F) -> Self {
 		Self {
 			options,
@@ -80,6 +90,7 @@ where
 		}
 	}
 
+	/// Retrieves the finished deployment from this instance.
 	pub fn into_deployment(self) -> Deployment {
 		self.builder.finish()
 	}
@@ -125,7 +136,7 @@ where
 			};
 		}
 
-		let mut resolver = ResolvingVisitor::new(self);
+		let mut resolver = ResolvingVisitor(self);
 		let walker = Walker::new(profile);
 		if let Err(err) = walker.walk(source, &mut resolver) {
 			return resolver.into_inner().builder.failed(err.to_string());
@@ -144,6 +155,10 @@ where
 		this.into_deployment()
 	}
 
+	/// Checks common things for a given file item before deploying it.
+	///
+	/// The returned boolean indicates if the deployment of the file should
+	/// continue.
 	fn pre_deploy_checks(&mut self, file: &File<'_>) -> color_eyre::Result<bool> {
 		let other_priority = self.builder.get_priority(&file.target_path);
 
@@ -268,6 +283,8 @@ where
 		Ok(true)
 	}
 
+	/// Applies any relevant [`Transform`](`crate::profile::transform::Transform`)
+	/// for the given file.
 	fn transform_content(
 		&mut self,
 		profile: &LayeredProfile,

@@ -1,3 +1,19 @@
+//! Provides definitions for the `punktf` source directory.
+//!
+//! The source directory is the central repository used to store
+//! [`Profile`s](`crate::profile::Profile`) and [`Dotfile`s](`crate::profile::dotfile::Dotfile`).
+//! `punktf` will only read data from these directories but never write to them.
+//!
+//! The current structure looks something like this:
+//!
+//! ```text
+//! root/
+//! + profiles/
+//!   ...
+//! + dotfiles/
+//!   ...
+//! ```
+
 use color_eyre::eyre::Context as _;
 use std::path::{Path, PathBuf};
 

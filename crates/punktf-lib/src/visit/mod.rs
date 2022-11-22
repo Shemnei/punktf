@@ -1,3 +1,7 @@
+//! This module provieds a [`Visitor`] trait and a [`Walker`] which iterates
+//! over every item to be deployed in a given profile.
+//! The visitor accepts items on different functions depending on status and type.
+
 pub mod deploy;
 pub mod diff;
 
@@ -14,17 +18,28 @@ use color_eyre::eyre::Context;
 use crate::template::source::Source;
 use crate::template::Template;
 
+/// Result type for this module.
+pub type Result = std::result::Result<(), Box<dyn std::error::Error>>;
+
+/// A struct to keep two paths in sync while appending relative child paths.
 #[derive(Debug, Clone)]
 struct PathLink {
+	/// Source path.
 	source: PathBuf,
+
+	/// Target path.
 	target: PathBuf,
 }
 
 impl PathLink {
+	/// Creates a new path link struct.
 	const fn new(source: PathBuf, target: PathBuf) -> Self {
 		Self { source, target }
 	}
 
+	/// Appends a child path to the path link.
+	///
+	/// The given path will be added in sync to both internal paths.
 	fn join(mut self, relative: &Path) -> Self {
 		self.source = self.source.join(relative);
 		self.target = self.target.join(relative);
@@ -33,13 +48,23 @@ impl PathLink {
 	}
 }
 
+/// A struct to hold all paths relevant for a [`Item`].
 #[derive(Debug, Clone)]
 struct Paths {
+	/// The root paths of the underlying [`Dotfile`](`crate::profile::dotfile::Dotfile`).
+	///
+	/// This will always be the path of the item.
 	root: PathLink,
+
+	/// The paths of the [`Item`].
+	///
+	/// If the dotfile is a directory, this contains the relevant path
+	/// to the item which is included by the root dotfile.
 	child: Option<PathLink>,
 }
 
 impl Paths {
+	/// Creates a new paths instance.
 	const fn new(root_source: PathBuf, root_target: PathBuf) -> Self {
 		Self {
 			root: PathLink::new(root_source, root_target),
@@ -47,6 +72,7 @@ impl Paths {
 		}
 	}
 
+	/// Appends a relative child path to instance.
 	fn with_child(self, rel_path: impl Into<PathBuf>) -> Self {
 		let Paths { root, child } = self;
 		let rel_path = rel_path.into();
@@ -63,22 +89,31 @@ impl Paths {
 		}
 	}
 
+	/// Checks if this instance points to a actual
+	/// [`Dotfile`](`crate::profile::dotfile::Dotfile`).
 	pub const fn is_root(&self) -> bool {
 		self.child.is_none()
 	}
 
+	/// Checks if this instance points to a child of an
+	/// [`Dotfile`](`crate::profile::dotfile::Dotfile`).
 	pub const fn is_child(&self) -> bool {
 		self.child.is_some()
 	}
 
+	/// Retrives the source path of the actual dotfile.
 	pub fn root_source_path(&self) -> &Path {
 		&self.root.source
 	}
 
+	/// Retrives the target path of the acutal dotfile.
 	pub fn root_target_path(&self) -> &Path {
 		&self.root.target
 	}
 
+	/// Retrives the target path of the child.
+	///
+	/// If this is not a child instance, the root path will be returned instead.
 	pub fn child_source_path(&self) -> Cow<'_, Path> {
 		if let Some(child) = &self.child {
 			Cow::Owned(self.root_source_path().join(&child.source))
@@ -87,6 +122,9 @@ impl Paths {
 		}
 	}
 
+	/// Retrives the source path of the child.
+	///
+	/// If this is not a child instance, the root path will be returned instead.
 	pub fn child_target_path(&self) -> Cow<'_, Path> {
 		if let Some(child) = &self.child {
 			Cow::Owned(self.root_target_path().join(&child.target))
@@ -96,17 +134,28 @@ impl Paths {
 	}
 }
 
+/// Defines what kind the item is.
 #[derive(Debug)]
 pub enum Kind<'a> {
+	/// The item stems directly from a [`Dotfile`](`crate::profile::dotfile::Dotfile`).
 	Root(&'a Dotfile),
+
+	/// The item is a child of a directory [`Dotfile`](`crate::profile::dotfile::Dotfile`).
 	Child {
+		/// The root [`Dotfile`](`crate::profile::dotfile::Dotfile`) from which
+		/// this item stems.
 		root: &'a Dotfile,
+
+		/// Absoulte source path to the root dotfile.
 		root_source_path: PathBuf,
+
+		/// Absoulte target path to the root dotfile.
 		root_target_path: PathBuf,
 	},
 }
 
 impl<'a> Kind<'a> {
+	/// Creates a new instance.
 	fn from_paths(paths: Paths, dotfile: &'a Dotfile) -> Self {
 		if paths.is_root() {
 			Self::Root(dotfile)
@@ -119,6 +168,7 @@ impl<'a> Kind<'a> {
 		}
 	}
 
+	/// Retrieves the underlying [`Dotfile`](`crate::profile::dotfile::Dotfile`).
 	pub const fn dotfile(&self) -> &Dotfile {
 		match self {
 			Self::Root(dotfile) => dotfile,
@@ -127,15 +177,24 @@ impl<'a> Kind<'a> {
 	}
 }
 
+/// Saves relevant information about an item to be processed.
 #[derive(Debug)]
-pub struct DeployableDotfile<'a> {
+pub struct Item<'a> {
+	/// Relative path to the item inside the `dotfiles` directly.
 	pub relative_source_path: PathBuf,
+
+	/// Absoulte source path for the item.
 	pub source_path: PathBuf,
+
+	/// Absoulte target path for the item.
 	pub target_path: PathBuf,
+
+	/// Kind of the item.
 	pub kind: Kind<'a>,
 }
 
-impl<'a> DeployableDotfile<'a> {
+impl<'a> Item<'a> {
+	/// Creates a new instance.
 	fn new(source: &PunktfSource, paths: Paths, dotfile: &'a Dotfile) -> Self {
 		let source_path = paths.child_source_path().into_owned();
 		let target_path = paths.child_target_path().into_owned();
@@ -154,66 +213,83 @@ impl<'a> DeployableDotfile<'a> {
 	}
 }
 
-impl DeployableDotfile<'_> {
+impl Item<'_> {
+	/// Retrives the underlying dotfile.
 	pub const fn dotfile(&self) -> &Dotfile {
 		self.kind.dotfile()
 	}
 }
 
+/// A file to be processed.
 #[derive(Debug)]
-pub struct File<'a>(DeployableDotfile<'a>);
+pub struct File<'a>(Item<'a>);
 
 impl<'a> Deref for File<'a> {
-	type Target = DeployableDotfile<'a>;
+	type Target = Item<'a>;
 
 	fn deref(&self) -> &Self::Target {
 		&self.0
 	}
 }
 
+/// A directory to be processed.
 #[derive(Debug)]
-pub struct Directory<'a>(DeployableDotfile<'a>);
+pub struct Directory<'a>(Item<'a>);
 
 impl<'a> Deref for Directory<'a> {
-	type Target = DeployableDotfile<'a>;
+	type Target = Item<'a>;
 
 	fn deref(&self) -> &Self::Target {
 		&self.0
 	}
 }
 
+/// A symlink to be processed.
 #[derive(Debug)]
 pub struct Symlink {
+	/// Absoulte source path of the link.
 	pub source_path: PathBuf,
+
+	/// Absoulte target path of the link.
 	pub target_path: PathBuf,
 }
 
+/// Holds information about a rejected item.
 #[derive(Debug)]
 pub struct Rejected<'a> {
-	pub dotfile: DeployableDotfile<'a>,
+	/// The item which was rejected.
+	pub item: Item<'a>,
+
+	/// The reason why the item was rejected.
 	pub reason: Cow<'static, str>,
 }
 
 impl<'a> Deref for Rejected<'a> {
-	type Target = DeployableDotfile<'a>;
+	type Target = Item<'a>;
 
 	fn deref(&self) -> &Self::Target {
-		&self.dotfile
+		&self.item
 	}
 }
 
+/// Holds information about a errored item.
 #[derive(Debug)]
 pub struct Errored<'a> {
-	pub dotfile: DeployableDotfile<'a>,
+	/// The item which was rejected.
+	pub item: Item<'a>,
+
+	/// The error which has occured.
 	pub error: Option<Box<dyn std::error::Error>>,
+
+	/// The context of the error.
 	pub context: Option<Cow<'a, str>>,
 }
 
 impl<'a> Deref for Errored<'a> {
-	type Target = DeployableDotfile<'a>;
+	type Target = Item<'a>;
 
 	fn deref(&self) -> &Self::Target {
-		&self.dotfile
+		&self.item
 	}
 }
 
@@ -237,9 +313,12 @@ impl fmt::Display for Errored<'_> {
 	}
 }
 
-pub type Result = std::result::Result<(), Box<dyn std::error::Error>>;
-
+/// Trait accepts [`Item`]s for further processing.
+///
+/// This is a kind of an iterator over all items which are included in a
+/// [`Profile`](`crate::profile::Profile`).
 pub trait Visitor {
+	/// Accepts a [`File`] item for further processing.
 	fn accept_file<'a>(
 		&mut self,
 		source: &PunktfSource,
@@ -247,6 +326,7 @@ pub trait Visitor {
 		file: &File<'a>,
 	) -> Result;
 
+	/// Accepts a [`Directory`] item for further processing.
 	fn accept_directory<'a>(
 		&mut self,
 		source: &PunktfSource,
@@ -254,6 +334,7 @@ pub trait Visitor {
 		directory: &Directory<'a>,
 	) -> Result;
 
+	/// Accepts a [`Symlink`] item for further processing.
 	fn accept_link(
 		&mut self,
 		source: &PunktfSource,
@@ -261,6 +342,11 @@ pub trait Visitor {
 		symlink: &Symlink,
 	) -> Result;
 
+	/// Accepts a [`Rejected`] item for further processing.
+	///
+	/// This is called instead of [`Visitor::accept_file`],
+	/// [`Visitor::accept_directory`] or [`Visitor::accept_link`] when
+	/// the [`Item`] is rejected.
 	fn accept_rejected<'a>(
 		&mut self,
 		source: &PunktfSource,
@@ -268,6 +354,11 @@ pub trait Visitor {
 		rejected: &Rejected<'a>,
 	) -> Result;
 
+	/// Accepts a [`Errored`] item for further processing.
+	///
+	/// This is called instead of [`Visitor::accept_file`],
+	/// [`Visitor::accept_directory`] or [`Visitor::accept_link`] when
+	/// an error is encountered for an [`Item`] .
 	fn accept_errored<'a>(
 		&mut self,
 		source: &PunktfSource,
@@ -276,14 +367,22 @@ pub trait Visitor {
 	) -> Result;
 }
 
+/// Walks over each item of a [`LayeredProfile`](`crate::profile::LayeredProfile`)
+/// and calls the appropiate functions of the given visitor.
 #[derive(Debug)]
 pub struct Walker<'a> {
 	// Filter? "--filter='name=*'"
 	// Sort by priority and eliminate duplicate lower ones
+	/// The profile to walk.
 	profile: &'a LayeredProfile,
 }
 
 impl<'a> Walker<'a> {
+	/// Creates a new instance.
+	///
+	/// The [`LayeredProfile::dotfiles`](`crate::profile::LayeredProfile::dotfiles`)
+	/// will be sorted by [`Dotfile::priority`](`crate::profile::dotfile::Dotfile::priority`)
+	/// to avoid unneccessary read/write operations during a deployment.
 	pub fn new(profile: &'a mut LayeredProfile) -> Self {
 		{
 			let dotfiles = &mut profile.dotfiles;
@@ -294,6 +393,7 @@ impl<'a> Walker<'a> {
 		Self { profile }
 	}
 
+	/// Walks the profile and calls the appropiate functions on the given [`Visitor`].
 	pub fn walk(&self, source: &PunktfSource, visitor: &mut impl Visitor) -> Result {
 		for dotfile in self.profile.dotfiles() {
 			self.walk_dotfile(source, visitor, dotfile)?;
@@ -304,6 +404,7 @@ impl<'a> Walker<'a> {
 		Ok(())
 	}
 
+	/// Walks each item of a [`Dotfile`](`crate::profile::dotfile::Dotfile`).
 	fn walk_dotfile(
 		&self,
 		source: &PunktfSource,
@@ -318,6 +419,9 @@ impl<'a> Walker<'a> {
 		self.walk_path(source, visitor, paths, dotfile)
 	}
 
+	/// Walks a specific path of a [`Dotfile`](`crate::profile::dotfile::Dotfile`).
+	///
+	/// This either calls [`Walker::walk_file`] or [`Walker::walk_directory`].
 	fn walk_path(
 		&self,
 		source: &PunktfSource,
@@ -358,6 +462,7 @@ impl<'a> Walker<'a> {
 		}
 	}
 
+	/// Calls [`Visitor::accept_file`].
 	fn walk_file(
 		&self,
 		source: &PunktfSource,
@@ -365,11 +470,14 @@ impl<'a> Walker<'a> {
 		paths: Paths,
 		dotfile: &Dotfile,
 	) -> Result {
-		let file = File(DeployableDotfile::new(source, paths, dotfile));
+		let file = File(Item::new(source, paths, dotfile));
 
 		visitor.accept_file(source, self.profile, &file)
 	}
 
+	/// Calls [`Visitor::accept_directory`].
+	///
+	/// After that it walks all child items of it.
 	fn walk_directory(
 		&self,
 		source: &PunktfSource,
@@ -379,7 +487,7 @@ impl<'a> Walker<'a> {
 	) -> Result {
 		let source_path = paths.child_source_path();
 
-		let directory = Directory(DeployableDotfile::new(source, paths.clone(), dotfile));
+		let directory = Directory(Item::new(source, paths.clone(), dotfile));
 
 		visitor.accept_directory(source, self.profile, &directory)?;
 
@@ -423,6 +531,7 @@ impl<'a> Walker<'a> {
 		Ok(())
 	}
 
+	/// Calls [`Visitor::accept_rejected`].
 	fn walk_rejected(
 		&self,
 		source: &PunktfSource,
@@ -431,13 +540,14 @@ impl<'a> Walker<'a> {
 		dotfile: &Dotfile,
 	) -> Result {
 		let rejected = Rejected {
-			dotfile: DeployableDotfile::new(source, paths, dotfile),
+			item: Item::new(source, paths, dotfile),
 			reason: Cow::Borrowed("Rejected by filter"),
 		};
 
 		visitor.accept_rejected(source, self.profile, &rejected)
 	}
 
+	/// Calls [`Visitor::accept_errored`].
 	fn walk_errored(
 		&self,
 		source: &PunktfSource,
@@ -448,7 +558,7 @@ impl<'a> Walker<'a> {
 		context: Option<impl Into<Cow<'a, str>>>,
 	) -> Result {
 		let errored = Errored {
-			dotfile: DeployableDotfile::new(source, paths, dotfile),
+			item: Item::new(source, paths, dotfile),
 			error: error.map(|e| e.into()),
 			context: context.map(|c| c.into()),
 		};
@@ -456,15 +566,21 @@ impl<'a> Walker<'a> {
 		visitor.accept_errored(source, self.profile, &errored)
 	}
 
+	/// Applies final transformations for paths from [`Walker::resolve_source_path`]
+	/// and [`Walker::resolve_target_path`].
 	fn resolve_path(&self, path: PathBuf) -> PathBuf {
 		// TODO: Replace envs/~
 		path.canonicalize().unwrap_or(path)
 	}
 
+	/// Resolves the dotfile to a absolute source path.
 	fn resolve_source_path(&self, source: &PunktfSource, dotfile: &Dotfile) -> PathBuf {
 		self.resolve_path(source.dotfiles.join(&dotfile.path))
 	}
 
+	/// Resolves the dotfile to a absolute target path.
+	///
+	/// Some special logic is applied for directories.
 	fn resolve_target_path(&self, dotfile: &Dotfile, is_dir: bool) -> PathBuf {
 		let path = if is_dir && dotfile.rename.is_none() && dotfile.overwrite_target.is_none() {
 			self.profile
@@ -482,13 +598,20 @@ impl<'a> Walker<'a> {
 		self.resolve_path(path)
 	}
 
+	/// TODO
 	const fn accept(&self, _path: &Path) -> bool {
 		// TODO: Apply filter
 		true
 	}
 }
 
+/// An extension trait to [`Visitor`] which adds a new function to accept
+/// template items.
 pub trait TemplateVisitor: Visitor {
+	/// Accepts a template [`File`] item for further processing.
+	///
+	/// This also provides a function to resolve the contents of the template
+	/// by calling it with the original template contents.
 	fn accept_template<'a>(
 		&mut self,
 		source: &PunktfSource,
@@ -500,22 +623,23 @@ pub trait TemplateVisitor: Visitor {
 	) -> Result;
 }
 
+/// An extension for a base [`Visitor`] to split up files into normal files and
+/// template files.
+///
+/// All accepted files are checked up on receiving and the either directly send
+/// out with [`Visitor::accept_file`] if they are a normal file or with
+/// [`TemplateVisitor::accept_template`] if it is a template.
 #[derive(Debug)]
-pub struct ResolvingVisitor<V> {
-	visitor: V,
-}
+pub struct ResolvingVisitor<V>(V);
 
 impl<V> ResolvingVisitor<V>
 where
 	V: TemplateVisitor,
 {
-	pub const fn new(visitor: V) -> Self {
-		Self { visitor }
-	}
-
+	/// Gets the base [`Visitor`].
 	#[allow(clippy::missing_const_for_fn)]
 	pub fn into_inner(self) -> V {
-		self.visitor
+		self.0
 	}
 }
 
@@ -537,10 +661,9 @@ impl<V: TemplateVisitor> Visitor for ResolvingVisitor<V> {
 					.with_context(|| format!("File: {}", file.source_path.display()))
 			};
 
-			self.visitor
-				.accept_template(source, profile, file, resolve_fn)
+			self.0.accept_template(source, profile, file, resolve_fn)
 		} else {
-			self.visitor.accept_file(source, profile, file)
+			self.0.accept_file(source, profile, file)
 		}
 	}
 
@@ -550,7 +673,7 @@ impl<V: TemplateVisitor> Visitor for ResolvingVisitor<V> {
 		profile: &LayeredProfile,
 		directory: &Directory<'a>,
 	) -> Result {
-		self.visitor.accept_directory(source, profile, directory)
+		self.0.accept_directory(source, profile, directory)
 	}
 
 	fn accept_link(
@@ -559,7 +682,7 @@ impl<V: TemplateVisitor> Visitor for ResolvingVisitor<V> {
 		profile: &LayeredProfile,
 		symlink: &Symlink,
 	) -> Result {
-		self.visitor.accept_link(source, profile, symlink)
+		self.0.accept_link(source, profile, symlink)
 	}
 
 	fn accept_rejected<'a>(
@@ -568,7 +691,7 @@ impl<V: TemplateVisitor> Visitor for ResolvingVisitor<V> {
 		profile: &LayeredProfile,
 		rejected: &Rejected<'a>,
 	) -> Result {
-		self.visitor.accept_rejected(source, profile, rejected)
+		self.0.accept_rejected(source, profile, rejected)
 	}
 
 	fn accept_errored<'a>(
@@ -577,6 +700,6 @@ impl<V: TemplateVisitor> Visitor for ResolvingVisitor<V> {
 		profile: &LayeredProfile,
 		errored: &Errored<'a>,
 	) -> Result {
-		self.visitor.accept_errored(source, profile, errored)
+		self.0.accept_errored(source, profile, errored)
 	}
 }
