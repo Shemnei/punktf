@@ -220,7 +220,7 @@ impl<'a> Deref for Errored<'a> {
 impl fmt::Display for Errored<'_> {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let has_context = if let Some(context) = &self.context {
-			f.write_str(&context)?;
+			f.write_str(context)?;
 			true
 		} else {
 			false

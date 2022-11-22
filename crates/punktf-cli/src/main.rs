@@ -346,6 +346,9 @@ fn handle_command_render(
 		dotfile,
 	}: opt::Render,
 ) -> Result<()> {
+	/// Finds the relevant dotfile from which includes the file a the given
+	/// `relative_source_path`.
+	/// This is needed as some files might stem from a directory dotfile.
 	fn find_dotfile<'a, 'b>(
 		dotfiles: impl Iterator<Item = &'a Dotfile>,
 		relative_source_path: &'b Path,
@@ -360,17 +363,14 @@ fn handle_command_render(
 			.reduce(|a, i| {
 				// First sort by tiniest differance to dotfile path
 				// then by highest priority.
-
-				if i.1.as_os_str().len() == a.1.as_os_str().len() {
-					match (i.0.priority, a.0.priority) {
+				match (i.1.as_os_str().len(), a.1.as_os_str().len()) {
+					(i_len, a_len) if i_len == a_len => match (i.0.priority, a.0.priority) {
 						(Some(ip), Some(ap)) if ip >= ap => i,
 						(Some(_), None) | (None, None) => i,
 						_ => a,
-					}
-				} else if i.1.as_os_str().len() < a.1.as_os_str().len() {
-					i
-				} else {
-					a
+					},
+					(i_len, a_len) if i_len < a_len => i,
+					_ => a,
 				}
 			})
 			.map(|(d, _)| d)
