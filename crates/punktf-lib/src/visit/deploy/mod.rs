@@ -453,9 +453,23 @@ where
 	}
 
 	fn accept_link(&mut self, _: &PunktfSource, _: &LayeredProfile, link: &Symlink) -> Result {
+		#[cfg(all(not(unix), not(windows)))]
+		{
+			self.builder.add_link(
+				source_path.clone(),
+				target_path.clone(),
+				DotfileStatus::skipped(
+					"Symlink operations are only supported on unix and windows systems",
+				),
+			);
+
+			return Ok(());
+		}
+
 		let source_path = &link.source_path;
 		let target_path = &link.target_path;
 
+		// Check that the source exists
 		if !source_path.exists() {
 			self.builder.add_link(
 				source_path.clone(),
@@ -466,14 +480,71 @@ where
 			return Ok(());
 		}
 
+		// Check that either the target does not exist or that i can be replaced
 		if target_path.exists() {
-			self.builder.add_link(
-				source_path.clone(),
-				target_path.clone(),
-				DotfileStatus::skipped("Link target does already exist"),
-			);
+			if link.replace {
+				if !self.options.dry_run {
+					// Verify that the target is a symlink
+					let target_metadata = match target_path.symlink_metadata() {
+						Ok(m) => m,
+						Err(err) => {
+							self.builder.add_link(
+								source_path.clone(),
+								target_path.clone(),
+								DotfileStatus::failed(format!(
+									"Failed get link target metadata: {}",
+									err
+								)),
+							);
 
-			return Ok(());
+							return Ok(());
+						}
+					};
+
+					if target_metadata.is_symlink() {
+						// Get metadata of symlink target
+						let res = if let Ok(target_metadata) = target_path.metadata() {
+							if target_metadata.is_dir() {
+								std::fs::remove_dir(target_path)
+							} else {
+								std::fs::remove_file(target_path)
+							}
+						} else {
+							std::fs::remove_file(target_path)
+								.or_else(|_| std::fs::remove_dir(target_path))
+						};
+
+						if let Err(err) = res {
+							self.builder.add_link(
+								source_path.clone(),
+								target_path.clone(),
+								DotfileStatus::failed(format!(
+									"Failed to remove old link target: {}",
+									err
+								)),
+							);
+
+							return Ok(());
+						}
+					} else {
+						self.builder.add_link(
+							source_path.clone(),
+							target_path.clone(),
+							DotfileStatus::failed("Not allowed to replace target"),
+						);
+
+						return Ok(());
+					}
+				}
+			} else {
+				self.builder.add_link(
+					source_path.clone(),
+					target_path.clone(),
+					DotfileStatus::skipped("Link target does already exist"),
+				);
+
+				return Ok(());
+			}
 		}
 
 		if !self.options.dry_run {
@@ -524,7 +595,7 @@ where
 								DotfileStatus::failed(format!("Failed create file symlink: {}", err)),
 							);
 
-							return Ok(());
+							urn Ok(());
 						};
 					} else {
 						self.builder.add_link(
@@ -533,7 +604,7 @@ where
 							DotfileStatus::failed("Invalid type of symlink source"),
 						);
 
-						return Ok(());
+						urn Ok(());
 					}
 				} else {
 					self.builder.add_link(

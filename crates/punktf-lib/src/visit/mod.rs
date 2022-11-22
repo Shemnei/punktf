@@ -253,6 +253,10 @@ pub struct Symlink {
 
 	/// Absoulte target path of the link.
 	pub target_path: PathBuf,
+
+	/// Indicates if any existing symlink at the [`Symlink::target_path`] should
+	/// be replaced by this item.
+	pub replace: bool,
 }
 
 /// Holds information about a rejected item.
@@ -544,6 +548,7 @@ impl<'a> Walker<'a> {
 		let link = Symlink {
 			source_path: self.resolve_path(link.source_path.clone()),
 			target_path: self.resolve_path(link.target_path.clone()),
+			replace: link.replace,
 		};
 
 		visitor.accept_link(source, self.profile, &link)
