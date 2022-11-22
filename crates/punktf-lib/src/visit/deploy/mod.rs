@@ -509,7 +509,7 @@ where
 
 						if let Err(err) = res {
 							log::error!(
-								"[{}]: Failed to remove old symlink at target",
+								"[{}]: Failed to remove old link at target",
 								source_path.display()
 							);
 
@@ -518,10 +518,16 @@ where
 								link,
 								format!("Failed to remove old link target: {}", err)
 							);
+						} else {
+							log::info!(
+								"[{}]: Removed old link target at {}",
+								source_path.display(),
+								target_path.display()
+							);
 						}
 					} else {
 						log::error!(
-							"[{}]: Target already exists and is no symlink",
+							"[{}]: Target already exists and is no link",
 							source_path.display()
 						);
 
@@ -542,9 +548,9 @@ where
 			cfg_if! {
 				if #[cfg(unix)] {
 					if let Err(err) = std::os::unix::fs::symlink(source_path, target_path) {
-						log::error!("[{}]: Failed to create symlink", source_path.display());
+						log::error!("[{}]: Failed to create link", source_path.display());
 
-						failed!(&mut self.builder, link, format!("Failed create symlink: {}", err));
+						failed!(&mut self.builder, link, format!("Failed create link: {}", err));
 					};
 				} else if #[cfg(windows)] {
 					let metadata = match source_path.symlink_metadata() {
@@ -558,25 +564,25 @@ where
 
 					if metadata.is_dir() {
 						if let Err(err) = std::os::windows::fs::symlink_dir(source_path, target_path) {
-							log::error!("[{}]: Failed to create directory symlink", source_path.display());
+							log::error!("[{}]: Failed to create directory link", source_path.display());
 
-							failed!(&mut self.builder, link, format!("Failed create directory symlink: {}", err));
+							failed!(&mut self.builder, link, format!("Failed create directory link: {}", err));
 						};
 					} else if metadata.is_file() {
 						if let Err(err) = std::os::windows::fs::symlink_file(source_path, target_path) {
-							log::error!("[{}]: Failed to create file symlink", source_path.display());
+							log::error!("[{}]: Failed to create file link", source_path.display());
 
-							failed!(&mut self.builder, link, format!("Failed create file symlink: {}", err));
+							failed!(&mut self.builder, link, format!("Failed create file link: {}", err));
 						};
 					} else {
-						log::error!("[{}]: Invalid symlink source type", source_path.display());
+						log::error!("[{}]: Invalid link source type", source_path.display());
 
-						failed!(&mut self.builder, link, "Invalid type of symlink source");
+						failed!(&mut self.builder, link, "Invalid type of link source");
 					}
 				} else {
-					log::warn!("[{}]: Symlink operations are only supported for unix and windows systems", source_path.display());
+					log::warn!("[{}]: Link operations are only supported for unix and windows systems", source_path.display());
 
-					skipped!(&mut self.builder, link, "Symlink operations are only supported on unix and windows systems");
+					skipped!(&mut self.builder, link, "Link operations are only supported on unix and windows systems");
 				}
 			}
 		}
