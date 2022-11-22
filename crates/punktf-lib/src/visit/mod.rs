@@ -545,9 +545,10 @@ impl<'a> Walker<'a> {
 		visitor: &mut impl Visitor,
 		link: &link::Symlink,
 	) -> Result {
+		// DO NOT CANONICOLIZE THE PATHS AS THIS WOULD FOLLOW LINKS
 		let link = Symlink {
-			source_path: self.resolve_path(link.source_path.clone()),
-			target_path: self.resolve_path(link.target_path.clone()),
+			source_path: link.source_path.clone(),
+			target_path: link.target_path.clone(),
 			replace: link.replace,
 		};
 
