@@ -148,6 +148,10 @@ dotfiles:
     target:
       path: "C:\\Users\\Demo\\AppData\\Local\\alacritty.yml"
     merge: Ask
+
+links:
+  - source_path: "C:\\Users\\Demo\\Dotfiles\\test.txt"
+    target_path: "C:\\Users\\Demo\\test.txt"
 ```
 
 All properties are explained [in the wiki](https://github.com/Shemnei/punktf/wiki/Profiles).
