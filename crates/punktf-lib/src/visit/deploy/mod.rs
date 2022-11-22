@@ -44,6 +44,53 @@ impl<'a> Item<'a> {
 	}
 }
 
+impl Symlink {
+	/// Adds this item to the given
+	/// [`DeploymentBuilder`](`crate::visit::deploy::deployment::DeploymentBuilder`).
+	fn add_to_builder<S: Into<DotfileStatus>>(&self, builder: &mut DeploymentBuilder, status: S) {
+		builder.add_link(
+			self.source_path.clone(),
+			self.target_path.clone(),
+			status.into(),
+		);
+	}
+}
+
+/// Marks the given item as successfully deployed.
+macro_rules! success {
+	($builder:expr, $item:expr) => {
+		$item.add_to_builder($builder, DotfileStatus::success());
+	};
+}
+
+/// Marks the given item as skipped.
+macro_rules! skipped {
+	($builder:expr, $item:expr, $reason:expr => $ret:expr ) => {
+		$item.add_to_builder($builder, DotfileStatus::skipped($reason));
+		return Ok($ret);
+	};
+	($builder:expr, $item:expr, $reason:expr) => {
+		$item.add_to_builder($builder, DotfileStatus::skipped($reason));
+		return Ok(());
+	};
+}
+
+/// Marks the given item as failed.
+macro_rules! failed {
+	($builder:expr, $item:expr, $reason:expr => Err($ret:expr) ) => {
+		$item.add_to_builder($builder, DotfileStatus::failed($reason));
+		return Err($ret);
+	};
+	($builder:expr, $item:expr, $reason:expr => $ret:expr ) => {
+		$item.add_to_builder($builder, DotfileStatus::failed($reason));
+		return Ok($ret);
+	};
+	($builder:expr, $item:expr, $reason:expr) => {
+		$item.add_to_builder($builder, DotfileStatus::failed($reason));
+		return Ok(());
+	};
+}
+
 /// Configuration options for the [`Deployer`].
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DeployOptions {
@@ -171,12 +218,7 @@ where
 					file.target_path.display()
 				);
 
-				file.add_to_builder(
-					&mut self.builder,
-					DotfileStatus::skipped("Dotfile with higher priority is already deployed"),
-				);
-
-				return Ok(false);
+				skipped!(&mut self.builder, file, "Dotfile with higher priority is already deployed" => false);
 			}
 			(_, _) => {}
 		};
@@ -203,15 +245,7 @@ where
 						file.relative_source_path.display()
 					);
 
-					file.add_to_builder(
-						&mut self.builder,
-						DotfileStatus::skipped(format!(
-							"Dotfile already exists and merge mode is {:?}",
-							MergeMode::Keep,
-						)),
-					);
-
-					return Ok(false);
+					skipped!(&mut self.builder, file, format!("Dotfile already exists and merge mode is {:?}", MergeMode::Keep) => false);
 				}
 				MergeMode::Ask => {
 					log::info!("{}: Asking for action", file.relative_source_path.display());
@@ -228,29 +262,14 @@ where
 									err
 								);
 
-								file.add_to_builder(
-									&mut self.builder,
-									DotfileStatus::failed(format!(
-										"Failed to execute merge ask function: {}",
-										err
-									)),
-								);
-
-								return Ok(false);
+								failed!(&mut self.builder, file, format!("Failed to execute merge ask function: {}", err) => false);
 							}
 						};
 
 					if !should_deploy {
 						log::info!("{}: Merge was denied", file.relative_source_path.display());
 
-						file.add_to_builder(
-							&mut self.builder,
-							DotfileStatus::skipped(
-								"Dotfile already exists and merge ask was denied",
-							),
-						);
-
-						return Ok(false);
+						skipped!(&mut self.builder, file, "Dotfile already exists and merge ask was denied" => false);
 					}
 				}
 			}
@@ -267,15 +286,7 @@ where
 							err
 						);
 
-						file.add_to_builder(
-							&mut self.builder,
-							DotfileStatus::failed(format!(
-								"Failed to create parent directory: {}",
-								err
-							)),
-						);
-
-						return Ok(false);
+						failed!(&mut self.builder, file, format!("Failed to create parent directory: {}", err) => false);
 					}
 				}
 			}
@@ -312,15 +323,7 @@ where
 						err
 					);
 
-					file.add_to_builder(
-						&mut self.builder,
-						DotfileStatus::failed(format!(
-							"Failed to apply content transformer `{}`: `{}`",
-							transformer, err
-						)),
-					);
-
-					return Err(err);
+					failed!(&mut self.builder, file, format!("Failed to apply content transformer `{}`: `{}`", transformer, err) => Err(err));
 				}
 			};
 		}
@@ -361,12 +364,7 @@ where
 						file.relative_source_path.display()
 					);
 
-					file.add_to_builder(
-						&mut self.builder,
-						DotfileStatus::failed(format!("Failed to copy: {}", err)),
-					);
-
-					return Ok(());
+					failed!(&mut self.builder, file, format!("Failed to copy: {}", err));
 				}
 			}
 		} else {
@@ -378,12 +376,7 @@ where
 						file.relative_source_path.display()
 					);
 
-					file.add_to_builder(
-						&mut self.builder,
-						DotfileStatus::failed(format!("Failed to read: {}", err)),
-					);
-
-					return Ok(());
+					failed!(&mut self.builder, file, format!("Failed to read: {}", err));
 				}
 			};
 
@@ -399,12 +392,11 @@ where
 						file.relative_source_path.display()
 					);
 
-					file.add_to_builder(
+					failed!(
 						&mut self.builder,
-						DotfileStatus::failed(format!("Failed to write content: {}", err)),
+						file,
+						format!("Failed to write content: {}", err)
 					);
-
-					return Ok(());
 				}
 			}
 		}
@@ -414,7 +406,7 @@ where
 			file.relative_source_path.display()
 		);
 
-		file.add_to_builder(&mut self.builder, DotfileStatus::Success);
+		success!(&mut self.builder, file);
 
 		Ok(())
 	}
@@ -438,15 +430,16 @@ where
 					err
 				);
 
-				directory.add_to_builder(
+				failed!(
 					&mut self.builder,
-					DotfileStatus::failed(format!("Failed to create directory: {}", err)),
+					directory,
+					format!("Failed to create directory: {}", err)
 				);
 			} else {
-				directory.add_to_builder(&mut self.builder, DotfileStatus::success());
+				success!(&mut self.builder, directory);
 			}
 		} else {
-			directory.add_to_builder(&mut self.builder, DotfileStatus::success());
+			success!(&mut self.builder, directory);
 		}
 
 		Ok(())
@@ -454,30 +447,18 @@ where
 
 	fn accept_link(&mut self, _: &PunktfSource, _: &LayeredProfile, link: &Symlink) -> Result {
 		#[cfg(all(not(unix), not(windows)))]
-		{
-			self.builder.add_link(
-				source_path.clone(),
-				target_path.clone(),
-				DotfileStatus::skipped(
-					"Symlink operations are only supported on unix and windows systems",
-				),
-			);
-
-			return Ok(());
-		}
+		skipped!(
+			&mut self.builder,
+			link,
+			"Symlink operations are only supported on unix and windows systems"
+		);
 
 		let source_path = &link.source_path;
 		let target_path = &link.target_path;
 
 		// Check that the source exists
 		if !source_path.exists() {
-			self.builder.add_link(
-				source_path.clone(),
-				target_path.clone(),
-				DotfileStatus::failed("Link source does not exist"),
-			);
-
-			return Ok(());
+			failed!(&mut self.builder, link, "Link source does not exist");
 		}
 
 		// Check that either the target does not exist or that i can be replaced
@@ -488,16 +469,11 @@ where
 					let target_metadata = match target_path.symlink_metadata() {
 						Ok(m) => m,
 						Err(err) => {
-							self.builder.add_link(
-								source_path.clone(),
-								target_path.clone(),
-								DotfileStatus::failed(format!(
-									"Failed get link target metadata: {}",
-									err
-								)),
+							failed!(
+								&mut self.builder,
+								link,
+								format!("Failed get link target metadata: {}", err)
 							);
-
-							return Ok(());
 						}
 					};
 
@@ -515,35 +491,18 @@ where
 						};
 
 						if let Err(err) = res {
-							self.builder.add_link(
-								source_path.clone(),
-								target_path.clone(),
-								DotfileStatus::failed(format!(
-									"Failed to remove old link target: {}",
-									err
-								)),
+							failed!(
+								&mut self.builder,
+								link,
+								format!("Failed to remove old link target: {}", err)
 							);
-
-							return Ok(());
 						}
 					} else {
-						self.builder.add_link(
-							source_path.clone(),
-							target_path.clone(),
-							DotfileStatus::failed("Not allowed to replace target"),
-						);
-
-						return Ok(());
+						failed!(&mut self.builder, link, "Not allowed to replace target");
 					}
 				}
 			} else {
-				self.builder.add_link(
-					source_path.clone(),
-					target_path.clone(),
-					DotfileStatus::skipped("Link target does already exist"),
-				);
-
-				return Ok(());
+				skipped!(&mut self.builder, link, "Link target does already exist");
 			}
 		}
 
@@ -551,78 +510,34 @@ where
 			cfg_if! {
 				if #[cfg(unix)] {
 					if let Err(err) = std::os::unix::fs::symlink(source_path, target_path) {
-						self.builder.add_link(
-							source_path.clone(),
-							target_path.clone(),
-							DotfileStatus::failed(format!("Failed create symlink: {}", err)),
-						);
-
-						return Ok(());
+						failed!(&mut self.builder, link, format!("Failed create symlink: {}", err));
 					};
 				} else if #[cfg(windows)] {
 					let metadata = match source_path.symlink_metadata() {
 						Ok(m) => m,
 						Err(err) => {
-							self.builder.add_link(
-								source_path.clone(),
-								target_path.clone(),
-								DotfileStatus::failed(format!("Failed get link source metadata: {}", err)),
-							);
-
-							return Ok(());
+							failed!(&mut self.builder, link, format!("Failed get link source metadata: {}", err));
 						}
 					};
 
 					if metadata.is_dir() {
-						if let Err(err) =
-							std::os::windows::fs::symlink_dir(source_path, target_path)
-						{
-							self.builder.add_link(
-								source_path.clone(),
-								target_path.clone(),
-								DotfileStatus::failed(format!("Failed create directory symlink: {}", err)),
-							);
-
-							return Ok(());
+						if let Err(err) = std::os::windows::fs::symlink_dir(source_path, target_path) {
+							failed!(&mut self.builder, link, format!("Failed create directory symlink: {}", err));
 						};
 					} else if metadata.is_file() {
-						if let Err(err) =
-							std::os::windows::fs::symlink_file(source_path, target_path)
-						{
-							self.builder.add_link(
-								source_path.clone(),
-								target_path.clone(),
-								DotfileStatus::failed(format!("Failed create file symlink: {}", err)),
-							);
-
-							urn Ok(());
+						if let Err(err) = std::os::windows::fs::symlink_file(source_path, target_path) {
+							failed!(&mut self.builder, link, format!("Failed create file symlink: {}", err));
 						};
 					} else {
-						self.builder.add_link(
-							source_path.clone(),
-							target_path.clone(),
-							DotfileStatus::failed("Invalid type of symlink source"),
-						);
-
-						urn Ok(());
+						failed!(&mut self.builder, link, "Invalid type of symlink source");
 					}
 				} else {
-					self.builder.add_link(
-						source_path.clone(),
-						target_path.clone(),
-						DotfileStatus::skipped("Symlink operations are only supported on unix and windows systems"),
-					);
-
-					return Ok(());
+					skipped!(&mut self.builder, link, "Symlink operations are only supported on unix and windows systems");
 				}
 			}
 		}
 
-		self.builder.add_link(
-			source_path.clone(),
-			target_path.clone(),
-			DotfileStatus::success(),
-		);
+		success!(&mut self.builder, link);
 
 		Ok(())
 	}
@@ -633,12 +548,7 @@ where
 		_: &LayeredProfile,
 		rejected: &Rejected<'a>,
 	) -> Result {
-		rejected.add_to_builder(
-			&mut self.builder,
-			DotfileStatus::skipped(rejected.reason.clone()),
-		);
-
-		Ok(())
+		skipped!(&mut self.builder, rejected, rejected.reason.clone());
 	}
 
 	fn accept_errored<'a>(
@@ -647,12 +557,7 @@ where
 		_: &LayeredProfile,
 		errored: &Errored<'a>,
 	) -> Result {
-		errored.add_to_builder(
-			&mut self.builder,
-			DotfileStatus::failed(format!("{}", errored)),
-		);
-
-		Ok(())
+		failed!(&mut self.builder, errored, errored.to_string());
 	}
 }
 
@@ -683,12 +588,7 @@ where
 					file.relative_source_path.display()
 				);
 
-				file.add_to_builder(
-					&mut self.builder,
-					DotfileStatus::failed(format!("Failed to read: {}", err)),
-				);
-
-				return Ok(());
+				failed!(&mut self.builder, file, format!("Failed to read: {}", err));
 			}
 		};
 
@@ -700,12 +600,11 @@ where
 					file.relative_source_path.display()
 				);
 
-				file.add_to_builder(
+				failed!(
 					&mut self.builder,
-					DotfileStatus::failed(format!("Failed to resolve template: {}", err)),
+					file,
+					format!("Failed to resolve template: {}", err)
 				);
-
-				return Ok(());
 			}
 		};
 
@@ -721,12 +620,11 @@ where
 					file.relative_source_path.display()
 				);
 
-				file.add_to_builder(
+				failed!(
 					&mut self.builder,
-					DotfileStatus::failed(format!("Failed to write content: {}", err)),
+					file,
+					format!("Failed to write content: {}", err)
 				);
-
-				return Ok(());
 			}
 		}
 
@@ -735,7 +633,7 @@ where
 			file.relative_source_path.display()
 		);
 
-		file.add_to_builder(&mut self.builder, DotfileStatus::Success);
+		success!(&mut self.builder, file);
 
 		Ok(())
 	}
