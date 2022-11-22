@@ -133,8 +133,13 @@ where
 		Ok(())
 	}
 
-	fn accept_link(&mut self, _: &PunktfSource, _: &LayeredProfile, _: &Symlink) -> Result {
-		todo!()
+	fn accept_link(&mut self, _: &PunktfSource, _: &LayeredProfile, link: &Symlink) -> Result {
+		log::info!(
+			"[{}] Symlinks are not supported for diffs",
+			link.source_path.display()
+		);
+
+		Ok(())
 	}
 
 	fn accept_rejected<'a>(
@@ -148,6 +153,7 @@ where
 			rejected.relative_source_path.display(),
 			rejected.reason,
 		);
+
 		Ok(())
 	}
 

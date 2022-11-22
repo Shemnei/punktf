@@ -5,7 +5,9 @@ use std::path::{Path, PathBuf};
 
 use color_eyre::owo_colors::OwoColorize;
 use color_eyre::Result;
-use punktf_lib::visit::deploy::deployment::{Deployment, DeploymentStatus, DotfileStatus};
+use punktf_lib::visit::deploy::deployment::{
+	DeployedDotfile, Deployment, DeploymentStatus, DotfileStatus,
+};
 
 /// Retrieves the target path for the deployment by reading the environment
 /// variable with the name determined by [`super::PUNKTF_TARGET_ENVVAR`].
@@ -53,16 +55,8 @@ pub fn ask_user_merge(source_path: &Path, deploy_path: &Path) -> Result<bool> {
 	}
 }
 
-/// Logs the finished state of the
-/// [deployment](`punktf_lib::visit::deploy::deployment::Deployment`).
-/// If the `print` argument is `true` then stdout will be used, otherwise the
-/// crate [`log`] is used.
-/// This includes amount, state and the names of the deployed
-/// [dotfiles](`punktf_lib::profile::dotfile::Dotfile`) and also the total time
-/// the deployment took to execute.
-pub fn log_deployment(deployment: &Deployment, print: bool) {
-	let mut out = String::new();
-
+/// Logs all deployed dotfiles together with the status.
+fn log_dotfiles(out: &mut String, deployment: &Deployment, print: bool) -> (usize, usize, usize) {
 	let mut files_success = 0;
 	for (idx, (path, _)) in deployment
 		.dotfiles()
@@ -154,6 +148,137 @@ pub fn log_deployment(deployment: &Deployment, print: bool) {
 		out.clear();
 	}
 
+	(files_success, files_skipped, files_failed)
+}
+
+/// Logs all deployed links together with the status.
+fn log_links(out: &mut String, deployment: &Deployment, print: bool) -> (usize, usize, usize) {
+	let mut files_success = 0;
+	for (idx, (path, link)) in deployment
+		.symlinks()
+		.iter()
+		.filter(|(_, v)| v.status().is_success())
+		.enumerate()
+	{
+		if idx == 0 {
+			write!(out, "Links ({})", "SUCCESS".green()).expect("Write to String failed");
+		}
+
+		write!(
+			out,
+			"\n\t{} => {}",
+			link.source.display().bright_black(),
+			path.display().bright_black(),
+		)
+		.expect("Write to String failed");
+		files_success += 1;
+	}
+
+	if !out.is_empty() {
+		if print {
+			println!("{}", out);
+		} else {
+			log::info!("{}", out);
+		}
+
+		out.clear();
+	}
+
+	let mut files_skipped = 0;
+	for (idx, (path, link, reason)) in deployment
+		.symlinks()
+		.iter()
+		.filter_map(|(k, v)| {
+			if let DotfileStatus::Skipped(reason) = v.status() {
+				Some((k, v, reason))
+			} else {
+				None
+			}
+		})
+		.enumerate()
+	{
+		if idx == 0 {
+			write!(out, "Links ({})", "SKIPPED".yellow()).expect("Write to String failed");
+		}
+
+		write!(
+			out,
+			"\n\t{} => {}: {}",
+			link.source.display().bright_black(),
+			path.display().bright_black(),
+			reason.bright_black()
+		)
+		.expect("Write to String failed");
+
+		files_skipped += 1;
+	}
+
+	if !out.is_empty() {
+		if print {
+			println!("{}", out);
+		} else {
+			log::warn!("{}", out);
+		}
+
+		out.clear();
+	}
+
+	let mut files_failed = 0;
+	for (idx, (path, link, reason)) in deployment
+		.symlinks()
+		.iter()
+		.filter_map(|(k, v)| {
+			if let DotfileStatus::Failed(reason) = v.status() {
+				Some((k, v, reason))
+			} else {
+				None
+			}
+		})
+		.enumerate()
+	{
+		if idx == 0 {
+			write!(out, "Links ({})", "FAILED".red()).expect("Write to String failed");
+		}
+
+		write!(
+			out,
+			"\n\t{} => {}: {}",
+			link.source.display().bright_black(),
+			path.display().bright_black(),
+			reason.bright_black()
+		)
+		.expect("Write to String failed");
+
+		files_failed += 1;
+	}
+
+	if !out.is_empty() {
+		if print {
+			println!("{}", out);
+		} else {
+			log::error!("{}", out);
+		}
+
+		out.clear();
+	}
+
+	(files_success, files_skipped, files_failed)
+}
+
+/// Logs the finished state of the
+/// [deployment](`punktf_lib::visit::deploy::deployment::Deployment`).
+/// If the `print` argument is `true` then stdout will be used, otherwise the
+/// crate [`log`] is used.
+/// This includes amount, state and the names of the deployed
+/// [dotfiles](`punktf_lib::profile::dotfile::Dotfile`) and also the total time
+/// the deployment took to execute.
+pub fn log_deployment(deployment: &Deployment, print: bool) {
+	let mut out = String::new();
+
+	let (dotfiles_success, dotfiles_skipped, dotfiles_failed) =
+		log_dotfiles(&mut out, deployment, print);
+	let (links_success, links_skipped, links_failed) = log_links(&mut out, deployment, print);
+
 	match deployment.status() {
 		DeploymentStatus::Success => {
 			write!(out, "Status: {}", "SUCCESS".green()).expect("Write to String failed");
@@ -164,16 +289,24 @@ pub fn log_deployment(deployment: &Deployment, print: bool) {
 		}
 	};
 
-	let files_total = files_success + files_skipped + files_failed;
+	let dotfiles_total = dotfiles_success + dotfiles_skipped + dotfiles_failed;
+	let links_total = links_success + links_skipped + links_failed;
+
 	let elapsed = deployment
 		.duration()
 		.expect("Failed to get duration from deployment");
 
 	write!(out, "\nTime            : {:?}", elapsed).expect("Write to String failed");
-	write!(out, "\nFiles (deployed): {}", files_success).expect("Write to String failed");
-	write!(out, "\nFiles (skipped) : {}", files_skipped).expect("Write to String failed");
-	write!(out, "\nFiles (failed)  : {}", files_failed).expect("Write to String failed");
-	write!(out, "\nFiles (total)   : {}", files_total).expect("Write to String failed");
+	write!(out, "\n{}", "-".repeat(80).dimmed()).expect("Write to String failed");
+	write!(out, "\nFiles (deployed): {}", dotfiles_success).expect("Write to String failed");
+	write!(out, "\nFiles (skipped) : {}", dotfiles_skipped).expect("Write to String failed");
+	write!(out, "\nFiles (failed)  : {}", dotfiles_failed).expect("Write to String failed");
+	write!(out, "\nFiles (total)   : {}", dotfiles_total).expect("Write to String failed");
+	write!(out, "\n{}", "-".repeat(80).dimmed()).expect("Write to String failed");
+	write!(out, "\nLinks (deployed): {}", links_success).expect("Write to String failed");
+	write!(out, "\nLinks (skipped) : {}", links_skipped).expect("Write to String failed");
+	write!(out, "\nLinks (failed)  : {}", links_failed).expect("Write to String failed");
+	write!(out, "\nLinks (total)   : {}", links_total).expect("Write to String failed");
 
 	if print {
 		println!("{}", out);

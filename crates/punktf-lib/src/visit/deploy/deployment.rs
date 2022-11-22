@@ -117,6 +117,28 @@ impl DeployedDotfile {
 	}
 }
 
+/// Stores the result of a symlink deployment operation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeployedSymlink {
+	/// The status of the deployed symlink.
+	pub status: DotfileStatus,
+
+	/// The source path of the link.
+	pub source: PathBuf,
+}
+
+impl DeployedSymlink {
+	/// Returns the status of the link operation.
+	pub const fn status(&self) -> &DotfileStatus {
+		&self.status
+	}
+
+	/// Returns the source path of the link .
+	pub fn source(&self) -> &Path {
+		self.source.as_path()
+	}
+}
+
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime, SystemTimeError};
 
@@ -174,12 +196,18 @@ where
 pub struct Deployment {
 	/// The time the deployment was started.
 	time_start: SystemTime,
+
 	/// The time the deployment was finished.
 	time_end: SystemTime,
+
 	/// The status of the deployment.
 	status: DeploymentStatus,
+
 	/// The dotfiles that were deployed.
 	dotfiles: HashMap<PathBuf, DeployedDotfile>,
+
+	/// The links that were deployed.
+	symlinks: HashMap<PathBuf, DeployedSymlink>,
 }
 
 impl Deployment {
@@ -208,6 +236,11 @@ impl Deployment {
 		&self.dotfiles
 	}
 
+	/// Returns the symlinks.
+	pub const fn symlinks(&self) -> &HashMap<PathBuf, DeployedSymlink> {
+		&self.symlinks
+	}
+
 	/// Builds the deployment.
 	pub fn build() -> DeploymentBuilder {
 		DeploymentBuilder::default()
@@ -225,6 +258,9 @@ pub struct DeploymentBuilder {
 
 	/// All dotfiles which were already process by the deployment process.
 	dotfiles: HashMap<PathBuf, DeployedDotfile>,
+
+	/// All symlinks which were already process by the deployment process.
+	symlinks: HashMap<PathBuf, DeployedSymlink>,
 }
 
 impl DeploymentBuilder {
@@ -242,6 +278,7 @@ impl DeploymentBuilder {
 				status,
 			},
 		);
+
 		self
 	}
 
@@ -260,6 +297,20 @@ impl DeploymentBuilder {
 				status,
 			},
 		);
+
+		self
+	}
+
+	/// Adds a symlink with the given `status` to the builder.
+	pub fn add_link(
+		&mut self,
+		source: PathBuf,
+		target: PathBuf,
+		status: DotfileStatus,
+	) -> &mut Self {
+		self.symlinks
+			.insert(target, DeployedSymlink { source, status });
+
 		self
 	}
 
@@ -329,11 +380,20 @@ impl DeploymentBuilder {
 		let failed_dotfiles = self
 			.dotfiles
 			.values()
-			.filter(|dotfile| dotfile.status().is_failed())
+			.filter(|d| d.status.is_failed())
+			.count();
+
+		let failed_links = self
+			.symlinks
+			.values()
+			.filter(|d| d.status.is_failed())
 			.count();
 
 		let status = if failed_dotfiles > 0 {
-			DeploymentStatus::failed(format!("Deployment of {} dotfiles failed", failed_dotfiles))
+			DeploymentStatus::failed(format!(
+				"Deployment of {} dotfiles and {} links failed",
+				failed_dotfiles, failed_links
+			))
 		} else {
 			DeploymentStatus::Success
 		};
@@ -343,6 +403,7 @@ impl DeploymentBuilder {
 			time_end: SystemTime::now(),
 			status,
 			dotfiles: self.dotfiles,
+			symlinks: self.symlinks,
 		}
 	}
 
@@ -355,6 +416,7 @@ impl DeploymentBuilder {
 			time_end: SystemTime::now(),
 			status: DeploymentStatus::Success,
 			dotfiles: self.dotfiles,
+			symlinks: self.symlinks,
 		}
 	}
 
@@ -368,6 +430,7 @@ impl DeploymentBuilder {
 			time_end: SystemTime::now(),
 			status: DeploymentStatus::Failed(reason.into()),
 			dotfiles: self.dotfiles,
+			symlinks: self.symlinks,
 		}
 	}
 }
@@ -377,6 +440,7 @@ impl Default for DeploymentBuilder {
 		Self {
 			time_start: SystemTime::now(),
 			dotfiles: HashMap::new(),
+			symlinks: HashMap::new(),
 		}
 	}
 }

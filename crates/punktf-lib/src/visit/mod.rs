@@ -10,6 +10,7 @@ use std::fmt;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
+use crate::profile::link;
 use crate::profile::LayeredProfile;
 use crate::profile::{dotfile::Dotfile, source::PunktfSource};
 
@@ -399,7 +400,9 @@ impl<'a> Walker<'a> {
 			self.walk_dotfile(source, visitor, dotfile)?;
 		}
 
-		// TODO: Do links
+		for link in self.profile.symlinks() {
+			self.walk_link(source, visitor, link)?;
+		}
 
 		Ok(())
 	}
@@ -529,6 +532,21 @@ impl<'a> Walker<'a> {
 		}
 
 		Ok(())
+	}
+
+	/// Calls [`Visitor::accept_link`].
+	fn walk_link(
+		&self,
+		source: &PunktfSource,
+		visitor: &mut impl Visitor,
+		link: &link::Symlink,
+	) -> Result {
+		let link = Symlink {
+			source_path: self.resolve_path(link.source_path.clone()),
+			target_path: self.resolve_path(link.target_path.clone()),
+		};
+
+		visitor.accept_link(source, self.profile, &link)
 	}
 
 	/// Calls [`Visitor::accept_rejected`].

@@ -2,6 +2,7 @@
 
 pub mod deployment;
 
+use cfg_if::cfg_if;
 use color_eyre::eyre::Context;
 
 use crate::profile::{source::PunktfSource, MergeMode};
@@ -451,8 +452,85 @@ where
 		Ok(())
 	}
 
-	fn accept_link(&mut self, _: &PunktfSource, _: &LayeredProfile, _: &Symlink) -> Result {
-		todo!()
+	fn accept_link(&mut self, _: &PunktfSource, _: &LayeredProfile, link: &Symlink) -> Result {
+		let source_path = &link.source_path;
+		let target_path = &link.target_path;
+
+		if !source_path.exists() {
+			self.builder.add_link(
+				source_path.clone(),
+				target_path.clone(),
+				DotfileStatus::failed("Link source does not exist"),
+			);
+
+			return Ok(());
+		}
+
+		if target_path.exists() {
+			self.builder.add_link(
+				source_path.clone(),
+				target_path.clone(),
+				DotfileStatus::skipped("Link target does already exist"),
+			);
+
+			return Ok(());
+		}
+
+		if !self.options.dry_run {
+			cfg_if! {
+				if #[cfg(unix)] {
+					if let Err(err) = std::os::unix::fs::symlink(&link.source_path, &link.target_path) {
+						self.builder.add_link(
+							source_path.clone(),
+							target_path.clone(),
+							DotfileStatus::failed(format!("Failed create symlink: {}", err)),
+						);
+					};
+				} else if #[cfg(windows)] {
+					if metadata.is_dir() {
+						if let Err(err) =
+							std::os::windows::fs::symlink_dir(&link.source_path, &link.target_path)
+						{
+							self.builder.add_link(
+								source_path.clone(),
+								target_path.clone(),
+								DotfileStatus::failed(format!("Failed create directory symlink: {}", err)),
+							);
+						};
+					} else if metadata.is_file() {
+						if let Err(err) =
+							std::os::windows::fs::symlink_file(&link.source_path, &link.target_path)
+						{
+							self.builder.add_link(
+								source_path.clone(),
+								target_path.clone(),
+								DotfileStatus::failed(format!("Failed create file symlink: {}", err)),
+							);
+						};
+					} else {
+						self.builder.add_link(
+							source_path.clone(),
+							target_path.clone(),
+							DotfileStatus::failed("Invalid type of symlink source"),
+						);
+					}
+				} else {
+					self.builder.add_link(
+						source_path.clone(),
+						target_path.clone(),
+						DotfileStatus::skipped("Symlink operations are only supported on unix and windows systems"),
+					);
+				}
+			}
+		} else {
+			self.builder.add_link(
+				source_path.clone(),
+				target_path.clone(),
+				DotfileStatus::success(),
+			);
+		}
+
+		Ok(())
 	}
 
 	fn accept_rejected<'a>(

@@ -2,6 +2,7 @@
 
 pub mod dotfile;
 pub mod hook;
+pub mod link;
 pub mod source;
 pub mod transform;
 pub mod variables;
@@ -17,6 +18,7 @@ use color_eyre::Result;
 use serde::{Deserialize, Serialize};
 
 use crate::profile::hook::Hook;
+use crate::profile::link::Symlink;
 use crate::profile::transform::ContentTransformer;
 use crate::profile::variables::{Variables, Vars};
 use crate::profile::{dotfile::Dotfile, source::PunktfSource};
@@ -94,6 +96,10 @@ pub struct Profile {
 	/// Dotfiles which will be deployed.
 	#[serde(skip_serializing_if = "Vec::is_empty", default)]
 	pub dotfiles: Vec<Dotfile>,
+
+	/// Symlinks which will be deployed.
+	#[serde(rename = "links", skip_serializing_if = "Vec::is_empty", default)]
+	pub symlinks: Vec<Symlink>,
 }
 
 impl Profile {
@@ -215,6 +221,13 @@ pub struct LayeredProfile {
 	/// [`LayeredProfile::profile_names`](`crate::profile::LayeredProfile::profile_names`)
 	/// to retrieve the name of the profile from which the dotfile came from.
 	pub dotfiles: Vec<(usize, Dotfile)>,
+
+	/// The symlinks collected from all profiles of the extend chain.
+	///
+	/// The index indexes into
+	/// [`LayeredProfile::profile_names`](`crate::profile::LayeredProfile::profile_names`)
+	/// to retrieve the name of the profile from which the link came from.
+	pub symlinks: Vec<(usize, Symlink)>,
 }
 
 impl LayeredProfile {
@@ -264,6 +277,11 @@ impl LayeredProfile {
 	/// Returns all collected dotfiles for the profile.
 	pub fn dotfiles(&self) -> impl Iterator<Item = &Dotfile> {
 		self.dotfiles.iter().map(|(_, dotfile)| dotfile)
+	}
+
+	/// Returns all collected symlinks for the profile.
+	pub fn symlinks(&self) -> impl Iterator<Item = &Symlink> {
+		self.symlinks.iter().map(|(_, symlink)| symlink)
 	}
 }
 
@@ -328,31 +346,31 @@ impl LayeredProfileBuilder {
 			}
 		}
 
-		let mut pre_hooks = Vec::new();
-
-		for (idx, hooks) in self
+		let pre_hooks = self
 			.profiles
 			.iter()
 			.enumerate()
-			.map(|(idx, profile)| (idx, &profile.pre_hooks))
-		{
-			for hook in hooks.iter().cloned() {
-				pre_hooks.push((idx, hook));
-			}
-		}
+			.flat_map(|(idx, profile)| {
+				profile
+					.pre_hooks
+					.iter()
+					.cloned()
+					.map(move |hook| (idx, hook))
+			})
+			.collect();
 
-		let mut post_hooks = Vec::new();
-
-		for (idx, hooks) in self
+		let post_hooks = self
 			.profiles
 			.iter()
 			.enumerate()
-			.map(|(idx, profile)| (idx, &profile.post_hooks))
-		{
-			for hook in hooks.iter().cloned() {
-				post_hooks.push((idx, hook));
-			}
-		}
+			.flat_map(|(idx, profile)| {
+				profile
+					.post_hooks
+					.iter()
+					.cloned()
+					.map(move |hook| (idx, hook))
+			})
+			.collect();
 
 		let mut added_dotfile_paths = HashSet::new();
 		let mut dotfiles = Vec::new();
@@ -371,6 +389,19 @@ impl LayeredProfileBuilder {
 			}
 		}
 
+		let symlinks = self
+			.profiles
+			.iter()
+			.enumerate()
+			.flat_map(|(idx, profile)| {
+				profile
+					.symlinks
+					.iter()
+					.cloned()
+					.map(move |link| (idx, link))
+			})
+			.collect();
+
 		LayeredProfile {
 			profile_names: self.profile_names,
 			target,
@@ -379,6 +410,7 @@ impl LayeredProfileBuilder {
 			pre_hooks,
 			post_hooks,
 			dotfiles,
+			symlinks,
 		}
 	}
 }
@@ -496,6 +528,7 @@ mod tests {
 					template: Some(false),
 				},
 			],
+			symlinks: vec![],
 		};
 
 		let json = serde_json::to_string(&profile).expect("Profile to be serializeable");
