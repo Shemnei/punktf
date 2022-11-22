@@ -360,7 +360,7 @@ where
 			if !self.options.dry_run {
 				if let Err(err) = std::fs::copy(&file.source_path, &file.target_path) {
 					log::info!(
-						"{}: Failed to copy dotfile",
+						"{}: Failed to copy file",
 						file.relative_source_path.display()
 					);
 
@@ -372,7 +372,7 @@ where
 				Ok(content) => content,
 				Err(err) => {
 					log::info!(
-						"{}: Failed to read dotfile",
+						"{}: Failed to read file",
 						file.relative_source_path.display()
 					);
 
@@ -402,7 +402,7 @@ where
 		}
 
 		log::info!(
-			"{}: Dotfile successfully deployed",
+			"{}: File successfully deployed",
 			file.relative_source_path.display()
 		);
 
@@ -442,22 +442,37 @@ where
 			success!(&mut self.builder, directory);
 		}
 
+		log::info!(
+			"{}: Directory successfully deployed",
+			directory.relative_source_path.display()
+		);
+
 		Ok(())
 	}
 
 	fn accept_link(&mut self, _: &PunktfSource, _: &LayeredProfile, link: &Symlink) -> Result {
+		log::info!("{}: Deploying symlink", link.source_path.display());
+
 		#[cfg(all(not(unix), not(windows)))]
-		skipped!(
-			&mut self.builder,
-			link,
-			"Symlink operations are only supported on unix and windows systems"
-		);
+		{
+			log::warn!(
+				"[{}]: Symlink operations are only supported for unix and windows systems",
+				source_path.display()
+			);
+			skipped!(
+				&mut self.builder,
+				link,
+				"Symlink operations are only supported on unix and windows systems"
+			);
+		}
 
 		let source_path = &link.source_path;
 		let target_path = &link.target_path;
 
 		// Check that the source exists
 		if !source_path.exists() {
+			log::error!("[{}]: Links source does not exist", source_path.display());
+
 			failed!(&mut self.builder, link, "Link source does not exist");
 		}
 
@@ -469,6 +484,8 @@ where
 					let target_metadata = match target_path.symlink_metadata() {
 						Ok(m) => m,
 						Err(err) => {
+							log::error!("[{}]: Failed to read metadata", source_path.display());
+
 							failed!(
 								&mut self.builder,
 								link,
@@ -491,6 +508,11 @@ where
 						};
 
 						if let Err(err) = res {
+							log::error!(
+								"[{}]: Failed to remove old symlink at target",
+								source_path.display()
+							);
+
 							failed!(
 								&mut self.builder,
 								link,
@@ -498,10 +520,20 @@ where
 							);
 						}
 					} else {
+						log::error!(
+							"[{}]: Target already exists and is no symlink",
+							source_path.display()
+						);
+
 						failed!(&mut self.builder, link, "Not allowed to replace target");
 					}
 				}
 			} else {
+				log::error!(
+					"[{}]: Target already exists and is not allowed to be replaced",
+					source_path.display()
+				);
+
 				skipped!(&mut self.builder, link, "Link target does already exist");
 			}
 		}
@@ -510,28 +542,40 @@ where
 			cfg_if! {
 				if #[cfg(unix)] {
 					if let Err(err) = std::os::unix::fs::symlink(source_path, target_path) {
+						log::error!("[{}]: Failed to create symlink", source_path.display());
+
 						failed!(&mut self.builder, link, format!("Failed create symlink: {}", err));
 					};
 				} else if #[cfg(windows)] {
 					let metadata = match source_path.symlink_metadata() {
 						Ok(m) => m,
 						Err(err) => {
+							log::error!("[{}]: Failed to read metadata", source_path.display());
+
 							failed!(&mut self.builder, link, format!("Failed get link source metadata: {}", err));
 						}
 					};
 
 					if metadata.is_dir() {
 						if let Err(err) = std::os::windows::fs::symlink_dir(source_path, target_path) {
+							log::error!("[{}]: Failed to create directory symlink", source_path.display());
+
 							failed!(&mut self.builder, link, format!("Failed create directory symlink: {}", err));
 						};
 					} else if metadata.is_file() {
 						if let Err(err) = std::os::windows::fs::symlink_file(source_path, target_path) {
+							log::error!("[{}]: Failed to create file symlink", source_path.display());
+
 							failed!(&mut self.builder, link, format!("Failed create file symlink: {}", err));
 						};
 					} else {
+						log::error!("[{}]: Invalid symlink source type", source_path.display());
+
 						failed!(&mut self.builder, link, "Invalid type of symlink source");
 					}
 				} else {
+					log::warn!("[{}]: Symlink operations are only supported for unix and windows systems", source_path.display());
+
 					skipped!(&mut self.builder, link, "Symlink operations are only supported on unix and windows systems");
 				}
 			}
@@ -548,6 +592,12 @@ where
 		_: &LayeredProfile,
 		rejected: &Rejected<'a>,
 	) -> Result {
+		log::info!(
+			"[{}]: Rejected - {}",
+			rejected.relative_source_path.display(),
+			rejected.reason
+		);
+
 		skipped!(&mut self.builder, rejected, rejected.reason.clone());
 	}
 
@@ -557,6 +607,12 @@ where
 		_: &LayeredProfile,
 		errored: &Errored<'a>,
 	) -> Result {
+		log::error!(
+			"[{}]: Failed - {}",
+			errored.relative_source_path.display(),
+			errored
+		);
+
 		failed!(&mut self.builder, errored, errored.to_string());
 	}
 }
@@ -574,6 +630,11 @@ where
 		// for upstream visitors.
 		resolve_content: impl FnOnce(&str) -> color_eyre::Result<String>,
 	) -> Result {
+		log::info!(
+			"{}: Deploying template",
+			file.relative_source_path.display()
+		);
+
 		let cont = self.pre_deploy_checks(file)?;
 
 		if !cont {
@@ -583,10 +644,7 @@ where
 		let content = match std::fs::read_to_string(&file.source_path) {
 			Ok(content) => content,
 			Err(err) => {
-				log::info!(
-					"{}: Failed read dotfile",
-					file.relative_source_path.display()
-				);
+				log::info!("{}: Failed read file", file.relative_source_path.display());
 
 				failed!(&mut self.builder, file, format!("Failed to read: {}", err));
 			}
@@ -629,7 +687,7 @@ where
 		}
 
 		log::info!(
-			"{}: Dotfile successfully deployed",
+			"{}: Tempalte successfully deployed",
 			file.relative_source_path.display()
 		);
 
