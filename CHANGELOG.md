@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `-q/--quite` cli flag to only display errors ([#42](https://github.com/Shemnei/punktf/issues/42))
 - Added `rust-toolchain.toml` file to pin rust version for better reproducible builds ([#81](https://github.com/Shemnei/punktf/pull/81))
 - Added `--json-output/--yaml-output` cli argument to write the deployment status to files ([#47](https://github.com/Shemnei/punktf/issues/47))
+- Added support for symlink creation in profiles ([#54](https://github.com/Shemnei/punktf/issues/54))
 
 ### Changed
 
