@@ -485,6 +485,8 @@ where
 							target_path.clone(),
 							DotfileStatus::failed(format!("Failed create symlink: {}", err)),
 						);
+
+						return Ok(());
 					};
 				} else if #[cfg(windows)] {
 					let metadata = match source_path.symlink_metadata() {
@@ -509,6 +511,8 @@ where
 								target_path.clone(),
 								DotfileStatus::failed(format!("Failed create directory symlink: {}", err)),
 							);
+
+							return Ok(());
 						};
 					} else if metadata.is_file() {
 						if let Err(err) =
@@ -519,6 +523,8 @@ where
 								target_path.clone(),
 								DotfileStatus::failed(format!("Failed create file symlink: {}", err)),
 							);
+
+							return Ok(());
 						};
 					} else {
 						self.builder.add_link(
@@ -526,6 +532,8 @@ where
 							target_path.clone(),
 							DotfileStatus::failed("Invalid type of symlink source"),
 						);
+
+						return Ok(());
 					}
 				} else {
 					self.builder.add_link(
@@ -533,15 +541,17 @@ where
 						target_path.clone(),
 						DotfileStatus::skipped("Symlink operations are only supported on unix and windows systems"),
 					);
+
+					return Ok(());
 				}
 			}
-		} else {
-			self.builder.add_link(
-				source_path.clone(),
-				target_path.clone(),
-				DotfileStatus::success(),
-			);
 		}
+
+		self.builder.add_link(
+			source_path.clone(),
+			target_path.clone(),
+			DotfileStatus::success(),
+		);
 
 		Ok(())
 	}
