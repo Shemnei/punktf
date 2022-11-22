@@ -479,7 +479,7 @@ where
 		if !self.options.dry_run {
 			cfg_if! {
 				if #[cfg(unix)] {
-					if let Err(err) = std::os::unix::fs::symlink(&link.source_path, &link.target_path) {
+					if let Err(err) = std::os::unix::fs::symlink(source_path, target_path) {
 						self.builder.add_link(
 							source_path.clone(),
 							target_path.clone(),
@@ -487,9 +487,22 @@ where
 						);
 					};
 				} else if #[cfg(windows)] {
+					let metadata = match source_path.symlink_metadata() {
+						Ok(m) => m,
+						Err(err) => {
+							self.builder.add_link(
+								source_path.clone(),
+								target_path.clone(),
+								DotfileStatus::failed(format!("Failed get link source metadata: {}", err)),
+							);
+
+							return Ok(());
+						}
+					};
+
 					if metadata.is_dir() {
 						if let Err(err) =
-							std::os::windows::fs::symlink_dir(&link.source_path, &link.target_path)
+							std::os::windows::fs::symlink_dir(source_path, target_path)
 						{
 							self.builder.add_link(
 								source_path.clone(),
@@ -499,7 +512,7 @@ where
 						};
 					} else if metadata.is_file() {
 						if let Err(err) =
-							std::os::windows::fs::symlink_file(&link.source_path, &link.target_path)
+							std::os::windows::fs::symlink_file(source_path, target_path)
 						{
 							self.builder.add_link(
 								source_path.clone(),
