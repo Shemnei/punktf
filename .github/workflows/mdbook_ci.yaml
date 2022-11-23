@@ -1,4 +1,6 @@
-name: CI
+# Template from here <https://github.com/rust-lang/book/blob/main/.github/workflows/main.yml>
+
+name: mdBook-CI
 on: [push, pull_request]
 
 jobs:
