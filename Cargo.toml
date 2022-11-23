@@ -1,6 +1,6 @@
 [workspace]
 members = ["crates/*"]
-exclude = ["guide/*"]
+exclude = ["guide/linkchecker"]
 
 [workspace.package]
 authors = ["Michael Lohr <michael@lohr.dev>", "Shemnei"]
