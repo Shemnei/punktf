@@ -63,6 +63,10 @@ impl Priority {
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Profile {
+	/// Aliases for this profile which can be used instead of the file name.
+	#[serde(skip_serializing_if = "Vec::is_empty", default)]
+	pub aliases: Vec<String>,
+
 	/// Defines the base profile. All settings from the base are merged with the
 	/// current profile. The settings from the current profile take precendence.
 	/// Dotfiles are merged on the dotfile level (not specific dotfile settings level).
@@ -417,7 +421,8 @@ impl LayeredProfileBuilder {
 /// A minimal struct to read the `aliases` from a profile file.
 ///
 /// This is used for profile name resolution.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Default, Debug, Serialize, Deserialize)]
+#[serde(default)]
 struct Aliases {
 	/// Aliases of a profile.
 	///
@@ -427,6 +432,8 @@ struct Aliases {
 
 /// Collects all profile names and aliases from the `profiles` directory.
 pub fn collect_profile_names(source: &PunktfSource) -> Result<HashMap<String, PathBuf>> {
+	log::info!("Collecting profile names and aliases");
+
 	/// Tries to read all alias from a given file.
 	fn get_aliases(path: &Path, extension: &str) -> Option<Aliases> {
 		let Ok(file) = File::open(path) else {
@@ -513,6 +520,8 @@ pub fn collect_profile_names(source: &PunktfSource) -> Result<HashMap<String, Pa
 			);
 		}
 	}
+
+	log::info!("Found {} profile names and aliases", names.len());
 
 	Ok(names)
 }
