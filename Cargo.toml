@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 keywords = ["dotfiles", "cli", "dotfile", "dotfiles-manager", "templating"]
 
 [workspace.dependencies]
-clap = { version = "4.0.25", features = ["derive", "env"] }
+clap = { version = "4.0.26", features = ["derive", "env"] }
 color-eyre = { version = "0.6.2", default-features = false }
 env_logger = { version = "0.9.3", default-features = false, features = ["termcolor", "atty"] }
 log = "0.4.17"
