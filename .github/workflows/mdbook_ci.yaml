@@ -41,10 +41,11 @@ jobs:
       - name: Shellcheck
         run: find . -name '*.sh' | xargs shellcheck
       - name: Spellcheck
-        run: bash ci/spellcheck.sh list
-      - name: Lint for local file paths
         run: |
           cd guide
+          bash ci/spellcheck.sh list
+      - name: Lint for local file paths
+        run: |
           mdbook build
           cargo run --bin lfp src
       - name: Validate references
