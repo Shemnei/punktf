@@ -6,15 +6,17 @@ pub mod deploy;
 pub mod diff;
 
 use std::borrow::Cow;
+use std::ffi::OsStr;
 use std::fmt;
 use std::ops::Deref;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use crate::profile::link;
 use crate::profile::LayeredProfile;
 use crate::profile::{dotfile::Dotfile, source::PunktfSource};
 
 use color_eyre::eyre::Context;
+use home::home_dir;
 
 use crate::template::source::Source;
 use crate::template::Template;
@@ -418,8 +420,37 @@ impl<'a> Walker<'a> {
 		visitor: &mut impl Visitor,
 		dotfile: &Dotfile,
 	) -> Result {
-		let source_path = self.resolve_source_path(source, dotfile);
-		let target_path = self.resolve_target_path(dotfile, source_path.is_dir());
+		let source_path = match self.resolve_source_path(source, dotfile) {
+			Ok(p) => p,
+			Err(err) => {
+				let paths = Paths::new(dotfile.path.clone(), dotfile.path.clone());
+
+				return self.walk_errored(
+					source,
+					visitor,
+					paths,
+					dotfile,
+					Some(err),
+					Some("Failed to resolve source path of dotfile"),
+				);
+			}
+		};
+
+		let target_path = match self.resolve_target_path(dotfile, source_path.is_dir()) {
+			Ok(p) => p,
+			Err(err) => {
+				let paths = Paths::new(dotfile.path.clone(), dotfile.path.clone());
+
+				return self.walk_errored(
+					source,
+					visitor,
+					paths,
+					dotfile,
+					Some(err),
+					Some("Failed to resolve target path of dotfile"),
+				);
+			}
+		};
 
 		let paths = Paths::new(source_path, target_path);
 
@@ -546,9 +577,10 @@ impl<'a> Walker<'a> {
 		link: &link::Symlink,
 	) -> Result {
 		// DO NOT CANONICOLIZE THE PATHS AS THIS WOULD FOLLOW LINKS
+		// TODO: Better error handling
 		let link = Symlink {
-			source_path: link.source_path.clone(),
-			target_path: link.target_path.clone(),
+			source_path: self.resolve_path(link.source_path.clone())?,
+			target_path: self.resolve_path(link.target_path.clone())?,
 			replace: link.replace,
 		};
 
@@ -592,20 +624,70 @@ impl<'a> Walker<'a> {
 
 	/// Applies final transformations for paths from [`Walker::resolve_source_path`]
 	/// and [`Walker::resolve_target_path`].
-	fn resolve_path(&self, path: PathBuf) -> PathBuf {
-		// TODO: Replace envs/~
-		path.canonicalize().unwrap_or(path)
+	fn resolve_path(&self, path: PathBuf) -> std::io::Result<PathBuf> {
+		/// Tries to extract an environment variable from the given string.
+		/// This either means that the string
+		///
+		/// - Starts with `$` (unix; e.g. `$HOME`)
+		/// - Enclosed by `%` and `%` (windows; e.g. `%APPDATA%`)
+		fn extract_env_var_key(s: &OsStr) -> Option<&str> {
+			if let Some(s) = s.to_str() {
+				if let Some(key) = s.strip_prefix('$') {
+					// Unix style `$HOME`
+					Some(key)
+				} else if let Some(key) = s.strip_prefix('%').and_then(|s| s.strip_suffix('%')) {
+					// Windows style `%APPDATA%`
+					Some(key)
+				} else {
+					None
+				}
+			} else {
+				None
+			}
+		}
+
+		let mut p = PathBuf::new();
+
+		for (i, c) in path.components().enumerate() {
+			if let Component::Normal(c) = c {
+				if i == 0 && c == "~" {
+					p.push(home_dir().unwrap());
+					continue;
+				}
+
+				if let Some(var_key) = extract_env_var_key(c) {
+					let var_val = std::env::var_os(var_key).ok_or_else(|| {
+						std::io::Error::new(
+							std::io::ErrorKind::NotFound,
+							format!("Failed to resolve environment variable {}", var_key),
+						)
+					})?;
+
+					p.push(var_val);
+
+					continue;
+				}
+			}
+
+			p.push(c.as_os_str());
+		}
+
+		Ok(p)
 	}
 
 	/// Resolves the dotfile to a absolute source path.
-	fn resolve_source_path(&self, source: &PunktfSource, dotfile: &Dotfile) -> PathBuf {
+	fn resolve_source_path(
+		&self,
+		source: &PunktfSource,
+		dotfile: &Dotfile,
+	) -> std::io::Result<PathBuf> {
 		self.resolve_path(source.dotfiles.join(&dotfile.path))
 	}
 
 	/// Resolves the dotfile to a absolute target path.
 	///
 	/// Some special logic is applied for directories.
-	fn resolve_target_path(&self, dotfile: &Dotfile, is_dir: bool) -> PathBuf {
+	fn resolve_target_path(&self, dotfile: &Dotfile, is_dir: bool) -> std::io::Result<PathBuf> {
 		let path = if is_dir && dotfile.rename.is_none() && dotfile.overwrite_target.is_none() {
 			self.profile
 				.target_path()
