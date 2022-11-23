@@ -1,3 +1,5 @@
+# Template from <https://github.com/rust-lang/mdBook/wiki/Automated-Deployment%3A-GitHub-Actions>
+
 name: Deploy
 on:
   push:
@@ -18,7 +20,6 @@ jobs:
           echo `pwd`/mdbook >> $GITHUB_PATH
       - name: Deploy GitHub Pages
         run: |
-          # This assumes your book is in the root of your repository.
           cd guide
           mdbook build
           git worktree add gh-pages
