@@ -621,6 +621,7 @@ mod tests {
 
 		let profile = Profile {
 			extends: Vec::new(),
+			aliases: vec![],
 			variables: Some(Variables {
 				inner: profile_vars,
 			}),
