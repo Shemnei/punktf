@@ -70,7 +70,7 @@ jobs:
             target: i686-pc-windows-msvc
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Update packages (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
@@ -126,7 +126,7 @@ jobs:
           fi
 
       - name: Upload archive
-        uses: actions/upload-release-asset@v1.0.1
+        uses: actions/upload-release-asset@v1.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
