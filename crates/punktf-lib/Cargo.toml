@@ -1,6 +1,6 @@
 [package]
 name = "punktf-lib"
-version = "1.0.2"
+version = "2.0.0"
 description = "Library for punktf, a cross-platform multi-target dotfiles manager"
 documentation = "https://github.com/Shemnei/punktf/tree/main/crates/punktf-lib"
 homepage = "https://github.com/Shemnei/punktf/tree/main/crates/punktf-lib"
