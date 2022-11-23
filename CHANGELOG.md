@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `--json-output/--yaml-output` cli argument to write the deployment status to files ([#47](https://github.com/Shemnei/punktf/issues/47))
 - Added support for symlink creation in profiles ([#54](https://github.com/Shemnei/punktf/issues/54))
 - Added path resolving of `~` and environment variables ([#48](https://github.com/Shemnei/punktf/issues/48))
+- Added the `aliases` key to profiles which can be used instead of the file name when referencing a profile ([#33](https://github.com/Shemnei/punktf/issues/33))
 
 ### Changed
 
