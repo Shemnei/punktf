@@ -44,7 +44,7 @@ jobs:
 
       # This plugin should be loaded after toolchain setup
       - name: Cache
-        uses: Swatinem/rust-cache@v1
+        uses: Swatinem/rust-cache@v2
 
       # `test` is used instead of `build` to also include the test modules in
       # the compilation check.
@@ -77,7 +77,7 @@ jobs:
 
       # This pluging should be loaded after toolchain setup
       - name: Cache
-        uses: Swatinem/rust-cache@v1
+        uses: Swatinem/rust-cache@v2
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
