@@ -1,0 +1,62 @@
+# Template from <https://github.com/rust-lang/mdBook/wiki/Automated-Deployment%3A-GitHub-Actions>
+
+name: Deploy mdBook
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'guide/**'
+  # On merged pr
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+    paths:
+      - 'guide/**'
+
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Install mdbook
+        run: |
+          mkdir mdbook
+          curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.14/mdbook-v0.4.14-x86_64-unknown-linux-gnu.tar.gz | tar -xz --directory=./mdbook
+          echo `pwd`/mdbook >> $GITHUB_PATH
+      - name: Deploy GitHub Pages
+        run: |
+          cd guide
+          mdbook build
+      - name: Setup Pages
+        uses: actions/configure-pages@v2
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          # Upload entire repository
+          path: "guide/book"
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1

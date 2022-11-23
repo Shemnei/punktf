@@ -7,7 +7,12 @@ on:
     tags:
       - 'v[0-9]+.*'
 
-name: Release
+name: Release punktf
+
+# Allow one concurrent check
+concurrency:
+  group: "punktf-release"
+  cancel-in-progress: true
 
 jobs:
   create-release:
