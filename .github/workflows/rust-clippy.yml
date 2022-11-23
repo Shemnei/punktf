@@ -12,9 +12,21 @@ name: rust-clippy analyze
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - 'Cargo.lock'
+      - 'Cargo.toml'
+      - 'rust-toolchain.toml'
+      - '.rustfmt.toml'
+      - 'crates/**'
   pull_request:
     # The branches below must be a subset of the branches above
     branches: [ "main" ]
+    paths:
+      - 'Cargo.lock'
+      - 'Cargo.toml'
+      - 'rust-toolchain.toml'
+      - '.rustfmt.toml'
+      - 'crates/**'
   schedule:
     - cron: '35 16 * * 1'
 
