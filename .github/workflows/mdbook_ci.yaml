@@ -44,11 +44,10 @@ jobs:
         run: |
           cd guide
           bash ci/spellcheck.sh list
-      - name: Lint for local file paths
+      - name: Build book
         run: |
           cd guide
           mdbook build
-          cargo run --bin lfp src
       - name: Validate references
         run: bash ci/validate.sh
       - name: Check for broken links
