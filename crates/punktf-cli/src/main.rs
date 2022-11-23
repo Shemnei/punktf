@@ -215,7 +215,7 @@ fn setup_profile(
 	};
 	builder.add(String::from("target_cli_argument"), target_cli_profile);
 
-	resolve_profile(&mut builder, source, profile_name, &mut Default::default())?;
+	resolve_profile(&mut builder, source, profile_name)?;
 
 	// Add target environment variable to bottom
 	let target_env_profile = Profile {

@@ -8,12 +8,11 @@ pub mod transform;
 pub mod variables;
 
 use std::collections::{HashMap, HashSet};
-use std::ffi::OsString;
 use std::fs::File;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
-use color_eyre::eyre::{eyre, Context};
+use color_eyre::eyre::{bail, eyre, Context};
 use color_eyre::Result;
 use serde::{Deserialize, Serialize};
 
@@ -415,6 +414,109 @@ impl LayeredProfileBuilder {
 	}
 }
 
+/// A minimal struct to read the `aliases` from a profile file.
+///
+/// This is used for profile name resolution.
+#[derive(Debug, Serialize, Deserialize)]
+struct Aliases {
+	/// Aliases of a profile.
+	///
+	/// These can be used in place of the profile name for cli and extend resolution.
+	aliases: Vec<String>,
+}
+
+/// Collects all profile names and aliases from the `profiles` directory.
+pub fn collect_profile_names(source: &PunktfSource) -> Result<HashMap<String, PathBuf>> {
+	/// Tries to read all alias from a given file.
+	fn get_aliases(path: &Path, extension: &str) -> Option<Aliases> {
+		let Ok(file) = File::open(path) else {
+			log::debug!("[{}] Failed to read content", path.display());
+				return None;
+			};
+
+		#[cfg(feature = "profile-json")]
+		{
+			if extension.eq_ignore_ascii_case("json") {
+				let Ok(aliases) = serde_json::from_reader(file) else {
+						log::debug!("[{}] Failed to read aliases", path.display());
+						return None;
+					};
+
+				return Some(aliases);
+			}
+		}
+
+		#[cfg(feature = "profile-yaml")]
+		{
+			if extension.eq_ignore_ascii_case("yaml") || extension.eq_ignore_ascii_case("yml") {
+				let Ok(aliases) = serde_yaml::from_reader(file) else {
+						log::debug!("[{}] Failed to read aliases", path.display());
+						return None;
+					};
+
+				return Some(aliases);
+			}
+		}
+
+		None
+	}
+
+	let mut names = HashMap::new();
+
+	let dents = source.profiles().read_dir()?;
+	for dent in dents {
+		let dent = dent?;
+		let path = dent.path();
+
+		let Ok(ft) = dent.file_type() else {
+			log::debug!("[{}] Failed to get file type", path.display());
+			continue;
+		};
+
+		if !ft.is_file() {
+			log::debug!("[{}] Not a file", path.display());
+			continue;
+		}
+
+		let Some(extension) = path.extension().and_then(|e| e.to_str()) else {
+			log::debug!("[{}] Failed to get file extension", path.display());
+			continue;
+		};
+
+		let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+			log::debug!("[{}] Failed to get file name", path.display());
+			continue;
+		};
+		// Remove extension and `.`
+		let name = &name[..(name.len() - (extension.len() + 1))];
+
+		for alias in get_aliases(&path, extension)
+			.into_iter()
+			.flat_map(|a| a.aliases.into_iter())
+		{
+			log::debug!("[{}] Adding alias {}", path.display(), alias);
+
+			if let Some(evicted) = names.insert(alias, path.clone()) {
+				bail!(
+					"The profile name {} is already taken by {}",
+					name,
+					evicted.display()
+				);
+			}
+		}
+
+		if let Some(evicted) = names.insert(name.to_string(), path.clone()) {
+			bail!(
+				"The profile name {} is already taken by {}",
+				name,
+				evicted.display()
+			);
+		}
+	}
+
+	Ok(names)
+}
+
 /// Recursively resolves a profile and it's [extend
 /// chain](`crate::profile::Profile::extends`) and adds them to the layered
 /// profile in order of occurrence.
@@ -422,45 +524,58 @@ pub fn resolve_profile(
 	builder: &mut LayeredProfileBuilder,
 	source: &PunktfSource,
 	name: &str,
-	resolved_profiles: &mut Vec<OsString>,
 ) -> Result<()> {
-	log::trace!("Resolving profile `{}`", name);
+	/// Recursive resolution of all profiles needed.
+	///
+	/// Checks for cycles while resolving.
+	fn _resolve_profile_inner(
+		profiles: &HashMap<String, PathBuf>,
+		builder: &mut LayeredProfileBuilder,
+		name: &str,
+		resolved_profiles: &mut Vec<String>,
+	) -> Result<()> {
+		log::trace!("Resolving profile `{}`", name);
 
-	let path = source.find_profile_path(name)?;
-	let file_name = path
-		.file_name()
-		.unwrap_or_else(|| panic!("Profile path has no file name ({:?})", path))
-		.to_os_string();
+		let path = profiles
+			.get(name)
+			.ok_or_else(|| eyre!("No profile found for name {}", name))?;
 
-	let mut profile = Profile::from_file(&path)?;
+		let mut profile = Profile::from_file(path)?;
+		let name = name.to_string();
 
-	if !profile.extends.is_empty() && resolved_profiles.contains(&file_name) {
-		// profile was already resolve and has "children" which will lead to
-		// a loop while resolving
-		return Err(eyre!(
+		if !profile.extends.is_empty() && resolved_profiles.contains(&name) {
+			// profile was already resolve and has "children" which will lead to
+			// a loop while resolving
+			return Err(eyre!(
 			"Circular dependency detected while parsing `{}` (required by: `{:?}`) (Stack: {:#?})",
 			name,
 			resolved_profiles.last(),
 			resolved_profiles
 		));
+		}
+
+		let mut extends = Vec::new();
+		std::mem::swap(&mut extends, &mut profile.extends);
+
+		builder.add(name.clone(), profile);
+
+		resolved_profiles.push(name);
+
+		for child in extends {
+			_resolve_profile_inner(profiles, builder, &child, resolved_profiles)?;
+		}
+
+		let _ = resolved_profiles
+			.pop()
+			.expect("Misaligned push/pop operation");
+
+		Ok(())
 	}
 
-	let mut extends = Vec::new();
-	std::mem::swap(&mut extends, &mut profile.extends);
+	let available_profiles = collect_profile_names(source)?;
+	let mut resolved_profiles = Vec::new();
 
-	builder.add(name.to_string(), profile);
-
-	resolved_profiles.push(file_name);
-
-	for child in extends {
-		resolve_profile(builder, source, &child, resolved_profiles)?;
-	}
-
-	let _ = resolved_profiles
-		.pop()
-		.expect("Misaligned push/pop operation");
-
-	Ok(())
+	_resolve_profile_inner(&available_profiles, builder, name, &mut resolved_profiles)
 }
 
 #[cfg(test)]

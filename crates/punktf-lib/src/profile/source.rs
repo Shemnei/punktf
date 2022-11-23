@@ -121,46 +121,4 @@ impl PunktfSource {
 	pub fn dotfiles(&self) -> &Path {
 		&self.dotfiles
 	}
-
-	/// Tries to resolve a profile name to a path of a
-	/// [`Profile`](`crate::profile::Profile`). The profile name must be given
-	/// without any file extension attached (e.g. `demo` instead of `demo.json`).
-	///
-	/// # Errors
-	///
-	/// Errors if no profile matching the name was found.
-	/// Errors if multiple profiles matching the name were found.
-	pub fn find_profile_path(&self, name: &str) -> std::io::Result<PathBuf> {
-		let name = name.to_lowercase();
-
-		let mut matching_profile_paths = walkdir::WalkDir::new(&self.profiles)
-			.max_depth(1)
-			.into_iter()
-			.filter_map(|dent| {
-				let dent = dent.ok()?;
-				let dent_name = dent.file_name().to_string_lossy();
-
-				if let Some(dot_idx) = dent_name.rfind('.') {
-					(name == dent_name[..dot_idx].to_lowercase())
-						.then(move || dent.path().to_path_buf())
-				} else {
-					None
-				}
-			})
-			.collect::<Vec<_>>();
-
-		if matching_profile_paths.len() > 1 {
-			Err(std::io::Error::new(
-				std::io::ErrorKind::InvalidData,
-				format!("Found more than one profile with the name `{}`", name),
-			))
-		} else if let Some(profile_path) = matching_profile_paths.pop() {
-			Ok(profile_path)
-		} else {
-			Err(std::io::Error::new(
-				std::io::ErrorKind::NotFound,
-				format!("Found no profile with the name `{}`", name),
-			))
-		}
-	}
 }
