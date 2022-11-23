@@ -1,6 +1,6 @@
 # Template from <https://github.com/rust-lang/mdBook/wiki/Automated-Deployment%3A-GitHub-Actions>
 
-name: mdBook-Deploy
+name: Deploy mdBook
 on:
   push:
     branches:
