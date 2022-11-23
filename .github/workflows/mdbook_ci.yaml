@@ -49,7 +49,9 @@ jobs:
           cd guide
           mdbook build
       - name: Validate references
-        run: bash ci/validate.sh
+        run: |
+          cd guide
+          bash ci/validate.sh
       - name: Check for broken links
         run: |
           cd guide
