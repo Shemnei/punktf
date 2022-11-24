@@ -81,10 +81,10 @@ To deploy a profile, use the `deploy` subcommand:
 
 ```sh
 # deploy 'windows' profile
-`punktf` deploy windows
+punktf deploy --profile windows
 
 # deploy (custom source folder)
-`punktf` --source /home/demo/mydotfiles deploy windows
+punktf --source /home/demo/mydotfiles deploy --profile windows
 ```
 
 Adding the `-h`/`--help` flag to a given subcommand, will print usage instructions.
@@ -111,15 +111,15 @@ Example `punktf` source folder structure:
   + windows.yaml
   + base.yaml
   + arch.json
-  + dotfiles
-    + .gitconfig
-    + init.vim.win
-    + base
-      + demo.txt
-    + linux
-      + .bashrc
-    + windows
-      + alacritty.yml
++ dotfiles
+  + .gitconfig
+  + init.vim.win
+  + base
+    + demo.txt
+  + linux
+    + .bashrc
+  + windows
+    + alacritty.yml
 ```
 
 ### Target
