@@ -345,18 +345,19 @@ pub fn log_deployment(deployment: &Deployment, print: bool) {
 		.duration()
 		.expect("Failed to get duration from deployment");
 
-	let report = format!(
-		"\nTime           : {:?}
-        \n{hruler}
-        \nFiles (deployed): {}
-        \nFiles (skipped) : {}
-        \nFiles (failed)  : {}
-        \nFiles (total)   : {}
-        \n{hruler}
-        \nLinks (deployed): {}
-        \nLinks (skipped) : {}
-        \nLinks (failed)  : {}
-        \nLinks (total)   : {}",
+	// NOTE: Needs to be indented like this to not mess up the final result.
+	let report = format!("
+Time            : {:?}
+{hruler}
+Files (deployed): {}
+Files (skipped) : {}
+Files (failed)  : {}
+Files (total)   : {}
+{hruler}
+Links (deployed): {}
+Links (skipped) : {}
+Links (failed)  : {}
+Links (total)   : {}",
 		elapsed,
 		dotfiles_success,
 		dotfiles_skipped,
