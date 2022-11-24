@@ -19,7 +19,7 @@ thiserror = "1.0.37"
 walkdir = "2.3.2"
 unicode-width = "0.1.10"
 cfg-if = "1.0.0"
-home = "0.5.4"
+shellexpand = "2.1.2"
 # Cli
 clap = { version = "4.0.25", features = ["derive", "env"] }
 clap_mangen = "0.2.4"

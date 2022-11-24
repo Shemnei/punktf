@@ -6,17 +6,16 @@ pub mod deploy;
 pub mod diff;
 
 use std::borrow::Cow;
-use std::ffi::OsStr;
 use std::fmt;
+use std::io;
 use std::ops::Deref;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 use crate::profile::link;
 use crate::profile::LayeredProfile;
 use crate::profile::{dotfile::Dotfile, source::PunktfSource};
 
 use color_eyre::eyre::Context;
-use home::home_dir;
 
 use crate::template::source::Source;
 use crate::template::Template;
@@ -494,7 +493,7 @@ impl<'a> Walker<'a> {
 		} else if metadata.is_dir() {
 			self.walk_directory(source, visitor, paths, dotfile)
 		} else {
-			let err = std::io::Error::new(std::io::ErrorKind::Unsupported, "Invalid file type");
+			let err = io::Error::new(io::ErrorKind::Unsupported, "Invalid file type");
 
 			self.walk_errored(source, visitor, paths, dotfile, Some(err), None::<&str>)
 		}
@@ -579,8 +578,8 @@ impl<'a> Walker<'a> {
 		// DO NOT CANONICOLIZE THE PATHS AS THIS WOULD FOLLOW LINKS
 		// TODO: Better error handling
 		let link = Symlink {
-			source_path: self.resolve_path(link.source_path.clone())?,
-			target_path: self.resolve_path(link.target_path.clone())?,
+			source_path: self.resolve_path(&link.source_path)?,
+			target_path: self.resolve_path(&link.target_path)?,
 			replace: link.replace,
 		};
 
@@ -624,70 +623,25 @@ impl<'a> Walker<'a> {
 
 	/// Applies final transformations for paths from [`Walker::resolve_source_path`]
 	/// and [`Walker::resolve_target_path`].
-	fn resolve_path(&self, path: PathBuf) -> std::io::Result<PathBuf> {
-		/// Tries to extract an environment variable from the given string.
-		/// This either means that the string
-		///
-		/// - Starts with `$` (unix; e.g. `$HOME`)
-		/// - Enclosed by `%` and `%` (windows; e.g. `%APPDATA%`)
-		fn extract_env_var_key(s: &OsStr) -> Option<&str> {
-			if let Some(s) = s.to_str() {
-				if let Some(key) = s.strip_prefix('$') {
-					// Unix style `$HOME`
-					Some(key)
-				} else if let Some(key) = s.strip_prefix('%').and_then(|s| s.strip_suffix('%')) {
-					// Windows style `%APPDATA%`
-					Some(key)
-				} else {
-					None
-				}
-			} else {
-				None
-			}
-		}
+	fn resolve_path(&self, path: &Path) -> io::Result<PathBuf> {
+		let Some(path_str) = path.to_str() else {
+			return Err(io::Error::new(io::ErrorKind::InvalidInput, "File path includes non UTF-8 characters"));
+		};
 
-		let mut p = PathBuf::new();
-
-		for (i, c) in path.components().enumerate() {
-			if let Component::Normal(c) = c {
-				if i == 0 && c == "~" {
-					p.push(home_dir().unwrap());
-					continue;
-				}
-
-				if let Some(var_key) = extract_env_var_key(c) {
-					let var_val = std::env::var_os(var_key).ok_or_else(|| {
-						std::io::Error::new(
-							std::io::ErrorKind::NotFound,
-							format!("Failed to resolve environment variable {}", var_key),
-						)
-					})?;
-
-					p.push(var_val);
-
-					continue;
-				}
-			}
-
-			p.push(c.as_os_str());
-		}
-
-		Ok(p)
+		shellexpand::full(path_str)
+			.map(|resolved| PathBuf::from(resolved.as_ref()))
+			.map_err(|err| io::Error::new(io::ErrorKind::Other, err))
 	}
 
 	/// Resolves the dotfile to a absolute source path.
-	fn resolve_source_path(
-		&self,
-		source: &PunktfSource,
-		dotfile: &Dotfile,
-	) -> std::io::Result<PathBuf> {
-		self.resolve_path(source.dotfiles.join(&dotfile.path))
+	fn resolve_source_path(&self, source: &PunktfSource, dotfile: &Dotfile) -> io::Result<PathBuf> {
+		self.resolve_path(&source.dotfiles.join(&dotfile.path))
 	}
 
 	/// Resolves the dotfile to a absolute target path.
 	///
 	/// Some special logic is applied for directories.
-	fn resolve_target_path(&self, dotfile: &Dotfile, is_dir: bool) -> std::io::Result<PathBuf> {
+	fn resolve_target_path(&self, dotfile: &Dotfile, is_dir: bool) -> io::Result<PathBuf> {
 		let path = if is_dir && dotfile.rename.is_none() && dotfile.overwrite_target.is_none() {
 			self.profile
 				.target_path()
@@ -701,7 +655,7 @@ impl<'a> Walker<'a> {
 				.join(dotfile.rename.as_ref().unwrap_or(&dotfile.path))
 		};
 
-		self.resolve_path(path)
+		self.resolve_path(&path)
 	}
 
 	/// TODO
