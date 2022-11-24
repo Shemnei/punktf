@@ -64,6 +64,8 @@ macro_rules! success {
 }
 
 /// Marks the given item as skipped.
+///
+/// This will instantly return from the out function afer reporting the skip.
 macro_rules! skipped {
 	($builder:expr, $item:expr, $reason:expr => $ret:expr ) => {
 		$item.add_to_builder($builder, ItemStatus::skipped($reason));
@@ -76,6 +78,8 @@ macro_rules! skipped {
 }
 
 /// Marks the given item as failed.
+///
+/// This will instantly return from the out function afer reporting the error.
 macro_rules! failed {
 	($builder:expr, $item:expr, $reason:expr => Err($ret:expr) ) => {
 		$item.add_to_builder($builder, ItemStatus::failed($reason));
@@ -336,6 +340,7 @@ impl<F> Visitor for Deployer<F>
 where
 	F: Fn(&Path, &Path) -> color_eyre::Result<bool>,
 {
+	/// Accepts a file item and tries to deploy it.
 	fn accept_file<'a>(
 		&mut self,
 		_: &PunktfSource,
@@ -411,6 +416,7 @@ where
 		Ok(())
 	}
 
+	/// Accepts a directory item and tries to deploy it.
 	fn accept_directory<'a>(
 		&mut self,
 		_: &PunktfSource,
@@ -450,9 +456,12 @@ where
 		Ok(())
 	}
 
+	/// Accepts a link item and tries to deploy it.
 	fn accept_link(&mut self, _: &PunktfSource, _: &LayeredProfile, link: &Symlink) -> Result {
 		log::info!("{}: Deploying symlink", link.source_path.display());
 
+		// Log an warning if deploying of links is not supported for the
+		// operating system.
 		#[cfg(all(not(unix), not(windows)))]
 		{
 			log::warn!(
@@ -592,6 +601,7 @@ where
 		Ok(())
 	}
 
+	/// Accepts a rejected item and reports it.
 	fn accept_rejected<'a>(
 		&mut self,
 		_: &PunktfSource,
@@ -607,6 +617,7 @@ where
 		skipped!(&mut self.builder, rejected, rejected.reason.clone());
 	}
 
+	/// Accepts a errored item and reports it.
 	fn accept_errored<'a>(
 		&mut self,
 		_: &PunktfSource,
@@ -627,6 +638,9 @@ impl<F> TemplateVisitor for Deployer<F>
 where
 	F: Fn(&Path, &Path) -> color_eyre::Result<bool>,
 {
+	/// Accepts a file template item and tries to deploy it.
+	///
+	/// Before the deployment the template is parsed and resolved.
 	fn accept_template<'a>(
 		&mut self,
 		_: &PunktfSource,

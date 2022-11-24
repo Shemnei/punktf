@@ -45,6 +45,10 @@ pub enum Event<'a> {
 		old_content: String,
 
 		/// Contents of the file after a deployment.
+		///
+		/// #NOTE
+		/// If the contents come from a template item, it will be already
+		/// fully resolved.
 		new_contnet: String,
 	},
 }
@@ -92,6 +96,10 @@ impl<F> Visitor for Diff<F>
 where
 	F: Fn(Event<'_>),
 {
+	/// Accepts a file item and checks if it differs in any way to the counter
+	/// part on the filesystem (deployed item).
+	///
+	/// If so, a change [`Event::NewFile`]/[`Event::Diff`] is emitted.
 	fn accept_file<'a>(
 		&mut self,
 		_: &PunktfSource,
@@ -120,6 +128,9 @@ where
 		Ok(())
 	}
 
+	/// Accepts a directory item and simly checks if it already exists on the filesystem.
+	///
+	/// If no, a change [`Event::NewDirectory`] is emitted.
 	fn accept_directory<'a>(
 		&mut self,
 		_: &PunktfSource,
@@ -133,6 +144,10 @@ where
 		Ok(())
 	}
 
+	/// Accepts a rejected item and does nothing besides logging an info message.
+	///
+	/// # NOTE
+	/// Links are currently not supported for diffing.
 	fn accept_link(&mut self, _: &PunktfSource, _: &LayeredProfile, link: &Symlink) -> Result {
 		log::info!(
 			"[{}] Symlinks are not supported for diffs",
@@ -142,6 +157,7 @@ where
 		Ok(())
 	}
 
+	/// Accepts a rejected item and does nothing besides logging an info message.
 	fn accept_rejected<'a>(
 		&mut self,
 		_: &PunktfSource,
@@ -157,6 +173,7 @@ where
 		Ok(())
 	}
 
+	/// Accepts a rejected item and does nothing besides logging an error message.
 	fn accept_errored<'a>(
 		&mut self,
 		_: &PunktfSource,
@@ -177,6 +194,10 @@ impl<F> TemplateVisitor for Diff<F>
 where
 	F: Fn(Event<'_>),
 {
+	/// Accepts a file template item and checks if it differs in any way to the
+	/// counter part on the filesystem (deployed item).
+	///
+	/// If so, a change [`Event::NewFile`]/[`Event::Diff`] is emitted.
 	fn accept_template<'a>(
 		&mut self,
 		_: &PunktfSource,
