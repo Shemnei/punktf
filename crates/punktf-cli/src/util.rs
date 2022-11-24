@@ -346,7 +346,8 @@ pub fn log_deployment(deployment: &Deployment, print: bool) {
 		.expect("Failed to get duration from deployment");
 
 	// NOTE: Needs to be indented like this to not mess up the final result.
-	let report = format!("
+	let report = format!(
+		"
 Time            : {:?}
 {hruler}
 Files (deployed): {}
