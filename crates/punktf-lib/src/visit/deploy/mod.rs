@@ -10,7 +10,7 @@ use crate::visit::*;
 
 use crate::profile::transform::Transform as _;
 use crate::profile::LayeredProfile;
-use crate::visit::deploy::deployment::{Deployment, DeploymentBuilder, DotfileStatus};
+use crate::visit::deploy::deployment::{Deployment, DeploymentBuilder, ItemStatus};
 use std::borrow::Borrow;
 use std::path::Path;
 
@@ -19,7 +19,7 @@ use crate::visit::{ResolvingVisitor, TemplateVisitor};
 impl<'a> Item<'a> {
 	/// Adds this item to the given
 	/// [`DeploymentBuilder`](`crate::visit::deploy::deployment::DeploymentBuilder`).
-	fn add_to_builder<S: Into<DotfileStatus>>(&self, builder: &mut DeploymentBuilder, status: S) {
+	fn add_to_builder<S: Into<ItemStatus>>(&self, builder: &mut DeploymentBuilder, status: S) {
 		let status = status.into();
 
 		let resolved_target_path = self
@@ -47,7 +47,7 @@ impl<'a> Item<'a> {
 impl Symlink {
 	/// Adds this item to the given
 	/// [`DeploymentBuilder`](`crate::visit::deploy::deployment::DeploymentBuilder`).
-	fn add_to_builder<S: Into<DotfileStatus>>(&self, builder: &mut DeploymentBuilder, status: S) {
+	fn add_to_builder<S: Into<ItemStatus>>(&self, builder: &mut DeploymentBuilder, status: S) {
 		builder.add_link(
 			self.source_path.clone(),
 			self.target_path.clone(),
@@ -59,18 +59,18 @@ impl Symlink {
 /// Marks the given item as successfully deployed.
 macro_rules! success {
 	($builder:expr, $item:expr) => {
-		$item.add_to_builder($builder, DotfileStatus::success());
+		$item.add_to_builder($builder, ItemStatus::success());
 	};
 }
 
 /// Marks the given item as skipped.
 macro_rules! skipped {
 	($builder:expr, $item:expr, $reason:expr => $ret:expr ) => {
-		$item.add_to_builder($builder, DotfileStatus::skipped($reason));
+		$item.add_to_builder($builder, ItemStatus::skipped($reason));
 		return Ok($ret);
 	};
 	($builder:expr, $item:expr, $reason:expr) => {
-		$item.add_to_builder($builder, DotfileStatus::skipped($reason));
+		$item.add_to_builder($builder, ItemStatus::skipped($reason));
 		return Ok(());
 	};
 }
@@ -78,15 +78,15 @@ macro_rules! skipped {
 /// Marks the given item as failed.
 macro_rules! failed {
 	($builder:expr, $item:expr, $reason:expr => Err($ret:expr) ) => {
-		$item.add_to_builder($builder, DotfileStatus::failed($reason));
+		$item.add_to_builder($builder, ItemStatus::failed($reason));
 		return Err($ret);
 	};
 	($builder:expr, $item:expr, $reason:expr => $ret:expr ) => {
-		$item.add_to_builder($builder, DotfileStatus::failed($reason));
+		$item.add_to_builder($builder, ItemStatus::failed($reason));
 		return Ok($ret);
 	};
 	($builder:expr, $item:expr, $reason:expr) => {
-		$item.add_to_builder($builder, DotfileStatus::failed($reason));
+		$item.add_to_builder($builder, ItemStatus::failed($reason));
 		return Ok(());
 	};
 }

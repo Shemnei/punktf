@@ -1,11 +1,14 @@
 //! Various utility functions.
 
-use std::fmt::Write as _; // Needed for `write!` calls
-use std::path::{Path, PathBuf};
+use std::{
+	collections::HashMap,
+	path::{Path, PathBuf},
+};
 
 use color_eyre::owo_colors::OwoColorize;
 use color_eyre::Result;
-use punktf_lib::visit::deploy::deployment::{Deployment, DeploymentStatus, DotfileStatus};
+use log::Level;
+use punktf_lib::visit::deploy::deployment::{Deployment, DeploymentStatus, ItemStatus};
 
 /// Retrieves the target path for the deployment by reading the environment
 /// variable with the name determined by [`super::PUNKTF_TARGET_ENVVAR`].
@@ -53,214 +56,255 @@ pub fn ask_user_merge(source_path: &Path, deploy_path: &Path) -> Result<bool> {
 	}
 }
 
+/// Outputs the given message `s`.
+///
+/// If `print` is `false` all messages will be logged with the `log` create,
+/// otherwise `stdout` is used.
+///
+/// # NOTE
+/// This will also clear the output.
+/// This is needed to reuse the same buffer `s` but log it with different log levels.
+fn output_and_clear(print: bool, s: &mut String, level: Level) {
+	if !s.is_empty() {
+		if print {
+			println!("{}", s);
+		} else {
+			log::log!(level, "{}", s);
+		}
+
+		s.clear();
+	}
+}
+
+/// A struct to hold information about the count of deployed items per status.
+///
+/// This is used for dotfiles by [`log_dotfiles`] and for links by [`log_links`].
+#[derive(Debug, Clone, Copy)]
+struct DeployCounts {
+	/// Amount of deployed items that succeeded.
+	success: usize,
+
+	/// Amount of deployed items that were skipped.
+	skipped: usize,
+
+	/// Amount of deployed items that failed.
+	failed: usize,
+}
+
+/// Iterates for all `items` with a status of
+/// [`ItemStatus::Success`](`punktf_lib::visit::deploy::deployment::ItemStatus::Success`).
+/// For each of them, a formatting function `fmt_fn` is called.
+///
+/// At the end, the complete result is printend and the total count of processed
+/// items is returned.
+fn log_success<T, F>(
+	out: &mut String,
+	print: bool,
+	item_name: &str,
+	items: &HashMap<PathBuf, T>,
+	fmt_fn: F,
+) -> usize
+where
+	T: AsRef<ItemStatus>,
+	F: Fn(&Path, &T) -> String,
+{
+	let mut item_count = 0;
+	for (idx, (path, item)) in items
+		.iter()
+		.filter(|(_, item)| item.as_ref().is_success())
+		.enumerate()
+	{
+		if idx == 0 {
+			out.push_str(&format!("{} ({})", item_name, "SUCCESS".green()));
+		}
+
+		out.push_str(&fmt_fn(path, item));
+		item_count += 0;
+	}
+
+	output_and_clear(print, out, Level::Info);
+
+	item_count
+}
+
+/// Iterates for all `items` with a status of
+/// [`ItemStatus::Skipped`](`punktf_lib::visit::deploy::deployment::ItemStatus::Skipped`).
+/// For each of them, a formatting function `fmt_fn` is called.
+///
+/// At the end, the complete result is printend and the total count of processed
+/// items is returned.
+fn log_skipped<T, F>(
+	out: &mut String,
+	print: bool,
+	item_name: &str,
+	items: &HashMap<PathBuf, T>,
+	fmt_fn: F,
+) -> usize
+where
+	T: AsRef<ItemStatus>,
+	F: Fn(&Path, &T, &str) -> String,
+{
+	let mut item_count = 0;
+	for (idx, (path, item, reason)) in items
+		.iter()
+		.filter_map(|(idx, item)| {
+			if let ItemStatus::Skipped(reason) = item.as_ref() {
+				Some((idx, item, reason))
+			} else {
+				None
+			}
+		})
+		.enumerate()
+	{
+		if idx == 0 {
+			out.push_str(&format!("{} ({})", item_name, "SKIPPED".yellow()));
+		}
+
+		out.push_str(&fmt_fn(path, item, reason));
+		item_count += 0;
+	}
+
+	output_and_clear(print, out, Level::Info);
+
+	item_count
+}
+
+/// Iterates for all `items` with a status of
+/// [`ItemStatus::Failed`](`punktf_lib::visit::deploy::deployment::ItemStatus::Failed`).
+/// For each of them, a formatting function `fmt_fn` is called.
+///
+/// At the end, the complete result is printend and the total count of processed
+/// items is returned.
+fn log_failed<T, F>(
+	out: &mut String,
+	print: bool,
+	item_name: &str,
+	items: &HashMap<PathBuf, T>,
+	fmt_fn: F,
+) -> usize
+where
+	T: AsRef<ItemStatus>,
+	F: Fn(&Path, &T, &str) -> String,
+{
+	let mut item_count = 0;
+	for (idx, (path, item, reason)) in items
+		.iter()
+		.filter_map(|(idx, item)| {
+			if let ItemStatus::Failed(reason) = item.as_ref() {
+				Some((idx, item, reason))
+			} else {
+				None
+			}
+		})
+		.enumerate()
+	{
+		if idx == 0 {
+			out.push_str(&format!("{} ({})", item_name, "FAILED".red()));
+		}
+
+		out.push_str(&fmt_fn(path, item, reason));
+		item_count += 0;
+	}
+
+	output_and_clear(print, out, Level::Info);
+
+	item_count
+}
+
 /// Logs all deployed dotfiles together with the status.
-fn log_dotfiles(out: &mut String, deployment: &Deployment, print: bool) -> (usize, usize, usize) {
-	let mut files_success = 0;
-	for (idx, (path, _)) in deployment
-		.dotfiles()
-		.iter()
-		.filter(|(_, v)| v.status().is_success())
-		.enumerate()
-	{
-		if idx == 0 {
-			write!(out, "Dotfiles ({})", "SUCCESS".green()).expect("Write to String failed");
-		}
+///
+/// If `print` is `false` all messages will be logged with the `log` create,
+/// otherwise `stdout` is used.
+fn log_dotfiles(out: &mut String, deployment: &Deployment, print: bool) -> DeployCounts {
+	/// Name of item beeing processed.
+	/// Used for logging.
+	const ITEM_NAME: &str = "Dotfiles";
 
-		write!(out, "\n\t{}", path.display().bright_black()).expect("Write to String failed");
-		files_success += 1;
+	let files_success = log_success(out, print, ITEM_NAME, deployment.dotfiles(), |path, _| {
+		format!("\n\t{}", path.display().bright_black())
+	});
+
+	let files_skipped = log_skipped(
+		out,
+		print,
+		ITEM_NAME,
+		deployment.dotfiles(),
+		|path, _, reason| format!("\n\t{}: {}", path.display(), reason.bright_black()),
+	);
+
+	let files_failed = log_failed(
+		out,
+		print,
+		ITEM_NAME,
+		deployment.dotfiles(),
+		|path, _, reason| format!("\n\t{}: {}", path.display(), reason.bright_black()),
+	);
+
+	DeployCounts {
+		success: files_success,
+		skipped: files_skipped,
+		failed: files_failed,
 	}
-
-	if !out.is_empty() {
-		if print {
-			println!("{}", out);
-		} else {
-			log::info!("{}", out);
-		}
-
-		out.clear();
-	}
-
-	let mut files_skipped = 0;
-	for (idx, (path, reason)) in deployment
-		.dotfiles()
-		.iter()
-		.filter_map(|(k, v)| {
-			if let DotfileStatus::Skipped(reason) = v.status() {
-				Some((k, reason))
-			} else {
-				None
-			}
-		})
-		.enumerate()
-	{
-		if idx == 0 {
-			write!(out, "Dotfiles ({})", "SKIPPED".yellow()).expect("Write to String failed");
-		}
-
-		write!(out, "\n\t{}: {}", path.display(), reason.bright_black())
-			.expect("Write to String failed");
-
-		files_skipped += 1;
-	}
-
-	if !out.is_empty() {
-		if print {
-			println!("{}", out);
-		} else {
-			log::warn!("{}", out);
-		}
-
-		out.clear();
-	}
-
-	let mut files_failed = 0;
-	for (idx, (path, reason)) in deployment
-		.dotfiles()
-		.iter()
-		.filter_map(|(k, v)| {
-			if let DotfileStatus::Failed(reason) = v.status() {
-				Some((k, reason))
-			} else {
-				None
-			}
-		})
-		.enumerate()
-	{
-		if idx == 0 {
-			write!(out, "Dotfiles ({})", "FAILED".red()).expect("Write to String failed");
-		}
-
-		write!(out, "\n\t{}: {}", path.display(), reason.bright_black())
-			.expect("Write to String failed");
-
-		files_failed += 1;
-	}
-
-	if !out.is_empty() {
-		if print {
-			println!("{}", out);
-		} else {
-			log::error!("{}", out);
-		}
-
-		out.clear();
-	}
-
-	(files_success, files_skipped, files_failed)
 }
 
 /// Logs all deployed links together with the status.
-fn log_links(out: &mut String, deployment: &Deployment, print: bool) -> (usize, usize, usize) {
-	let mut files_success = 0;
-	for (idx, (path, link)) in deployment
-		.symlinks()
-		.iter()
-		.filter(|(_, v)| v.status().is_success())
-		.enumerate()
-	{
-		if idx == 0 {
-			write!(out, "Links ({})", "SUCCESS".green()).expect("Write to String failed");
-		}
+///
+/// If `print` is `false` all messages will be logged with the `log` create,
+/// otherwise `stdout` is used.
+fn log_links(out: &mut String, deployment: &Deployment, print: bool) -> DeployCounts {
+	/// Name of item beeing processed.
+	/// Used for logging.
+	const ITEM_NAME: &str = "Links";
 
-		write!(
-			out,
-			"\n\t{} => {}",
-			link.source.display().bright_black(),
-			path.display().bright_black(),
-		)
-		.expect("Write to String failed");
-		files_success += 1;
+	let files_success = log_success(
+		out,
+		print,
+		ITEM_NAME,
+		deployment.symlinks(),
+		|path, link| {
+			format!(
+				"\n\t{} => {}",
+				link.source.display().bright_black(),
+				path.display().bright_black()
+			)
+		},
+	);
+
+	let files_skipped = log_skipped(
+		out,
+		print,
+		ITEM_NAME,
+		deployment.symlinks(),
+		|path, link, reason| {
+			format!(
+				"\n\t{} => {}: {}",
+				link.source.display().bright_black(),
+				path.display().bright_black(),
+				reason.bright_black()
+			)
+		},
+	);
+
+	let files_failed = log_failed(
+		out,
+		print,
+		ITEM_NAME,
+		deployment.symlinks(),
+		|path, link, reason| {
+			format!(
+				"\n\t{} => {}: {}",
+				link.source.display().bright_black(),
+				path.display().bright_black(),
+				reason.bright_black()
+			)
+		},
+	);
+
+	DeployCounts {
+		success: files_success,
+		skipped: files_skipped,
+		failed: files_failed,
 	}
-
-	if !out.is_empty() {
-		if print {
-			println!("{}", out);
-		} else {
-			log::info!("{}", out);
-		}
-
-		out.clear();
-	}
-
-	let mut files_skipped = 0;
-	for (idx, (path, link, reason)) in deployment
-		.symlinks()
-		.iter()
-		.filter_map(|(k, v)| {
-			if let DotfileStatus::Skipped(reason) = v.status() {
-				Some((k, v, reason))
-			} else {
-				None
-			}
-		})
-		.enumerate()
-	{
-		if idx == 0 {
-			write!(out, "Links ({})", "SKIPPED".yellow()).expect("Write to String failed");
-		}
-
-		write!(
-			out,
-			"\n\t{} => {}: {}",
-			link.source.display().bright_black(),
-			path.display().bright_black(),
-			reason.bright_black()
-		)
-		.expect("Write to String failed");
-
-		files_skipped += 1;
-	}
-
-	if !out.is_empty() {
-		if print {
-			println!("{}", out);
-		} else {
-			log::warn!("{}", out);
-		}
-
-		out.clear();
-	}
-
-	let mut files_failed = 0;
-	for (idx, (path, link, reason)) in deployment
-		.symlinks()
-		.iter()
-		.filter_map(|(k, v)| {
-			if let DotfileStatus::Failed(reason) = v.status() {
-				Some((k, v, reason))
-			} else {
-				None
-			}
-		})
-		.enumerate()
-	{
-		if idx == 0 {
-			write!(out, "Links ({})", "FAILED".red()).expect("Write to String failed");
-		}
-
-		write!(
-			out,
-			"\n\t{} => {}: {}",
-			link.source.display().bright_black(),
-			path.display().bright_black(),
-			reason.bright_black()
-		)
-		.expect("Write to String failed");
-
-		files_failed += 1;
-	}
-
-	if !out.is_empty() {
-		if print {
-			println!("{}", out);
-		} else {
-			log::error!("{}", out);
-		}
-
-		out.clear();
-	}
-
-	(files_success, files_skipped, files_failed)
 }
 
 /// Logs the finished state of the
@@ -273,17 +317,24 @@ fn log_links(out: &mut String, deployment: &Deployment, print: bool) -> (usize, 
 pub fn log_deployment(deployment: &Deployment, print: bool) {
 	let mut out = String::new();
 
-	let (dotfiles_success, dotfiles_skipped, dotfiles_failed) =
-		log_dotfiles(&mut out, deployment, print);
-	let (links_success, links_skipped, links_failed) = log_links(&mut out, deployment, print);
+	let DeployCounts {
+		success: dotfiles_success,
+		skipped: dotfiles_skipped,
+		failed: dotfiles_failed,
+	} = log_dotfiles(&mut out, deployment, print);
+
+	let DeployCounts {
+		success: links_success,
+		skipped: links_skipped,
+		failed: links_failed,
+	} = log_links(&mut out, deployment, print);
 
 	match deployment.status() {
 		DeploymentStatus::Success => {
-			write!(out, "Status: {}", "SUCCESS".green()).expect("Write to String failed");
+			out.push_str(&format!("Status: {}", "SUCCESS".green()));
 		}
 		DeploymentStatus::Failed(reason) => {
-			write!(out, "Status: {}\n\t{}", "FAILED".red(), reason)
-				.expect("Write to String failed");
+			out.push_str(&format!("Status: {}\n\t{}", "FAILED".red(), reason));
 		}
 	};
 
@@ -294,21 +345,31 @@ pub fn log_deployment(deployment: &Deployment, print: bool) {
 		.duration()
 		.expect("Failed to get duration from deployment");
 
-	write!(out, "\nTime            : {:?}", elapsed).expect("Write to String failed");
-	write!(out, "\n{}", "-".repeat(80).dimmed()).expect("Write to String failed");
-	write!(out, "\nFiles (deployed): {}", dotfiles_success).expect("Write to String failed");
-	write!(out, "\nFiles (skipped) : {}", dotfiles_skipped).expect("Write to String failed");
-	write!(out, "\nFiles (failed)  : {}", dotfiles_failed).expect("Write to String failed");
-	write!(out, "\nFiles (total)   : {}", dotfiles_total).expect("Write to String failed");
-	write!(out, "\n{}", "-".repeat(80).dimmed()).expect("Write to String failed");
-	write!(out, "\nLinks (deployed): {}", links_success).expect("Write to String failed");
-	write!(out, "\nLinks (skipped) : {}", links_skipped).expect("Write to String failed");
-	write!(out, "\nLinks (failed)  : {}", links_failed).expect("Write to String failed");
-	write!(out, "\nLinks (total)   : {}", links_total).expect("Write to String failed");
+	let report = format!(
+		"\nTime           : {:?}
+        \n{hruler}
+        \nFiles (deployed): {}
+        \nFiles (skipped) : {}
+        \nFiles (failed)  : {}
+        \nFiles (total)   : {}
+        \n{hruler}
+        \nLinks (deployed): {}
+        \nLinks (skipped) : {}
+        \nLinks (failed)  : {}
+        \nLinks (total)   : {}",
+		elapsed,
+		dotfiles_success,
+		dotfiles_skipped,
+		dotfiles_failed,
+		dotfiles_total,
+		links_success,
+		links_skipped,
+		links_failed,
+		links_total,
+		hruler = "-".repeat(80).dimmed(),
+	);
 
-	if print {
-		println!("{}", out);
-	} else {
-		log::info!("{}", out);
-	}
+	out.push_str(&report);
+
+	output_and_clear(print, &mut out, Level::Info)
 }

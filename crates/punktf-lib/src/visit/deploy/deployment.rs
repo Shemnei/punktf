@@ -1,58 +1,60 @@
 //! Models and structs used by and for the deployment process.
 
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::fmt;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, SystemTime, SystemTimeError};
 
 use serde::{Deserialize, Serialize};
 
 use crate::profile::dotfile::Dotfile;
 use crate::profile::Priority;
 
-/// Contains the status of the dotfile operation.
+/// Contains the status of a deployed item.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum DotfileStatus {
-	/// The dotfile was successfully created.
+pub enum ItemStatus {
+	/// The item was successfully created.
 	Success,
-	/// The dotfile deployment failed.
+	/// The item deployment failed.
 	Failed(Cow<'static, str>),
-	/// The dotfile deployment was skipped.
+	/// The item deployment was skipped.
 	Skipped(Cow<'static, str>),
 }
 
-impl DotfileStatus {
-	/// Marks the dotfile operation as successful.
+impl ItemStatus {
+	/// Marks the item operation as successful.
 	pub const fn success() -> Self {
 		Self::Success
 	}
 
-	/// Marks the dotfile operation as failed.
+	/// Marks the item operation as failed.
 	pub fn failed<S: Into<Cow<'static, str>>>(reason: S) -> Self {
 		Self::Failed(reason.into())
 	}
 
-	/// Indicates that the dotfile opeartion was skipped.
+	/// Indicates that the item opeartion was skipped.
 	pub fn skipped<S: Into<Cow<'static, str>>>(reason: S) -> Self {
 		Self::Skipped(reason.into())
 	}
 
-	/// Checks if the dotfile operation was successful.
+	/// Checks if the item operation was successful.
 	pub fn is_success(&self) -> bool {
 		self == &Self::Success
 	}
 
-	/// Checks if the dotfile operation has failed.
+	/// Checks if the item operation has failed.
 	pub const fn is_failed(&self) -> bool {
 		matches!(self, &Self::Failed(_))
 	}
 
-	/// Checks if the dotfile operation was skipped.
+	/// Checks if the item operation was skipped.
 	pub const fn is_skipped(&self) -> bool {
 		matches!(self, &Self::Skipped(_))
 	}
 }
 
-impl fmt::Display for DotfileStatus {
+impl fmt::Display for ItemStatus {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
 			Self::Success => f.write_str("Success"),
@@ -62,7 +64,7 @@ impl fmt::Display for DotfileStatus {
 	}
 }
 
-impl<E> From<E> for DotfileStatus
+impl<E> From<E> for ItemStatus
 where
 	E: std::error::Error,
 {
@@ -99,7 +101,7 @@ impl DeployedDotfileKind {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeployedDotfile {
 	/// The status of the deployed dotfile.
-	pub status: DotfileStatus,
+	pub status: ItemStatus,
 
 	/// The kind of the deployed dotfile.
 	pub kind: DeployedDotfileKind,
@@ -107,7 +109,7 @@ pub struct DeployedDotfile {
 
 impl DeployedDotfile {
 	/// Returns the status of the dotfile operation.
-	pub const fn status(&self) -> &DotfileStatus {
+	pub const fn status(&self) -> &ItemStatus {
 		&self.status
 	}
 
@@ -117,11 +119,17 @@ impl DeployedDotfile {
 	}
 }
 
+impl AsRef<ItemStatus> for DeployedDotfile {
+	fn as_ref(&self) -> &ItemStatus {
+		self.status()
+	}
+}
+
 /// Stores the result of a symlink deployment operation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeployedSymlink {
 	/// The status of the deployed symlink.
-	pub status: DotfileStatus,
+	pub status: ItemStatus,
 
 	/// The source path of the link.
 	pub source: PathBuf,
@@ -129,7 +137,7 @@ pub struct DeployedSymlink {
 
 impl DeployedSymlink {
 	/// Returns the status of the link operation.
-	pub const fn status(&self) -> &DotfileStatus {
+	pub const fn status(&self) -> &ItemStatus {
 		&self.status
 	}
 
@@ -139,15 +147,18 @@ impl DeployedSymlink {
 	}
 }
 
-use std::collections::HashMap;
-use std::time::{Duration, SystemTime, SystemTimeError};
+impl AsRef<ItemStatus> for DeployedSymlink {
+	fn as_ref(&self) -> &ItemStatus {
+		self.status()
+	}
+}
 
-/// Describes the status of a dotfile deployment.
+/// Describes the status of a profile deployment.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DeploymentStatus {
-	/// The dotfile is deployed.
+	/// The profile is deployed successfully.
 	Success,
-	/// The deployment has failed.
+	/// There were errors during the deployment.
 	Failed(Cow<'static, str>),
 }
 
@@ -191,7 +202,7 @@ where
 	}
 }
 
-/// Describes the deployment of a dotfile.
+/// Describes the deployment of a profile.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Deployment {
 	/// The time the deployment was started.
@@ -269,7 +280,7 @@ impl DeploymentBuilder {
 		&mut self,
 		path: PathBuf,
 		dotfile: Dotfile,
-		status: DotfileStatus,
+		status: ItemStatus,
 	) -> &mut Self {
 		self.dotfiles.insert(
 			path,
@@ -284,12 +295,7 @@ impl DeploymentBuilder {
 
 	/// Adds the child of a dotfile directory with the given `status` to the
 	/// builder.
-	pub fn add_child(
-		&mut self,
-		path: PathBuf,
-		parent: PathBuf,
-		status: DotfileStatus,
-	) -> &mut Self {
+	pub fn add_child(&mut self, path: PathBuf, parent: PathBuf, status: ItemStatus) -> &mut Self {
 		self.dotfiles.insert(
 			path,
 			DeployedDotfile {
@@ -302,12 +308,7 @@ impl DeploymentBuilder {
 	}
 
 	/// Adds a symlink with the given `status` to the builder.
-	pub fn add_link(
-		&mut self,
-		source: PathBuf,
-		target: PathBuf,
-		status: DotfileStatus,
-	) -> &mut Self {
+	pub fn add_link(&mut self, source: PathBuf, target: PathBuf, status: ItemStatus) -> &mut Self {
 		self.symlinks
 			.insert(target, DeployedSymlink { source, status });
 
@@ -337,7 +338,7 @@ impl DeploymentBuilder {
 
 	/// Gets any dotfile already deployed at `path`.
 	///
-	/// This function only returns a dotfile with [`DotfileStatus::Success`].
+	/// This function only returns a dotfile with [`ItemStatus::Success`].
 	pub fn get_deployed_dotfile<P: AsRef<Path>>(&self, path: P) -> Option<&Dotfile> {
 		let mut value = self.dotfiles.get(path.as_ref())?;
 
@@ -357,7 +358,7 @@ impl DeploymentBuilder {
 
 	/// Gets the priority of the dotfile already deployed at `path`.
 	///
-	/// This function only evaluates a dotfile with [`DotfileStatus::Success`].
+	/// This function only evaluates a dotfile with [`ItemStatus::Success`].
 	pub fn get_priority<P: AsRef<Path>>(&self, path: P) -> Option<&Priority> {
 		self.get_deployed_dotfile(path)
 			.and_then(|d| d.priority.as_ref())
@@ -365,7 +366,7 @@ impl DeploymentBuilder {
 
 	/// Checks if a dotfile was already successfully deployed at `path`.
 	///
-	/// This function only evaluates a dotfile with [`DotfileStatus::Success`].
+	/// This function only evaluates a dotfile with [`ItemStatus::Success`].
 	pub fn is_deployed<P: AsRef<Path>>(&self, path: P) -> Option<bool> {
 		self.dotfiles
 			.get(path.as_ref())
