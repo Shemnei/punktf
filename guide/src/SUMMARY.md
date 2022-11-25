@@ -28,4 +28,4 @@
 
 -----------
 
-[Contributors](chapter/CONTRIBUTORS.md)
+[Contributors](chapter/contributors.md)
