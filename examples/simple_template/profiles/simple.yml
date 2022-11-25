@@ -1,0 +1,3 @@
+dotfiles:
+  - path: "hello.template"
+    rename: "hello.txt"
