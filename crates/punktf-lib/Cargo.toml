@@ -5,6 +5,7 @@ description = "Library for punktf, a cross-platform multi-target dotfiles manage
 documentation = "https://github.com/Shemnei/punktf/tree/main/crates/punktf-lib"
 homepage = "https://github.com/Shemnei/punktf/tree/main/crates/punktf-lib"
 repository = "https://github.com/Shemnei/punktf/tree/main/crates/punktf-lib"
+exclude = ["fuzz"]
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
