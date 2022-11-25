@@ -18,7 +18,7 @@
 - [Concepts](chapter/reference_guid/concepts/README.md)
 	- [Profile](chapter/reference_guid/concepts/profile.md)
 	- [Dotfile](chapter/reference_guid/concepts/dotfile/README.md)
-		- [Templates](chapter/reference_guid/concepts/dotfile/template.md)
+		- [Template](chapter/reference_guid/concepts/dotfile/template.md)
 	- [Content Transformer](chapter/reference_guid/concepts/content_transformer.md)
 - [Continuous Integration](chapter/reference_guid/continuous_integration.md)
 
