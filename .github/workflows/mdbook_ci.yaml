@@ -3,6 +3,10 @@
 name: mdBook CI
 on:
   push:
+    branches:
+      - main
+      - staging
+      - trying
     paths:
       - 'guide/**'
   pull_request:
