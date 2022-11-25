@@ -7,7 +7,7 @@ use punktf_lib::template::source::Source;
 use punktf_lib::template::Template;
 
 #[test]
-fn parse_templates() {
+fn parse_fuzzed_templates() {
 	for template in TEMPLATES {
 		let s = unsafe { std::str::from_utf8_unchecked(template) };
 		let source = Source::anonymous(s);
