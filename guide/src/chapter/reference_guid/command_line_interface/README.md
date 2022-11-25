@@ -2,7 +2,7 @@
 
 The main command is `punktf`.
 
-```
+```text,ignore
 USAGE:
     punktf [FLAGS] [OPTIONS] <SUBCOMMAND>
 
@@ -36,7 +36,7 @@ Available subcommands:
 
 Used to deploy punktf profiles.
 
-```
+```text,ignore
 USAGE:
     punktf deploy [FLAGS] [OPTIONS] <PROFILE>
 
