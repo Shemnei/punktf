@@ -119,7 +119,7 @@ where
 		}
 
 		out.push_str(&fmt_fn(path, item));
-		item_count += 0;
+		item_count += 1;
 	}
 
 	output_and_clear(print, out, Level::Info);
@@ -161,7 +161,7 @@ where
 		}
 
 		out.push_str(&fmt_fn(path, item, reason));
-		item_count += 0;
+		item_count += 1;
 	}
 
 	output_and_clear(print, out, Level::Info);
@@ -203,7 +203,7 @@ where
 		}
 
 		out.push_str(&fmt_fn(path, item, reason));
-		item_count += 0;
+		item_count += 1;
 	}
 
 	output_and_clear(print, out, Level::Info);
