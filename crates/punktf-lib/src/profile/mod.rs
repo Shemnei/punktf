@@ -503,10 +503,10 @@ pub fn collect_profile_names(source: &PunktfSource) -> Result<HashMap<String, Pa
 		{
 			log::debug!("[{}] Adding alias {}", path.display(), alias);
 
-			if let Some(evicted) = names.insert(alias, path.clone()) {
+			if let Some(evicted) = names.insert(alias.clone(), path.clone()) {
 				bail!(
 					"The profile name {} is already taken by {}",
-					name,
+					alias,
 					evicted.display()
 				);
 			}
