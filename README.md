@@ -150,11 +150,11 @@ dotfiles:
     merge: Ask
 ```
 
-All properties are explained [in the wiki](https://github.com/Shemnei/punktf/wiki/Profiles).
+All properties are explained [in the wiki](https://shemnei.github.io/punktf/chapter/reference_guide/concepts/profile.html).
 
 ## Templates
 
-Please refer to the [wiki](https://github.com/Shemnei/punktf/wiki/Templating) for the templating syntax.
+Please refer to the [wiki](https://shemnei.github.io/punktf/chapter/reference_guide/concepts/dotfile/template.html) for the templating syntax.
 
 ## Dotfile Repositories using punktf
 
