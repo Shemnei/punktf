@@ -12,6 +12,8 @@ punktf_binary="${EXAMPLES_BINARY:-punktf}"
 	--target "${EXAMPLES_TARGET:-/tmp}" \
 	--dry-run
 
+# The `render` command can be used to print the resolved contents of a template
+# to stdout.
 "${punktf_binary}" \
 	--source . \
 	render \

@@ -1,3 +1,5 @@
 dotfiles:
   - path: "hello.template"
+    # Instead of using the name from the source file (`hello.template`)
+    # this option can be used to overwrite it.
     rename: "hello.txt"
