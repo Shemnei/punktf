@@ -453,6 +453,22 @@ impl<'a> Walker<'a> {
 
 		let paths = Paths::new(source_path, target_path);
 
+		if !paths.child_source_path().exists() {
+			let context = format!(
+				"Dotfile at {} does not exist",
+				paths.child_source_path().display()
+			);
+
+			return self.walk_errored(
+				source,
+				visitor,
+				paths,
+				dotfile,
+				None::<std::io::Error>,
+				Some(context),
+			);
+		};
+
 		self.walk_path(source, visitor, paths, dotfile)
 	}
 
