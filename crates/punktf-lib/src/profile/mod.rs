@@ -505,7 +505,8 @@ pub fn collect_profile_names(source: &PunktfSource) -> Result<HashMap<String, Pa
 
 			if let Some(evicted) = names.insert(alias.clone(), path.clone()) {
 				bail!(
-					"The profile name {} is already taken by {}",
+					"[{}] The profile alias {} is already taken by {}",
+					path.display(),
 					alias,
 					evicted.display()
 				);
@@ -514,7 +515,8 @@ pub fn collect_profile_names(source: &PunktfSource) -> Result<HashMap<String, Pa
 
 		if let Some(evicted) = names.insert(name.to_string(), path.clone()) {
 			bail!(
-				"The profile name {} is already taken by {}",
+				"[{}] The profile name {} is already taken by {}",
+				path.display(),
 				name,
 				evicted.display()
 			);
