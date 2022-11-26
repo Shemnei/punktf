@@ -139,6 +139,8 @@ doccargo
 doccratesio
 DOCTYPE
 doesn
+dotfile
+Dotfile
 disambiguating
 DisplayBacktrace
 DivAssign
@@ -386,6 +388,7 @@ proto
 pseudocode
 pthreads
 pushups
+punktf
 QuitMessage
 quux
 RAII
