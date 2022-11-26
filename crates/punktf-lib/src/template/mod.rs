@@ -108,7 +108,7 @@ use self::block::Block;
 use self::parse::Parser;
 use self::resolve::Resolver;
 use self::source::Source;
-use crate::variables::Vars;
+use crate::profile::variables::Vars;
 
 /// A `Template` is a file from the Source folder that is not yet deployed. It might contain statements and variables.
 #[derive(Debug, Clone)]
@@ -143,7 +143,7 @@ mod tests {
 	use std::collections::HashMap;
 
 	use super::*;
-	use crate::variables::Variables;
+	use crate::profile::variables::Variables;
 
 	#[test]
 	fn parse_template() -> Result<()> {

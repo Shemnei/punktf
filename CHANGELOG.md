@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added new `render` cli command to display resolved template dotfile ([#19](https://github.com/Shemnei/punktf/issues/19))
+- Added new `verify` cli command to verify a given profile ([#19](https://github.com/Shemnei/punktf/issues/19))
+- Added new `diff` cli command to print the potential diffs of a given profile ([#82](https://github.com/Shemnei/punktf/pull/82))
+- Added new `man` cli command to generate man pages for the application ([#82](https://github.com/Shemnei/punktf/pull/82))
+- Added new `completions` cli command to generate shell completions for the application ([#82](https://github.com/Shemnei/punktf/pull/82))
+- Added `-q/--quite` cli flag to only display errors ([#42](https://github.com/Shemnei/punktf/issues/42))
+- Added `rust-toolchain.toml` file to pin rust version for better reproducible builds ([#81](https://github.com/Shemnei/punktf/pull/81))
+- Added `--json-output/--yaml-output` cli argument to write the deployment status to files ([#47](https://github.com/Shemnei/punktf/issues/47))
+- Added support for symlink creation in profiles ([#54](https://github.com/Shemnei/punktf/issues/54))
+- Added path resolving of `~` and environment variables ([#48](https://github.com/Shemnei/punktf/issues/48))
+- Added the `aliases` key to profiles which can be used instead of the file name when referencing a profile ([#33](https://github.com/Shemnei/punktf/issues/33))
+
+### Changed
+
+- **BREAKING** The profile cli argument now must be given with the `-p/--profile` specifier ([#82](https://github.com/Shemnei/punktf/pull/82))
+- Made `punktf-cli` crate a workspace member ([#81](https://github.com/Shemnei/punktf/pull/81))
+- Moved dependencies and some metadata to workspace ([#81](https://github.com/Shemnei/punktf/pull/81))
+- Updated internal workings of the deployment process to make it more flexible ([#82](https://github.com/Shemnei/punktf/pull/82))
+- Dotfiles are now sorted by descending priority to maybe reduce disk read/writes ([#27](https://github.com/Shemnei/punktf/issues/27))
+- Improved aur package installation; Now includes man page and shell completions ([#82](https://github.com/Shemnei/punktf/pull/82))
+
+## [1.0.2] - 2022-09-29
+
+### Added
+
 - Added new if expression syntax `{{@if !{{VARIABLE}}}}` for templates ([#67](https://github.com/Shemnei/punktf/pull/67))
 - Added informational message when running `deploy` with the `dry-run` flag ([#61](https://github.com/Shemnei/punktf/pull/61))
 - Added better error messages when profile parsing fails ([#62](https://github.com/Shemnei/punktf/pull/62))
@@ -43,7 +68,8 @@ Initial release
 
 Initial alpha release
 
-[Unreleased]: https://github.com/Shemnei/punktf/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/Shemnei/punktf/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/Shemnei/punktf/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/Shemnei/punktf/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/Shemnei/punktf/compare/v1.0.0-alpha...v1.0.0
 [1.0.0-alpha]: https://github.com/Shemnei/punktf/releases/tag/v1.0.0-alpha

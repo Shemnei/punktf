@@ -1,6 +1,6 @@
 [package]
 name = "punktf-lib"
-version = "1.0.2"
+version = "2.0.0"
 description = "Library for punktf, a cross-platform multi-target dotfiles manager"
 documentation = "https://github.com/Shemnei/punktf/tree/main/crates/punktf-lib"
 homepage = "https://github.com/Shemnei/punktf/tree/main/crates/punktf-lib"
@@ -22,11 +22,12 @@ profile-yaml = ["serde_yaml"]
 [dependencies]
 color-eyre.workspace = true
 log.workspace = true
-serde.workspace = true
 thiserror.workspace = true
 walkdir.workspace = true
 unicode-width.workspace = true
 cfg-if.workspace = true
+shellexpand.workspace = true
+serde.workspace = true
 # Optional dependencies can not be in the workspace dependencies
 serde_json = { version = "1.0.89", optional = true }
 serde_yaml = { version = "0.9.14", optional = true }
