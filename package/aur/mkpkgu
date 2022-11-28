@@ -65,6 +65,8 @@ main() {
   build
   check
   srcinfo
+
+  pac_install
 }
 
 main "$@"
