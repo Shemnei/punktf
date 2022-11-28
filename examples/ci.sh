@@ -7,5 +7,8 @@ for path in *; do
     [[ -d "${path}" ]] || continue # if not a directory, skip
     dirname="$(basename "${path}")"
 
-	bash -cu "${dirname}/run.sh"
+	pushd "${dirname}"
+	pwd
+	bash -cu "./run.sh"
+	popd
 done
