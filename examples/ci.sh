@@ -4,7 +4,9 @@ set -eoux pipefail
 
 # Iterate over all child directories of this directory
 for path in *; do
-    [[ -d "${path}" ]] || continue # if not a directory, skip
+	# if not a directory, skip
+    [[ -d "${path}" ]] || continue
+
     dirname="$(basename "${path}")"
 
 	pushd "${dirname}"
