@@ -1,0 +1,25 @@
+# General steps
+#
+# 1. Update PKGBUILD (shasum, version)
+# 2. `just check`
+# 3. `just build`
+# 4. `just clone`
+# 5. `just copy`
+# 6. `cd punktf && git add . && git commit -m ... && git push`
+
+# Builds the package
+build: check
+	./mkpkgu
+
+# Checks the build script
+check:
+	shellcheck -o all -s bash -S style PKGBUILD
+
+# Clones the aur package locally
+clone:
+	git clone ssh://aur@aur.archlinux.org/punktf.git
+
+# Copies over the relevant files to the punktf aur repository
+copy:
+	cp build/PKGBUILD punktf/PKGBUILD
+	cp build/.SRCINFO punktf/.SRCINFO

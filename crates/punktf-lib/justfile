@@ -1,0 +1,2 @@
+fuzz:
+	cargo +nightly fuzz run fuzz_template_parse

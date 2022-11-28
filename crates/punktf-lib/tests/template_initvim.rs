@@ -21,9 +21,9 @@ set nowrap"#;
 
 use color_eyre::Result;
 use pretty_assertions::assert_eq;
+use punktf_lib::profile::variables::Variables;
 use punktf_lib::template::source::Source;
 use punktf_lib::template::Template;
-use punktf_lib::variables::Variables;
 
 #[test]
 fn parse_initvim_win() -> Result<()> {

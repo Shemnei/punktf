@@ -81,10 +81,10 @@ To deploy a profile, use the `deploy` subcommand:
 
 ```sh
 # deploy 'windows' profile
-`punktf` deploy windows
+punktf deploy --profile windows
 
 # deploy (custom source folder)
-`punktf` --source /home/demo/mydotfiles deploy windows
+punktf --source /home/demo/mydotfiles deploy --profile windows
 ```
 
 Adding the `-h`/`--help` flag to a given subcommand, will print usage instructions.
@@ -111,15 +111,15 @@ Example `punktf` source folder structure:
   + windows.yaml
   + base.yaml
   + arch.json
-  + dotfiles
-    + .gitconfig
-    + init.vim.win
-    + base
-      + demo.txt
-    + linux
-      + .bashrc
-    + windows
-      + alacritty.yml
++ dotfiles
+  + .gitconfig
+  + init.vim.win
+  + base
+    + demo.txt
+  + linux
+    + .bashrc
+  + windows
+    + alacritty.yml
 ```
 
 ### Target
@@ -148,13 +148,17 @@ dotfiles:
     target:
       path: "C:\\Users\\Demo\\AppData\\Local\\alacritty.yml"
     merge: Ask
+
+links:
+  - source_path: "C:\\Users\\Demo\\Dotfiles\\test.txt"
+    target_path: "C:\\Users\\Demo\\test.txt"
 ```
 
-All properties are explained [in the wiki](https://github.com/Shemnei/punktf/wiki/Profiles).
+All properties are explained [in the wiki](https://shemnei.github.io/punktf/chapter/reference_guide/concepts/profile.html).
 
 ## Templates
 
-Please refer to the [wiki](https://github.com/Shemnei/punktf/wiki/Templating) for the templating syntax.
+Please refer to the [wiki](https://shemnei.github.io/punktf/chapter/reference_guide/concepts/dotfile/template.html) for the templating syntax.
 
 ## Dotfile Repositories using punktf
 

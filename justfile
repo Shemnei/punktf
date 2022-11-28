@@ -27,7 +27,7 @@ clean:
 	cargo clean
 
 install:
-	cargo install --path $(ROOT_DIR)
+	cargo install --path crates/punktf-cli
 
 doc:
 	cargo doc --all --document-private-items

@@ -519,20 +519,28 @@ impl<'a> DiagnosticFormatter<'a> {
 								(true, high_loc.column())
 							};
 
-							let highlight_left_pad = " ".repeat(low_cpos);
+							// In cases where the input looks like this `{{\n}}`
+							// the lower_cpos can be 3 while the high_cpos might be 2.
+							// This is due to `\n` being stripped from the source for
+							// diagnostic reporting.
+							//
+							// See fuzz/artifacts/fuzz_template_parse/minimized-from-99658ac1fce12b1bd80cfc1d5219cf49284b473a
+							if low_cpos < high_cpos {
+								let highlight_left_pad = " ".repeat(low_cpos);
 
-							let highlight = if label.is_some() { "-" } else { "^" }
-								.repeat(high_cpos - low_cpos);
+								let highlight = if label.is_some() { "-" } else { "^" }
+									.repeat(high_cpos - low_cpos);
 
-							write!(
-								out,
-								"\n {} {} {}{}",
-								&left_pad,
-								separator,
-								highlight_left_pad,
-								style(highlight)
-							)
-							.expect("Write to String failed");
+								write!(
+									out,
+									"\n {} {} {}{}",
+									&left_pad,
+									separator,
+									highlight_left_pad,
+									style(highlight)
+								)
+								.expect("Write to String failed");
+							}
 
 							if ends_on_line {
 								if let Some(label) = label {

@@ -13,11 +13,6 @@ on:
     paths:
       - 'guide/**'
 
-# Allow one concurrent check
-concurrency:
-  group: "mdbook-ci"
-  cancel-in-progress: true
-
 jobs:
   test:
     name: Run tests

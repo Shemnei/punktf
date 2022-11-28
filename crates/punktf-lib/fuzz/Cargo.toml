@@ -1,0 +1,25 @@
+[package]
+name = "punktf-lib-fuzz"
+version = "0.0.0"
+authors = ["Automatically generated"]
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.punktf-lib]
+path = ".."
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "fuzz_template_parse"
+path = "fuzz_targets/fuzz_template_parse.rs"
+test = false
+doc = false
