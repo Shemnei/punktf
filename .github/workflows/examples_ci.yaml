@@ -57,4 +57,4 @@ jobs:
       - name: Check Examples
         run: |
           cd examples
-          examples/ci.sh
+          ./ci.sh
