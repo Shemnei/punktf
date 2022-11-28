@@ -8,7 +8,6 @@ for path in *; do
     dirname="$(basename "${path}")"
 
 	pushd "${dirname}"
-	pwd
 	bash -cu "./run.sh"
 	popd
 done
