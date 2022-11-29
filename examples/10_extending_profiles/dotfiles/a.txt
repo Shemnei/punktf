@@ -1,0 +1,2 @@
+This file will be deployed by the `base` profile and also the `extending` profile,
+as it extends the `base` profile.

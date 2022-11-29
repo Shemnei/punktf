@@ -1,0 +1,5 @@
+extends:
+  - base
+
+dotfiles:
+  - path: "b.txt"
