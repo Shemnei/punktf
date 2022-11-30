@@ -1,0 +1,19 @@
+export ZSHDDIR="${XDG_CONFIG_HOME?"No XDG_CONFIG_HOME set"}/zsh/zsh.d"
+
+# Include user-specified configs.
+if [[ -d "${ZSHDDIR}" ]]; then
+	for zshd in $(ls -A ${ZSHDDIR}/^*.(z)sh$); do
+		test -r "${zshd}" && source "${zshd}"
+	done
+
+	unset zshd
+fi
+
+# Disable beeping.
+unsetopt beep
+
+# Append to the history.
+setopt append_history
+
+# Vim keybindings
+bindkey -v

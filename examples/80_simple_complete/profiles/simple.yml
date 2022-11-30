@@ -1,0 +1,27 @@
+target: "~"
+
+pre_hooks:
+  - echo "Starting deployment of simple complete example"
+
+post_hooks:
+  - echo "Finished deployment of simple complete example"
+
+dotfiles:
+  - path: "config"
+    rename: ".config"
+    template: false
+  - path: "zsh/zshrc"
+    rename: ".config/zsh/.zshrc"
+    template: false
+  - path: "shellcheckrc"
+    overwrite_target: "~"
+    rename: ".shellcheckrc"
+    variables:
+      SHELLCHECK_DISABLE: "SC1090,SC1091"
+    template: true
+
+links:
+  # This will fail if run with `--dry-run` as the source file will only exist
+  # when deploying for real.
+  - source_path: "~/.shellcheckrc"
+    target_path: "~/.config/.shellcheckrc"

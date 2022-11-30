@@ -1,0 +1,11 @@
+extends:
+  - base
+
+target: "$HOME"
+
+dotfiles:
+  # `shared/root` will be deployed by `base`
+  - path: "shared/nvim"
+    rename: ".config/nvim"
+    template: true
+  - path: "linux"

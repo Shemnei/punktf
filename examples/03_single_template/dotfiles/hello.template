@@ -1,0 +1,3 @@
+{{!-- vim: set ft=handlebars: --}}
+{{!-- Will resolve to a greeting to the current user --}}
+Hello {{@if {{$PUNKTF_TARGET_FAMILY}} == "windows"}}{{$USERNAME}}{{@elif {{$PUNKTF_TARGET_FAMILY}} == "unix"}}{{$USER}}{{@else}}Unknown{{@fi}}
