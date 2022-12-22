@@ -127,12 +127,23 @@ jobs:
             echo "ASSET=$staging.tar.gz" >> $GITHUB_ENV
           fi
 
-      - name: Calculate hashes
+      - name: Calculate hashes (linux)
+        if: matrix.build == 'linux'
         shell: bash
         run: |
           mkdir -p hashes
+
           shasum -a256 "${{ env.ASSET }}" > "hashes/${{ env.ASSET }}.sha256"
           shasum -a512 "${{ env.ASSET }}" > "hashes/${{ env.ASSET }}.sha512"
+
+      - name: Calculate hashes (windows)
+        if: matrix.build != 'linux'
+        shell: powershell
+        run: |
+          mkdir -p hashes
+
+          Get-FileHash -Path "${{ env.ASSET }}" -Algorithm SHA256 > "hashes/${{ env.ASSET }}.sha256"
+          Get-FileHash -Path "${{ env.ASSET }}" -Algorithm SHA512 > "hashes/${{ env.ASSET }}.sha512"
 
       - name: Upload archive
         uses: shogo82148/actions-upload-release-asset@v1
