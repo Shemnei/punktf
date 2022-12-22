@@ -127,10 +127,24 @@ jobs:
             echo "ASSET=$staging.tar.gz" >> $GITHUB_ENV
           fi
 
+      - name: Calculate hashes
+        shell: bash
+        run: |
+          mkdir -p hashes
+          shasum -a256 "${{ env.ASSET }}" > "hashes/${{ env.ASSET }}.sha256"
+          shasum -a512 "${{ env.ASSET }}" > "hashes/${{ env.ASSET }}.sha512"
+
       - name: Upload archive
         uses: shogo82148/actions-upload-release-asset@v1
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
           asset_path: ${{ env.ASSET }}
           asset_name: ${{ env.ASSET }}
+          asset_content_type: application/octet-stream
+
+      - name: Upload hashes
+        uses: shogo82148/actions-upload-release-asset@v1
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: "hashes/*"
           asset_content_type: application/octet-stream
