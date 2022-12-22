@@ -12,7 +12,7 @@ name: Release punktf
 # Allow one concurrent check
 concurrency:
   group: "punktf-release"
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: write
