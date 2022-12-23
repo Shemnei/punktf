@@ -41,6 +41,16 @@ or
 pikaur -S punktf
 ```
 
+### [Scoop](https://scoop.sh/)
+
+Install [punktf using Scoop](https://github.com/Shemnei/scoop-bucket/blob/main/bucket/punktf.json) on Windows:
+
+```sh
+scoop bucket add shemnei https://github.com/Shemnei/scoop-bucket
+
+scoop install punktf
+```
+
 ### Chocolatey
 
 Install [punktf using Chocolatey](https://community.chocolatey.org/packages/punktf) on Windows:
