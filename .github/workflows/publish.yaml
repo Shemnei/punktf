@@ -27,6 +27,9 @@ jobs:
 
       - name: Upload punktf-lib to crates.io
         uses: actions-rs/cargo@v1
+        # The lib crate might fail, when no changes to it where made
+        # This `if` makes sure the publishing continues
+        continue-on-error: true
         with:
           command: publish
           args: -p punktf-lib
