@@ -544,7 +544,7 @@ impl<'a> Walker<'a> {
 
 		visitor.accept_directory(source, self.profile, &directory)?;
 
-		let read_dir = match std::fs::read_dir(&source_path) {
+		let read_dir = match std::fs::read_dir(source_path) {
 			Ok(path) => path,
 			Err(err) => {
 				return self.walk_errored(
