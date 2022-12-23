@@ -34,14 +34,16 @@ jobs:
       - name: Upload punktf-lib to crates.io
         uses: actions-rs/cargo@v1
         with:
-          command: publish -p punktf-lib
+          command: publish
+          args: -p punktf-lib
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
       - name: Upload punktf to crates.io
         uses: actions-rs/cargo@v1
         with:
-          command: publish -p punktf
+          command: publish
+          args: -p punktf
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
@@ -51,14 +53,14 @@ jobs:
     environment: "publish-aur"
     steps:
       - name: Update AUR package
-        uses: ATiltedTree/create-aur-release@v1
+        uses: Shemnei/create-aur-release@v1
         with:
           package_name: punktf
           commit_username: "Jonas Grawe"
           commit_email: "Shemnei@users.noreply.github.com"
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
         env:
-          GITHUB_REF: "/ref/tags/${{ github.event.inputs.tag-name }}"
+          INPUT_VERSION: ${{ github.event.inputs.tag-name }}
 
   publish-homebrew:
     name: Publish to Homebrew
