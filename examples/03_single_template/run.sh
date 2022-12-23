@@ -5,9 +5,9 @@ set -eoux pipefail
 punktf_binary="${EXAMPLES_BINARY:-punktf}"
 
 "${punktf_binary}" \
-	--source . \
 	--verbose \
 	deploy \
+	--source . \
 	--profile simple \
 	--target "${EXAMPLES_TARGET:-/tmp}" \
 	--dry-run
@@ -15,7 +15,7 @@ punktf_binary="${EXAMPLES_BINARY:-punktf}"
 # The `render` command can be used to print the resolved contents of a template
 # to stdout.
 "${punktf_binary}" \
-	--source . \
 	render \
+	--source . \
 	--profile simple \
 	"hello.template"
