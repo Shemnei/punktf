@@ -22,6 +22,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.tag-name }}
 
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -62,11 +64,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: "publish-homebrew"
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.inputs.tag-name }}
-
       - name: Bump Homebrew formula
         uses: mislav/bump-homebrew-formula-action@v2
         with:
