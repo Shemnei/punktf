@@ -31,7 +31,7 @@ shellexpand.workspace = true
 serde.workspace = true
 # Optional dependencies can not be in the workspace dependencies
 serde_json = { version = "1.0.91", optional = true }
-serde_yaml = { version = "0.9.14", optional = true }
+serde_yaml = { version = "0.9.16", optional = true }
 
 [dev-dependencies]
 pretty_assertions.workspace = true

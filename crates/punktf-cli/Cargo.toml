@@ -28,4 +28,4 @@ clap_complete.workspace = true
 serde.workspace = true
 # Optional dependencies can not be in the workspace dependencies
 serde_json = "1.0.91"
-serde_yaml = "0.9.14"
+serde_yaml = "0.9.16"
