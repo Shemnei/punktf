@@ -137,6 +137,7 @@ use std::path::{Path, PathBuf};
 use clap::{CommandFactory, Parser};
 use color_eyre::eyre::eyre;
 use color_eyre::Result;
+use opt::Command;
 use punktf_lib::profile::dotfile::Dotfile;
 use punktf_lib::profile::source::PunktfSource;
 use punktf_lib::profile::{resolve_profile, LayeredProfile, Profile};
@@ -183,20 +184,18 @@ fn main() -> Result<()> {
 
 	log::debug!("Parsed Opts:\n{:#?}", opts);
 
-	handle_commands(opts)
+	handle_command(opts.command)
 }
 
 /// Gets the parsed command line arguments and evaluates them.
-fn handle_commands(opts: opt::Opts) -> Result<()> {
-	let opt::Opts { shared, command } = opts;
-
+fn handle_command(command: Command) -> Result<()> {
 	match command {
-		opt::Command::Deploy(c) => handle_command_deploy(shared, c),
-		opt::Command::Render(c) => handle_command_render(shared, c),
-		opt::Command::Verify(c) => handle_command_verify(shared, c),
-		opt::Command::Diff(c) => handle_command_diff(shared, c),
-		opt::Command::Man(c) => handle_command_man(shared, c),
-		opt::Command::Completions(c) => handle_command_completions(shared, c),
+		opt::Command::Deploy(c) => handle_command_deploy(c),
+		opt::Command::Render(c) => handle_command_render(c),
+		opt::Command::Verify(c) => handle_command_verify(c),
+		opt::Command::Diff(c) => handle_command_diff(c),
+		opt::Command::Man(c) => handle_command_man(c),
+		opt::Command::Completions(c) => handle_command_completions(c),
 	}
 }
 
@@ -292,9 +291,12 @@ fn handle_output(
 
 /// Handles the `deploy` command processing.
 fn handle_command_deploy(
-	opt::Shared { source, .. }: opt::Shared,
 	opt::Deploy {
-		profile: profile_name,
+		shared: opt::RepoShared {
+			source,
+			profile: profile_name,
+			..
+		},
 		target,
 		dry_run,
 		output,
@@ -340,9 +342,12 @@ fn handle_command_deploy(
 
 /// Handles the `render` command processing.
 fn handle_command_render(
-	opt::Shared { source, .. }: opt::Shared,
 	opt::Render {
-		profile: profile_name,
+		shared: opt::RepoShared {
+			source,
+			profile: profile_name,
+			..
+		},
 		dotfile,
 	}: opt::Render,
 ) -> Result<()> {
@@ -408,9 +413,12 @@ fn handle_command_render(
 ///
 /// This is basically a alias for `deploy --dry-run`.
 fn handle_command_verify(
-	opt::Shared { source, .. }: opt::Shared,
 	opt::Verify {
-		profile: profile_name,
+		shared: opt::RepoShared {
+			source,
+			profile: profile_name,
+			..
+		},
 		output,
 	}: opt::Verify,
 ) -> Result<()> {
@@ -436,9 +444,12 @@ fn handle_command_verify(
 
 /// Handles the `diff` command processing.
 fn handle_command_diff(
-	opt::Shared { source, .. }: opt::Shared,
 	opt::Diff {
-		profile: profile_name,
+		shared: opt::RepoShared {
+			source,
+			profile: profile_name,
+			..
+		},
 		format,
 	}: opt::Diff,
 ) -> Result<()> {
@@ -457,7 +468,7 @@ fn handle_command_diff(
 }
 
 /// Handles the `man` command processing.
-fn handle_command_man(_: opt::Shared, opt::Man { output }: opt::Man) -> Result<()> {
+fn handle_command_man(opt::Man { output }: opt::Man) -> Result<()> {
 	let output = output.join(format!("{}.1", BINARY_NAME));
 
 	let man = clap_mangen::Man::new(opt::Opts::command());
@@ -470,10 +481,7 @@ fn handle_command_man(_: opt::Shared, opt::Man { output }: opt::Man) -> Result<(
 }
 
 /// Handles the `completions` command processing.
-fn handle_command_completions(
-	_: opt::Shared,
-	opt::Completions { shell, output }: opt::Completions,
-) -> Result<()> {
+fn handle_command_completions(opt::Completions { shell, output }: opt::Completions) -> Result<()> {
 	clap_complete::generate_to(shell, &mut opt::Opts::command(), BINARY_NAME, output)?;
 
 	Ok(())

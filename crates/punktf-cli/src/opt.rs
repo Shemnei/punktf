@@ -29,10 +29,6 @@ pub struct Opts {
 	)
 )]
 pub struct Shared {
-	/// The source directory where the profiles and dotfiles are located.
-	#[arg(short, long, env = super::PUNKTF_SOURCE_ENVVAR)]
-	pub source: PathBuf,
-
 	/// Runs with specified level of verbosity which affects the log level.
 	///
 	/// The level can be set by repeating the flag `n` times (e.g. `-vv` for 2).
@@ -71,15 +67,25 @@ pub enum Command {
 	Completions(Completions),
 }
 
-/// Deploys a profile.
-#[derive(Debug, Parser)]
-pub struct Deploy {
+#[derive(Debug, Args)]
+pub struct RepoShared {
+	/// The source directory where the profiles and dotfiles are located.
+	#[arg(short, long, env = super::PUNKTF_SOURCE_ENVVAR)]
+	pub source: PathBuf,
+
 	/// Name of the profile to deploy.
 	///
 	/// The name should be the file name of the profile without an extension (e.g.
 	/// `profiles/arch.json` should be given as `arch`).
 	#[arg(short, long, env = super::PUNKTF_PROFILE_ENVVAR)]
 	pub profile: String,
+}
+
+/// Deploys a profile.
+#[derive(Debug, Parser)]
+pub struct Deploy {
+	#[command(flatten)]
+	pub shared: RepoShared,
 
 	/// Alternative deployment target path.
 	///
@@ -105,12 +111,8 @@ pub struct Deploy {
 /// would look like once it is deployed.
 #[derive(Debug, Parser)]
 pub struct Render {
-	/// Name of the profile to deploy.
-	///
-	/// The name should be the file name of the profile without an extension (e.g.
-	/// `profiles/arch.json` should be given as `arch`).
-	#[arg(short, long, env = super::PUNKTF_PROFILE_ENVVAR)]
-	pub profile: String,
+	#[command(flatten)]
+	pub shared: RepoShared,
 
 	/// Dotfile to render.
 	///
@@ -130,12 +132,8 @@ pub struct Render {
 /// arguments.
 #[derive(Debug, Parser)]
 pub struct Verify {
-	/// Name of the profile to deploy.
-	///
-	/// The name should be the file name of the profile without an extension (e.g.
-	/// `profiles/arch.json` should be given as `arch`).
-	#[arg(short, long, env = super::PUNKTF_PROFILE_ENVVAR)]
-	pub profile: String,
+	#[command(flatten)]
+	pub shared: RepoShared,
 
 	#[command(flatten)]
 	pub output: OutputShared,
@@ -160,12 +158,8 @@ pub enum DiffFormat {
 /// arguments.
 #[derive(Debug, Parser)]
 pub struct Diff {
-	/// Name of the profile to deploy.
-	///
-	/// The name should be the file name of the profile without an extension (e.g.
-	/// `profiles/arch.json` should be given as `arch`).
-	#[arg(short, long, env = super::PUNKTF_PROFILE_ENVVAR)]
-	pub profile: String,
+	#[command(flatten)]
+	pub shared: RepoShared,
 
 	/// Defines the ouput format for the diffs.
 	#[arg(value_enum, short, long, default_value_t = DiffFormat::Pretty)]

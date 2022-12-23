@@ -94,7 +94,7 @@ To deploy a profile, use the `deploy` subcommand:
 punktf deploy --profile windows
 
 # deploy (custom source folder)
-punktf --source /home/demo/mydotfiles deploy --profile windows
+punktf deploy --source /home/demo/mydotfiles --profile windows
 ```
 
 Adding the `-h`/`--help` flag to a given subcommand, will print usage instructions.
