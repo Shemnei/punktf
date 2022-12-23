@@ -5,12 +5,6 @@ on:
         description: 'The git tag to publish'
         required: true
         type: string
-  workflow_call:
-    inputs:
-      tag-name:
-        description: 'The git tag to publish'
-        required: true
-        type: string
 
 name: Publish punktf
 
