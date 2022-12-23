@@ -15,7 +15,7 @@ Features:
 
 ## Installation
 
-### Homebrew
+### [Homebrew](https://brew.sh/)
 
 Install [punktf using Homebrew](https://github.com/michidk/homebrew-tools/blob/main/Formula/punktf.rb) on Linux:
 
@@ -23,7 +23,7 @@ Install [punktf using Homebrew](https://github.com/michidk/homebrew-tools/blob/m
 brew install michidk/tools/punktf
 ```
 
-### AUR
+### [AUR](https://aur.archlinux.org/)
 
 Install [punktf from AUR](https://aur.archlinux.org/packages/punktf) on Arch Linux.
 
@@ -51,7 +51,7 @@ scoop bucket add shemnei https://github.com/Shemnei/scoop-bucket
 scoop install punktf
 ```
 
-### Chocolatey
+### [Chocolatey](https://chocolatey.org/)
 
 Install [punktf using Chocolatey](https://community.chocolatey.org/packages/punktf) on Windows:
 
@@ -59,7 +59,7 @@ Install [punktf using Chocolatey](https://community.chocolatey.org/packages/punk
 choco install punktf
 ```
 
-### Cargo & Crates.io
+### [Cargo & Crates.io](https://crates.io/)
 
 Install [punktf using cargo and crates.io](https://crates.io/crates/punktf) on Windows and Linux:
 
