@@ -59,11 +59,10 @@ jobs:
         uses: Shemnei/create-aur-release@v1
         with:
           package_name: punktf
+          package_version: ${{ github.event.inputs.tag-name }}
           commit_username: "Jonas Grawe"
           commit_email: "Shemnei@users.noreply.github.com"
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-        env:
-          INPUT_VERSION: ${{ github.event.inputs.tag-name }}
 
   publish-homebrew:
     name: Publish to Homebrew
