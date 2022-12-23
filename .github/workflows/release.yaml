@@ -160,3 +160,10 @@ jobs:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
           asset_path: "hashes/*"
           asset_content_type: application/octet-stream
+
+  publish:
+    name: Publish
+    needs: ['create-release', 'build-release']
+    uses: ./.github/workflows/publish.yaml
+    with:
+      tag-name: ${{ github.ref_name }}
