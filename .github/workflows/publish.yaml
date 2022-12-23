@@ -53,7 +53,7 @@ jobs:
     environment: "publish-aur"
     steps:
       - name: Update AUR package
-        uses: Shemnei/create-aur-release@v1
+        uses: ATiltedTree/create-aur-release@v1
         with:
           package_name: punktf
           package_version: ${{ github.event.inputs.tag-name }}
