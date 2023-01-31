@@ -312,7 +312,7 @@ impl fmt::Display for Errored<'_> {
 			if has_context {
 				f.write_str(": ")?;
 			}
-			write!(f, "{}", err)?;
+			write!(f, "{err}")?;
 		}
 
 		Ok(())

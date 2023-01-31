@@ -1,4 +1,8 @@
-#![allow(dead_code, rustdoc::private_intra_doc_links)]
+#![allow(
+	dead_code,
+	rustdoc::private_intra_doc_links,
+	clippy::needless_lifetimes
+)]
 #![deny(
 	deprecated_in_future,
 	exported_private_dependencies,

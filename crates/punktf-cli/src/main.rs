@@ -310,8 +310,7 @@ fn handle_command_deploy(
 		panic!(
 			"No target path for the deployment set. Either use the command line argument \
 					 `-t/--target`, the profile attribute `target` or the environment variable \
-					 `{}`",
-			PUNKTF_TARGET_ENVVAR
+					 `{PUNKTF_TARGET_ENVVAR}`"
 		)
 	}
 
@@ -469,7 +468,7 @@ fn handle_command_diff(
 
 /// Handles the `man` command processing.
 fn handle_command_man(opt::Man { output }: opt::Man) -> Result<()> {
-	let output = output.join(format!("{}.1", BINARY_NAME));
+	let output = output.join(format!("{BINARY_NAME}.1"));
 
 	let man = clap_mangen::Man::new(opt::Opts::command());
 	let mut buffer: Vec<u8> = Default::default();

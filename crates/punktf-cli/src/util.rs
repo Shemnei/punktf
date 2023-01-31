@@ -67,7 +67,7 @@ pub fn ask_user_merge(source_path: &Path, deploy_path: &Path) -> Result<bool> {
 fn output_and_clear(print: bool, s: &mut String, level: Level) {
 	if !s.is_empty() {
 		if print {
-			println!("{}", s);
+			println!("{s}");
 		} else {
 			log::log!(level, "{}", s);
 		}

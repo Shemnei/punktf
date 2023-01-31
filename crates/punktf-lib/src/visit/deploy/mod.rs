@@ -266,7 +266,7 @@ where
 									err
 								);
 
-								failed!(&mut self.builder, file, format!("Failed to execute merge ask function: {}", err) => false);
+								failed!(&mut self.builder, file, format!("Failed to execute merge ask function: {err}") => false);
 							}
 						};
 
@@ -290,7 +290,7 @@ where
 							err
 						);
 
-						failed!(&mut self.builder, file, format!("Failed to create parent directory: {}", err) => false);
+						failed!(&mut self.builder, file, format!("Failed to create parent directory: {err}") => false);
 					}
 				}
 			}
@@ -327,7 +327,7 @@ where
 						err
 					);
 
-					failed!(&mut self.builder, file, format!("Failed to apply content transformer `{}`: `{}`", transformer, err) => Err(err));
+					failed!(&mut self.builder, file, format!("Failed to apply content transformer `{transformer}`: `{err}`") => Err(err));
 				}
 			};
 		}
@@ -369,7 +369,7 @@ where
 						file.relative_source_path.display()
 					);
 
-					failed!(&mut self.builder, file, format!("Failed to copy: {}", err));
+					failed!(&mut self.builder, file, format!("Failed to copy: {err}"));
 				}
 			}
 		} else {
@@ -381,7 +381,7 @@ where
 						file.relative_source_path.display()
 					);
 
-					failed!(&mut self.builder, file, format!("Failed to read: {}", err));
+					failed!(&mut self.builder, file, format!("Failed to read: {err}"));
 				}
 			};
 
@@ -400,7 +400,7 @@ where
 					failed!(
 						&mut self.builder,
 						file,
-						format!("Failed to write content: {}", err)
+						format!("Failed to write content: {err}")
 					);
 				}
 			}
@@ -439,7 +439,7 @@ where
 				failed!(
 					&mut self.builder,
 					directory,
-					format!("Failed to create directory: {}", err)
+					format!("Failed to create directory: {err}")
 				);
 			} else {
 				success!(&mut self.builder, directory);
@@ -498,7 +498,7 @@ where
 							failed!(
 								&mut self.builder,
 								link,
-								format!("Failed get link target metadata: {}", err)
+								format!("Failed get link target metadata: {err}")
 							);
 						}
 					};
@@ -525,7 +525,7 @@ where
 							failed!(
 								&mut self.builder,
 								link,
-								format!("Failed to remove old link target: {}", err)
+								format!("Failed to remove old link target: {err}")
 							);
 						} else {
 							log::info!(
@@ -559,7 +559,7 @@ where
 					if let Err(err) = std::os::unix::fs::symlink(source_path, target_path) {
 						log::error!("[{}]: Failed to create link", source_path.display());
 
-						failed!(&mut self.builder, link, format!("Failed create link: {}", err));
+						failed!(&mut self.builder, link, format!("Failed create link: {err}"));
 					};
 				} else if #[cfg(windows)] {
 					let metadata = match source_path.symlink_metadata() {
@@ -567,7 +567,7 @@ where
 						Err(err) => {
 							log::error!("[{}]: Failed to read metadata", source_path.display());
 
-							failed!(&mut self.builder, link, format!("Failed get link source metadata: {}", err));
+							failed!(&mut self.builder, link, format!("Failed get link source metadata: {err}"));
 						}
 					};
 
@@ -575,13 +575,13 @@ where
 						if let Err(err) = std::os::windows::fs::symlink_dir(source_path, target_path) {
 							log::error!("[{}]: Failed to create directory link", source_path.display());
 
-							failed!(&mut self.builder, link, format!("Failed create directory link: {}", err));
+							failed!(&mut self.builder, link, format!("Failed create directory link: {err}"));
 						};
 					} else if metadata.is_file() {
 						if let Err(err) = std::os::windows::fs::symlink_file(source_path, target_path) {
 							log::error!("[{}]: Failed to create file link", source_path.display());
 
-							failed!(&mut self.builder, link, format!("Failed create file link: {}", err));
+							failed!(&mut self.builder, link, format!("Failed create file link: {err}"));
 						};
 					} else {
 						log::error!("[{}]: Invalid link source type", source_path.display());
@@ -666,7 +666,7 @@ where
 			Err(err) => {
 				log::info!("{}: Failed read file", file.relative_source_path.display());
 
-				failed!(&mut self.builder, file, format!("Failed to read: {}", err));
+				failed!(&mut self.builder, file, format!("Failed to read: {err}"));
 			}
 		};
 
@@ -681,7 +681,7 @@ where
 				failed!(
 					&mut self.builder,
 					file,
-					format!("Failed to resolve template: {}", err)
+					format!("Failed to resolve template: {err}")
 				);
 			}
 		};
@@ -701,7 +701,7 @@ where
 				failed!(
 					&mut self.builder,
 					file,
-					format!("Failed to write content: {}", err)
+					format!("Failed to write content: {err}")
 				);
 			}
 		}

@@ -472,8 +472,7 @@ impl<'a> DiagnosticFormatter<'a> {
 			// add file information
 			write!(
 				out,
-				"\n {}{} {}",
-				left_pad,
+				"\n {left_pad}{} {}",
 				style("-->"),
 				self.source.origin(),
 			)
@@ -484,7 +483,7 @@ impl<'a> DiagnosticFormatter<'a> {
 			}
 
 			// add code lines and spans
-			write!(out, "\n {} {}", left_pad, separator).expect("Write to String failed");
+			write!(out, "\n {left_pad} {separator}").expect("Write to String failed");
 
 			let mut last_line_nr: Option<usize> = None;
 			for line_nr in self.line_map.line_nrs() {
@@ -497,10 +496,8 @@ impl<'a> DiagnosticFormatter<'a> {
 
 					write!(
 						out,
-						"\n {}{} {} {}",
+						"\n {}{line_nr} {separator} {}",
 						&left_pad[line_nr_str.len()..],
-						line_nr,
-						separator,
 						line.replace('\t', "    ")
 					)
 					.expect("Write to String failed");
@@ -533,10 +530,7 @@ impl<'a> DiagnosticFormatter<'a> {
 
 								write!(
 									out,
-									"\n {} {} {}{}",
-									&left_pad,
-									separator,
-									highlight_left_pad,
+									"\n {left_pad} {separator} {highlight_left_pad}{}",
 									style(highlight)
 								)
 								.expect("Write to String failed");
@@ -555,11 +549,11 @@ impl<'a> DiagnosticFormatter<'a> {
 				}
 			}
 
-			write!(out, "\n {} {}", left_pad, separator).expect("Write to String failed");
+			write!(out, "\n {left_pad} {separator}").expect("Write to String failed");
 		}
 
 		for description in self.descriptions {
-			write!(out, "\n {} {} {}", left_pad, style("="), description)
+			write!(out, "\n {left_pad} {} {description}", style("="))
 				.expect("Write to String failed");
 		}
 

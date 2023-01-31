@@ -118,7 +118,7 @@ impl SpecialWidthChar {
 			0 => Self::ZeroWidth(pos),
 			2 => Self::Wide(pos),
 			4 => Self::Tab(pos),
-			_ => panic!("Unsupported width for SpecialWidthChar: {}", width),
+			_ => panic!("Unsupported width for SpecialWidthChar: {width}"),
 		}
 	}
 

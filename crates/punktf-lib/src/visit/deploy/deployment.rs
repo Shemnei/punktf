@@ -58,8 +58,8 @@ impl fmt::Display for ItemStatus {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
 			Self::Success => f.write_str("Success"),
-			Self::Failed(reason) => write!(f, "Failed: {}", reason),
-			Self::Skipped(reason) => write!(f, "Skipped: {}", reason),
+			Self::Failed(reason) => write!(f, "Failed: {reason}"),
+			Self::Skipped(reason) => write!(f, "Skipped: {reason}"),
 		}
 	}
 }
@@ -188,7 +188,7 @@ impl fmt::Display for DeploymentStatus {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
 			Self::Success => f.write_str("Success"),
-			Self::Failed(reason) => write!(f, "Failed: {}", reason),
+			Self::Failed(reason) => write!(f, "Failed: {reason}"),
 		}
 	}
 }
@@ -392,8 +392,7 @@ impl DeploymentBuilder {
 
 		let status = if failed_dotfiles > 0 {
 			DeploymentStatus::failed(format!(
-				"Deployment of {} dotfiles and {} links failed",
-				failed_dotfiles, failed_links
+				"Deployment of {failed_dotfiles} dotfiles and {failed_links} links failed"
 			))
 		} else {
 			DeploymentStatus::Success
