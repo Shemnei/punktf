@@ -15,6 +15,8 @@ Features:
 
 ## Installation
 
+[![Packaging status](https://repology.org/badge/vertical-allrepos/punktf.svg)](https://repology.org/project/punktf/versions)
+
 ### [Homebrew](https://brew.sh/)
 
 Install [punktf using Homebrew](https://github.com/michidk/homebrew-tools/blob/main/Formula/punktf.rb) on Linux:
