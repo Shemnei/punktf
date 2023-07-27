@@ -475,7 +475,7 @@ impl<'a> Parser<'a> {
 			.map_err(|_| {
 				DiagnosticBuilder::new(DiagnosticLevel::Error)
 					.message("failed to find right hand side of the if operation")
-					.description("add a literal to compare againt with `\"LITERAL\"`")
+					.description("add a literal to compare against with `\"LITERAL\"`")
 					.primary_span(var_block_span)
 			})?;
 

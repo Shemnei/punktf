@@ -161,7 +161,7 @@ pub struct Diff {
 	#[command(flatten)]
 	pub shared: RepoShared,
 
-	/// Defines the ouput format for the diffs.
+	/// Defines the output format for the diffs.
 	#[arg(value_enum, short, long, default_value_t = DiffFormat::Pretty)]
 	pub format: DiffFormat,
 }

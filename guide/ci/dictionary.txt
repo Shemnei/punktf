@@ -216,7 +216,7 @@ HelloWorldName
 Hmmm
 Hoare
 Hola
-homogenous
+homogeneous
 html
 http
 https

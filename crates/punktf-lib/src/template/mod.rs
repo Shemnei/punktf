@@ -1,4 +1,4 @@
-//! Everthing related to parsing/resolving templates is located in this module or it's submodules.
+//! Everything related to parsing/resolving templates is located in this module or it's submodules.
 //!
 //! # Syntax
 //!
@@ -181,7 +181,7 @@ mod tests {
 			[last]
 			num = 23
 			threads = 1337
-			os_str = "_unkown"
+			os_str = "_unknown"
 			"#;
 
 		let source = Source::anonymous(content);

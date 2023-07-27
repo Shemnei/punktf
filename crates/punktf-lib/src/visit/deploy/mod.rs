@@ -65,7 +65,7 @@ macro_rules! success {
 
 /// Marks the given item as skipped.
 ///
-/// This will instantly return from the out function afer reporting the skip.
+/// This will instantly return from the out function after reporting the skip.
 macro_rules! skipped {
 	($builder:expr, $item:expr, $reason:expr => $ret:expr ) => {
 		$item.add_to_builder($builder, ItemStatus::skipped($reason));
@@ -79,7 +79,7 @@ macro_rules! skipped {
 
 /// Marks the given item as failed.
 ///
-/// This will instantly return from the out function afer reporting the error.
+/// This will instantly return from the out function after reporting the error.
 macro_rules! failed {
 	($builder:expr, $item:expr, $reason:expr => Err($ret:expr) ) => {
 		$item.add_to_builder($builder, ItemStatus::failed($reason));
@@ -151,7 +151,7 @@ where
 	///
 	/// # Errors
 	///
-	/// Only hard errors will be returned as error, everthing else will be
+	/// Only hard errors will be returned as error, everything else will be
 	/// recorded in the [Deployment](`crate::visit::deploy::deployment::Deployment`)
 	/// on a dotfile level.
 	pub fn deploy(self, source: &PunktfSource, profile: &mut LayeredProfile) -> Deployment {
@@ -239,7 +239,7 @@ where
 			match file.dotfile().merge.unwrap_or_default() {
 				MergeMode::Overwrite => {
 					log::info!(
-						"{}: Overwritting existing dotfile",
+						"{}: Overwriting existing dotfile",
 						file.relative_source_path.display()
 					)
 				}
@@ -707,7 +707,7 @@ where
 		}
 
 		log::info!(
-			"{}: Tempalte successfully deployed",
+			"{}: Template successfully deployed",
 			file.relative_source_path.display()
 		);
 

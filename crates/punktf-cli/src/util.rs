@@ -216,7 +216,7 @@ where
 /// If `print` is `false` all messages will be logged with the `log` create,
 /// otherwise `stdout` is used.
 fn log_dotfiles(out: &mut String, deployment: &Deployment, print: bool) -> DeployCounts {
-	/// Name of item beeing processed.
+	/// Name of item being processed.
 	/// Used for logging.
 	const ITEM_NAME: &str = "Dotfiles";
 
@@ -252,7 +252,7 @@ fn log_dotfiles(out: &mut String, deployment: &Deployment, print: bool) -> Deplo
 /// If `print` is `false` all messages will be logged with the `log` create,
 /// otherwise `stdout` is used.
 fn log_links(out: &mut String, deployment: &Deployment, print: bool) -> DeployCounts {
-	/// Name of item beeing processed.
+	/// Name of item being processed.
 	/// Used for logging.
 	const ITEM_NAME: &str = "Links";
 

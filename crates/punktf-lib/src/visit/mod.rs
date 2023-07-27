@@ -103,17 +103,17 @@ impl Paths {
 		self.child.is_some()
 	}
 
-	/// Retrives the source path of the actual dotfile.
+	/// Retrieves the source path of the actual dotfile.
 	pub fn root_source_path(&self) -> &Path {
 		&self.root.source
 	}
 
-	/// Retrives the target path of the acutal dotfile.
+	/// Retrieves the target path of the actual dotfile.
 	pub fn root_target_path(&self) -> &Path {
 		&self.root.target
 	}
 
-	/// Retrives the target path of the child.
+	/// Retrieves the target path of the child.
 	///
 	/// If this is not a child instance, the root path will be returned instead.
 	pub fn child_source_path(&self) -> Cow<'_, Path> {
@@ -124,7 +124,7 @@ impl Paths {
 		}
 	}
 
-	/// Retrives the source path of the child.
+	/// Retrieves the source path of the child.
 	///
 	/// If this is not a child instance, the root path will be returned instead.
 	pub fn child_target_path(&self) -> Cow<'_, Path> {
@@ -148,10 +148,10 @@ pub enum Kind<'a> {
 		/// this item stems.
 		root: &'a Dotfile,
 
-		/// Absoulte source path to the root dotfile.
+		/// Absolute source path to the root dotfile.
 		root_source_path: PathBuf,
 
-		/// Absoulte target path to the root dotfile.
+		/// Absolute target path to the root dotfile.
 		root_target_path: PathBuf,
 	},
 }
@@ -185,10 +185,10 @@ pub struct Item<'a> {
 	/// Relative path to the item inside the `dotfiles` directly.
 	pub relative_source_path: PathBuf,
 
-	/// Absoulte source path for the item.
+	/// Absolute source path for the item.
 	pub source_path: PathBuf,
 
-	/// Absoulte target path for the item.
+	/// Absolute target path for the item.
 	pub target_path: PathBuf,
 
 	/// Kind of the item.
@@ -216,7 +216,7 @@ impl<'a> Item<'a> {
 }
 
 impl Item<'_> {
-	/// Retrives the underlying dotfile.
+	/// Retrieves the underlying dotfile.
 	pub const fn dotfile(&self) -> &Dotfile {
 		self.kind.dotfile()
 	}
@@ -249,10 +249,10 @@ impl<'a> Deref for Directory<'a> {
 /// A symlink to be processed.
 #[derive(Debug)]
 pub struct Symlink {
-	/// Absoulte source path of the link.
+	/// Absolute source path of the link.
 	pub source_path: PathBuf,
 
-	/// Absoulte target path of the link.
+	/// Absolute target path of the link.
 	pub target_path: PathBuf,
 
 	/// Indicates if any existing symlink at the [`Symlink::target_path`] should
@@ -284,7 +284,7 @@ pub struct Errored<'a> {
 	/// The item which was rejected.
 	pub item: Item<'a>,
 
-	/// The error which has occured.
+	/// The error which has occurred.
 	pub error: Option<Box<dyn std::error::Error>>,
 
 	/// The context of the error.
@@ -374,7 +374,7 @@ pub trait Visitor {
 }
 
 /// Walks over each item of a [`LayeredProfile`](`crate::profile::LayeredProfile`)
-/// and calls the appropiate functions of the given visitor.
+/// and calls the appropriate functions of the given visitor.
 #[derive(Debug)]
 pub struct Walker<'a> {
 	// Filter? "--filter='name=*'"
@@ -388,7 +388,7 @@ impl<'a> Walker<'a> {
 	///
 	/// The [`LayeredProfile::dotfiles`](`crate::profile::LayeredProfile::dotfiles`)
 	/// will be sorted by [`Dotfile::priority`](`crate::profile::dotfile::Dotfile::priority`)
-	/// to avoid unneccessary read/write operations during a deployment.
+	/// to avoid unnecessary read/write operations during a deployment.
 	pub fn new(profile: &'a mut LayeredProfile) -> Self {
 		{
 			let dotfiles = &mut profile.dotfiles;
@@ -399,7 +399,7 @@ impl<'a> Walker<'a> {
 		Self { profile }
 	}
 
-	/// Walks the profile and calls the appropiate functions on the given [`Visitor`].
+	/// Walks the profile and calls the appropriate functions on the given [`Visitor`].
 	pub fn walk(&self, source: &PunktfSource, visitor: &mut impl Visitor) -> Result {
 		for dotfile in self.profile.dotfiles() {
 			self.walk_dotfile(source, visitor, dotfile)?;

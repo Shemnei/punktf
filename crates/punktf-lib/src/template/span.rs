@@ -8,7 +8,7 @@ use std::ops::{Deref, Index};
 // <https://github.com/rust-lang/rust/graphs/contributors>
 //
 // Copied from <https://github.com/rust-lang/rust/blob/362e0f55eb1f36d279e5c4a58fb0fe5f9a2c579d/compiler/rustc_span/src/lib.rs#L1768>.
-/// A general position which allows convertion from and to [`usize`] and [`u32`].
+/// A general position which allows conversion from and to [`usize`] and [`u32`].
 pub trait Pos {
 	/// Creates a new position from `value`.
 	fn from_usize(value: usize) -> Self;

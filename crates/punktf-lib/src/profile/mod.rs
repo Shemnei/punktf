@@ -68,7 +68,7 @@ pub struct Profile {
 	pub aliases: Vec<String>,
 
 	/// Defines the base profile. All settings from the base are merged with the
-	/// current profile. The settings from the current profile take precendence.
+	/// current profile. The settings from the current profile take precedence.
 	/// Dotfiles are merged on the dotfile level (not specific dotfile settings level).
 	#[serde(skip_serializing_if = "Vec::is_empty", default)]
 	pub extends: Vec<String>,

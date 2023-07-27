@@ -39,13 +39,13 @@ pub struct Dotfile {
 	pub priority: Option<Priority>,
 
 	/// Variables specifically defined for this dotfile. These variables will
-	/// take precendence over the ones defined in
+	/// take precedence over the ones defined in
 	/// [`Profile::variables`](`crate::profile::Profile::variables`).
 	#[serde(skip_serializing_if = "Option::is_none", default)]
 	pub variables: Option<Variables>,
 
 	/// Content transform defined for the dotfile. These variables will take
-	/// precendence over the ones defined in
+	/// precedence over the ones defined in
 	/// [`profile::Profile::transformers`](`crate::profile::Profile::transformers`).
 	#[serde(skip_serializing_if = "Vec::is_empty", default)]
 	pub transformers: Vec<ContentTransformer>,

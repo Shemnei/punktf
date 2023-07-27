@@ -33,7 +33,7 @@ impl ItemStatus {
 		Self::Failed(reason.into())
 	}
 
-	/// Indicates that the item opeartion was skipped.
+	/// Indicates that the item operation was skipped.
 	pub fn skipped<S: Into<Cow<'static, str>>>(reason: S) -> Self {
 		Self::Skipped(reason.into())
 	}
@@ -113,7 +113,7 @@ impl DeployedDotfile {
 		&self.status
 	}
 
-	/// Retures the kind of the dotfile operation.
+	/// Returns the kind of the dotfile operation.
 	pub const fn kind(&self) -> &DeployedDotfileKind {
 		&self.kind
 	}

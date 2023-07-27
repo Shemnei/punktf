@@ -6,7 +6,7 @@ Profiles can be either a `json` or `yaml` file.
 
 All paths that are given via the profile can have system/environment variables embedded.
 They start with a `$` and then the name (e.g. `$HOME`).
-Optionaly they can also be enclosed with braces (e.g. `${HOME}`).
+Optionally they can also be enclosed with braces (e.g. `${HOME}`).
 This syntax is both valid/used for unix and windows systems (instead of windows `%...%` syntax).
 
 Additionally, paths can start with a `~` which corresponds to the user home directory:
@@ -78,7 +78,7 @@ dotfiles:
 	# Default: Overwrite
 	merge: Overwrite
 
-	# Optional: Wether this file is a template or not (skips template actions (replace, ..) if not)
+	# Optional: Whether this file is a template or not (skips template actions (replace, ..) if not)
 	# Default: true
 	template: false
 

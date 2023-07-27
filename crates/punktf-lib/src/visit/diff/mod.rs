@@ -38,7 +38,7 @@ pub enum Event<'a> {
 
 	/// File does exist but the contents would changed.
 	Diff {
-		/// Absoulte path to the target location.
+		/// Absolute path to the target location.
 		target_path: &'a Path,
 
 		/// Contents of the current file on the filesystem.
@@ -128,7 +128,7 @@ where
 		Ok(())
 	}
 
-	/// Accepts a directory item and simly checks if it already exists on the filesystem.
+	/// Accepts a directory item and simply checks if it already exists on the filesystem.
 	///
 	/// If no, a change [`Event::NewDirectory`] is emitted.
 	fn accept_directory<'a>(

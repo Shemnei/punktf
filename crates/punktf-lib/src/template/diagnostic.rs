@@ -386,7 +386,7 @@ impl<'a> LineMap<'a> {
 			e.insert(self.source.get_idx_line(line_idx));
 		}
 
-		// add span ref to line where it occured
+		// add span ref to line where it occurred
 		self.line_spans
 			.entry(line_idx)
 			.or_default()

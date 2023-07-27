@@ -239,7 +239,7 @@ fn setup_env(source: &PunktfSource, profile: &LayeredProfile, profile_name: &str
 	std::env::set_var("PUNKTF_CURRENT_PROFILE", profile_name);
 }
 
-/// Handles the writting of the deployment status to output files/formats.
+/// Handles the writing of the deployment status to output files/formats.
 fn handle_output(
 	opt::OutputShared {
 		json_output,
@@ -365,7 +365,7 @@ fn handle_command_render(
 					.ok()
 			})
 			.reduce(|a, i| {
-				// First sort by tiniest differance to dotfile path
+				// First sort by tiniest difference to dotfile path
 				// then by highest priority.
 				match (i.1.as_os_str().len(), a.1.as_os_str().len()) {
 					(i_len, a_len) if i_len == a_len => match (i.0.priority, a.0.priority) {
