@@ -3,7 +3,11 @@
 // We allow missing documentation for this module, as any documentation put on
 // the cli struct will appear in the help message which, in most cases, is not
 // what we want.
-#![allow(missing_docs, clippy::missing_docs_in_private_items)]
+#![allow(
+	missing_docs,
+	clippy::missing_docs_in_private_items,
+	unused_qualifications
+)]
 
 use std::path::PathBuf;
 

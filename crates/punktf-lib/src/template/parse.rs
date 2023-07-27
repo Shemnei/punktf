@@ -719,11 +719,8 @@ fn parse_other(inner: &str, offset: usize) -> Result<ByteSpan> {
 
 /// Checks if `b` is considered to be a valid byte for a [variable](`super::block::Var`)
 /// identifier.
-fn is_var_name_symbol(b: u8) -> bool {
-	(b'a'..=b'z').contains(&b)
-		|| (b'A'..=b'Z').contains(&b)
-		|| (b'0'..=b'9').contains(&b)
-		|| b == b'_'
+const fn is_var_name_symbol(b: u8) -> bool {
+	b.is_ascii_alphanumeric() || b == b'_'
 }
 
 /// An iterator over all [blocks](`super::block::BlockHint`) of a string.
