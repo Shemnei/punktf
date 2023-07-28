@@ -34,6 +34,18 @@ pub mod version {
 		pub patch: u8,
 	}
 
+	impl fmt::Display for Version {
+		fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+			let Self {
+				major,
+				minor,
+				patch,
+			} = self;
+
+			write!(f, "{major}.{minor}.{patch}")
+		}
+	}
+
 	impl Version {
 		pub const ZERO: Self = Version {
 			major: 0,
@@ -69,18 +81,15 @@ pub mod version {
 		let bytes = s.as_bytes();
 
 		// u8 can be max 3 digits (255)
-		let eat = if !check_digit(bytes, 0) {
-			// To short
-			return Err(ParseVersionError::InvalidNumber);
-		} else if !check_digit(bytes, 1) {
-			1
-		} else if !check_digit(bytes, 2) {
-			2
-		} else if !check_digit(bytes, 3) {
-			3
-		} else {
-			// To long
-			return Err(ParseVersionError::InvalidNumber);
+		let eat = match (
+			check_digit(bytes, 0),
+			check_digit(bytes, 1),
+			check_digit(bytes, 2),
+		) {
+			(true, true, true) => 3,
+			(true, true, _) => 2,
+			(true, _, _) => 1,
+			_ => return Err(ParseVersionError::InvalidNumber),
 		};
 
 		Ok(Some((&s[eat..], s[..eat].parse::<u8>()?)))
@@ -178,6 +187,7 @@ pub mod version {
 				"1.".parse::<Version>(),
 				Err(ParseVersionError::TrailingCharacters)
 			);
+			assert_eq!("".parse::<Version>(), Err(ParseVersionError::Empty));
 
 			Ok(())
 		}
@@ -196,7 +206,7 @@ pub mod profile {
 		#[error("invalid profile: {0}")]
 		InvalidProfile(#[from] serde_yaml::Error),
 		#[error("unsupported version: {0}")]
-		UnsupportedVersion(versions::Versioning),
+		UnsupportedVersion(version::Version),
 	}
 
 	pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -204,7 +214,7 @@ pub mod profile {
 	#[derive(Debug, Deserialize)]
 	#[serde(default)]
 	pub struct Version {
-		version: version::Version,
+		pub version: version::Version,
 	}
 
 	impl Default for Version {
@@ -212,6 +222,12 @@ pub mod profile {
 			Self {
 				version: version::Version::ZERO,
 			}
+		}
+	}
+
+	impl From<Version> for version::Version {
+		fn from(value: Version) -> Self {
+			value.version
 		}
 	}
 
@@ -224,7 +240,9 @@ pub mod profile {
 	#[derive(Debug, Deserialize)]
 	pub struct Profile {
 		#[serde(flatten)]
-		version: Version,
+		pub version: Version,
+
+		pub aliases: Vec<String>,
 	}
 
 	impl FromStr for Profile {
@@ -235,7 +253,7 @@ pub mod profile {
 
 			println!("Read version: {version:?}");
 
-			todo!()
+			Err(Error::UnsupportedVersion(version.into()))
 		}
 	}
 }
@@ -244,7 +262,7 @@ pub mod profile {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let profile = std::fs::read_to_string("profile.yaml")?;
 	println!("Parsing profile:\n{profile}");
-	let p = profile::Profile::from_str(&profile)?;
+	let p = profile::Profile::from_str(&profile);
 
 	Ok(())
 }
