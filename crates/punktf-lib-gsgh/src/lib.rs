@@ -188,8 +188,47 @@ pub mod version {
 				Err(ParseVersionError::TrailingCharacters)
 			);
 			assert_eq!("".parse::<Version>(), Err(ParseVersionError::Empty));
+			assert_eq!(
+				"1.1.1 ".parse::<Version>(),
+				Err(ParseVersionError::TrailingCharacters)
+			);
+			assert_eq!(
+				"1.1.1.".parse::<Version>(),
+				Err(ParseVersionError::TrailingCharacters)
+			);
+			assert_eq!(
+				"1.1.1.1".parse::<Version>(),
+				Err(ParseVersionError::TrailingCharacters)
+			);
+			assert_eq!(
+				"256".parse::<Version>(),
+				Err(ParseVersionError::InvalidNumber)
+			);
 
 			Ok(())
+		}
+
+		#[test]
+		fn version_cmp() {
+			assert!(Version::ZERO.with_major(1) == Version::ZERO.with_major(1));
+			assert!(Version::ZERO.with_minor(2) == Version::ZERO.with_minor(2));
+			assert!(Version::ZERO.with_patch(3) == Version::ZERO.with_patch(3));
+
+			assert!(Version::ZERO.with_major(1) < Version::ZERO.with_major(2));
+			assert!(Version::ZERO.with_minor(2) < Version::ZERO.with_major(2));
+			assert!(Version::ZERO.with_patch(3) < Version::ZERO.with_major(2));
+
+			assert!(
+				Version {
+					major: 2,
+					minor: 3,
+					patch: 1
+				} > Version {
+					major: 2,
+					minor: 1,
+					patch: 10
+				}
+			);
 		}
 	}
 }
@@ -211,6 +250,8 @@ pub mod profile {
 
 	pub type Result<T, E = Error> = std::result::Result<T, E>;
 
+	/// Wrapper struct to be able to first parse only the version and then choose
+	/// the appropiate profile struct for it to do version compatible parsing.
 	#[derive(Debug, Deserialize)]
 	#[serde(default)]
 	pub struct Version {
