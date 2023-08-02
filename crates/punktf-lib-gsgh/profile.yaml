@@ -1,1 +1,45 @@
-version: "3.2"
+version: 1.0.0
+
+aliases:
+  - Foo
+  - Bar
+
+extends:
+  - Parent
+
+env:
+  Foo: Bar
+  Bool: true
+  Number: 2.4
+  Map:
+    This: Should
+    Not: be
+    Allowed: null
+
+transformers:
+  - type: LineTerminator
+    with: LF
+
+target: /tmp
+
+pre_hooks: |
+  set -eoux pipefail
+  echo 'Foo'
+
+items:
+  - priority: 5
+    env:
+      Foo: Bar
+      Bool: true
+    pre_hook: |-
+      set -eoux pipefail
+      echo 'Foo'
+    path: /dev/null
+    merge:
+      type: Hook
+      with: |
+        #!/usr/bin/env bash
+
+        set -eoux pipefail
+
+        echo "test"
