@@ -17,29 +17,35 @@ env:
     Allowed: null
 
 transformers:
-  - type: LineTerminator
+  - type: line_terminator
     with: LF
 
 target: /tmp
 
-pre_hooks: |
-  set -eoux pipefail
-  echo 'Foo'
+pre_hooks:
+  type: inline
+  with: |
+    set -eoux pipefail
+    echo 'Foo'
 
 items:
   - priority: 5
     env:
       Foo: Bar
       Bool: true
-    pre_hook: |-
-      set -eoux pipefail
-      echo 'Foo'
+    pre_hook:
+      type: inline
+      with: |-
+        set -eoux pipefail
+        echo 'Foo'
     path: /dev/null
     merge:
-      type: Hook
-      with: |
-        #!/usr/bin/env bash
+      type: hook
+      with:
+        type: inline
+        with: |
+          #!/usr/bin/env bash
 
-        set -eoux pipefail
+          set -eoux pipefail
 
-        echo "test"
+          echo "test"

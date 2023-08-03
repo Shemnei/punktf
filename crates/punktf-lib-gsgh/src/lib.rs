@@ -281,7 +281,7 @@ pub mod transform {
 	}
 
 	#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-	#[serde(tag = "type", content = "with")]
+	#[serde(tag = "type", content = "with", rename_all = "snake_case")]
 	pub enum Transformer {
 		/// Transformer which replaces line termination characters with either unix
 		/// style (`\n`) or windows style (`\r\b`).
@@ -301,15 +301,24 @@ pub mod transform {
 }
 
 pub mod hook {
+	use std::{path::PathBuf, process::Command};
+
 	use serde::{Deserialize, Serialize};
 
 	// Have special syntax for skipping deployment on pre_hook
 	// Analog: <https://learn.microsoft.com/en-us/azure/devops/pipelines/scripts/logging-commands?view=azure-devops>
 	// e.g. punktf:skip_deployment
 
-	#[repr(transparent)]
 	#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-	pub struct Hook(pub String);
+	#[serde(tag = "type", content = "with", rename_all = "snake_case")]
+	pub enum Hook {
+		Inline(String),
+		File(PathBuf),
+	}
+
+	impl Hook {
+		pub fn run(self) {}
+	}
 }
 
 pub mod merge {
@@ -318,7 +327,7 @@ pub mod merge {
 	use crate::hook::Hook;
 
 	#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-	#[serde(tag = "type", content = "with")]
+	#[serde(tag = "type", content = "with", rename_all = "snake_case")]
 	pub enum MergeMode {
 		Hook(Hook),
 	}
@@ -526,8 +535,8 @@ fn prnp() {
 				.collect(),
 			),
 			transformers: vec![Transformer::LineTerminator(transform::LineTerminator::LF)],
-			pre_hook: Some(Hook("set -eoux pipefail\necho 'Foo'".into())),
-			post_hook: None,
+			pre_hook: Some(Hook::Inline("set -eoux pipefail\necho 'Foo'".into())),
+			post_hook: Some(Hook::File("Test".into())),
 			priority: Some(Priority(5)),
 		},
 
@@ -542,14 +551,14 @@ fn prnp() {
 					.collect(),
 				),
 				transformers: vec![Transformer::LineTerminator(transform::LineTerminator::LF)],
-				pre_hook: Some(Hook("set -eoux pipefail\necho 'Foo'".into())),
+				pre_hook: None,
 				post_hook: None,
 				priority: Some(Priority(5)),
 			},
 			path: PathBuf::from("/dev/null"),
 			rename: None,
 			overwrite_target: None,
-			merge: Some(merge::MergeMode::Hook(Hook("Test\nasdf".into()))),
+			merge: None,
 		}],
 	};
 
@@ -579,14 +588,14 @@ fn prni() {
 				.collect(),
 			),
 			transformers: vec![Transformer::LineTerminator(transform::LineTerminator::LF)],
-			pre_hook: Some(Hook("set -eoux pipefail\necho 'Foo'".into())),
+			pre_hook: Some(Hook::Inline("set -eoux pipefail\necho 'Foo'".into())),
 			post_hook: None,
 			priority: Some(Priority(5)),
 		},
 		path: PathBuf::from("/dev/null"),
 		rename: None,
 		overwrite_target: None,
-		merge: Some(merge::MergeMode::Hook(Hook("Test".into()))),
+		merge: None,
 	};
 
 	serde_yaml::to_writer(std::io::stdout(), &i).unwrap();
