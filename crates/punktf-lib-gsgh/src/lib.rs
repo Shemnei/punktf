@@ -259,16 +259,83 @@ pub mod version {
 }
 
 pub mod env {
-	use std::collections::HashMap;
+	use std::{
+		collections::{btree_set, BTreeMap, BTreeSet, HashSet},
+		ops::Deref,
+	};
 
 	use serde::{Deserialize, Serialize};
 
 	#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-	pub struct Environment(pub HashMap<String, serde_yaml::Value>);
+	pub struct Environment(pub BTreeMap<String, serde_yaml::Value>);
 
 	impl Environment {
 		pub fn is_empty(&self) -> bool {
 			self.0.is_empty()
+		}
+	}
+
+	#[derive(Default, Debug, Clone, PartialEq, Eq)]
+	pub struct LayeredEnvironment(Vec<(&'static str, Environment)>);
+
+	impl LayeredEnvironment {
+		pub fn push(&mut self, name: &'static str, env: Environment) {
+			self.0.push((name, env));
+		}
+
+		pub fn pop(&mut self) -> Option<(&'static str, Environment)> {
+			self.0.pop()
+		}
+
+		pub fn keys(&self) -> BTreeSet<&str> {
+			self.0
+				.iter()
+				.flat_map(|(_, layer)| layer.0.keys())
+				.map(|key| key.as_str())
+				.collect()
+		}
+
+		pub fn get(&self, key: &str) -> Option<&serde_yaml::Value> {
+			for (_, layer) in self.0.iter() {
+				if let Some(value) = layer.0.get(key) {
+					return Some(value);
+				}
+			}
+
+			return None;
+		}
+
+		pub fn iter(&self) -> LayeredIter<'_> {
+			LayeredIter::new(self)
+		}
+
+		pub fn as_str_map(&self) -> BTreeMap<&str, String> {
+			self.iter()
+				// TODO: Optimize
+				// `trim` to remove trailing `\n`
+				.map(|(k, v)| (k, serde_yaml::to_string(v).unwrap().trim().into()))
+				.collect()
+		}
+	}
+
+	pub struct LayeredIter<'a> {
+		env: &'a LayeredEnvironment,
+		keys: btree_set::IntoIter<&'a str>,
+	}
+
+	impl<'a> LayeredIter<'a> {
+		pub fn new(env: &'a LayeredEnvironment) -> Self {
+			let keys = env.keys().into_iter();
+			Self { env, keys }
+		}
+	}
+
+	impl<'a> Iterator for LayeredIter<'a> {
+		type Item = (&'a str, &'a serde_yaml::Value);
+
+		fn next(&mut self) -> Option<Self::Item> {
+			let key = self.keys.next()?;
+			Some((key, self.env.get(key)?))
 		}
 	}
 }
@@ -301,13 +368,56 @@ pub mod transform {
 }
 
 pub mod hook {
-	use std::{path::PathBuf, process::Command};
+	use std::{
+		io::{BufRead, BufReader},
+		path::{Path, PathBuf},
+		process::{Command, Stdio},
+	};
 
 	use serde::{Deserialize, Serialize};
+	use thiserror::Error;
+
+	use crate::env::LayeredEnvironment;
 
 	// Have special syntax for skipping deployment on pre_hook
 	// Analog: <https://learn.microsoft.com/en-us/azure/devops/pipelines/scripts/logging-commands?view=azure-devops>
 	// e.g. punktf:skip_deployment
+
+	#[derive(Error, Debug)]
+	pub enum HookError {
+		#[error("IO Error")]
+		IoError(#[from] std::io::Error),
+
+		#[error("Process failed with status `{0}`")]
+		ExitStatusError(std::process::ExitStatus),
+	}
+
+	impl From<std::process::ExitStatus> for HookError {
+		fn from(value: std::process::ExitStatus) -> Self {
+			Self::ExitStatusError(value)
+		}
+	}
+
+	pub type Result<T, E = HookError> = std::result::Result<T, E>;
+
+	// TODO: Replace once `exit_ok` becomes stable
+	trait ExitOk {
+		type Error;
+
+		fn exit_ok(self) -> Result<(), Self::Error>;
+	}
+
+	impl ExitOk for std::process::ExitStatus {
+		type Error = HookError;
+
+		fn exit_ok(self) -> Result<(), <Self as ExitOk>::Error> {
+			if self.success() {
+				Ok(())
+			} else {
+				Err(self.into())
+			}
+		}
+	}
 
 	#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 	#[serde(tag = "type", content = "with", rename_all = "snake_case")]
@@ -317,7 +427,115 @@ pub mod hook {
 	}
 
 	impl Hook {
-		pub fn run(self) {}
+		pub fn run(self, cwd: &Path, env: LayeredEnvironment) -> Result<()> {
+			let mut child = self
+				.prepare_command()?
+				.current_dir(cwd)
+				.stdout(Stdio::piped())
+				.stderr(Stdio::piped())
+				.envs(env.as_str_map())
+				.spawn()?;
+
+			// No need to call kill here as the program will immediately exit
+			// and thereby kill all spawned children
+			let stdout = child.stdout.take().expect("Failed to get stdout from hook");
+
+			for line in BufReader::new(stdout).lines() {
+				match line {
+					Ok(line) => println!("hook::stdout > {}", line),
+					Err(err) => {
+						// Result is explicitly ignored as an error was already
+						// encountered
+						let _ = child.kill();
+						return Err(err.into());
+					}
+				}
+			}
+
+			// No need to call kill here as the program will immediately exit
+			// and thereby kill all spawned children
+			let stderr = child.stderr.take().expect("Failed to get stderr from hook");
+
+			for line in BufReader::new(stderr).lines() {
+				match line {
+					Ok(line) => println!("hook::stderr > {}", line),
+					Err(err) => {
+						// Result is explicitly ignored as an error was already
+						// encountered
+						let _ = child.kill();
+						return Err(err.into());
+					}
+				}
+			}
+
+			child
+				.wait_with_output()?
+				.status
+				.exit_ok()
+				.map_err(Into::into)
+		}
+
+		fn prepare_command(&self) -> Result<Command> {
+			let mut cmd = None;
+
+			#[cfg(target_family = "windows")]
+			{
+				let mut c = Command::new("cmd");
+				c.arg("/C");
+				cmd = Some(c);
+			}
+
+			#[cfg(target_family = "unix")]
+			{
+				let mut c = Command::new("sh");
+				c.arg("-c");
+				cmd = Some(c)
+			}
+
+			let Some(mut cmd) = cmd else {
+				return Err(HookError::IoError(std::io::Error::new(std::io::ErrorKind::Other, "Hooks are only supported on Windows and Unix-based systems")));
+			};
+
+			match self {
+				Self::Inline(s) => {
+					cmd.arg(s);
+				}
+				Self::File(path) => {
+					let s = std::fs::read_to_string(path)?;
+					cmd.arg(s);
+				}
+			}
+
+			Ok(cmd)
+		}
+	}
+
+	#[cfg(test)]
+	mod tests {
+		use crate::env::Environment;
+
+		use super::*;
+
+		#[test]
+		fn echo_hello_world() {
+			let env = Environment(
+				[
+					("TEST", serde_yaml::Value::Bool(true)),
+					("FOO", serde_yaml::Value::String(" BAR Test".into())),
+				]
+				.into_iter()
+				.map(|(k, v)| (k.to_string(), v))
+				.collect(),
+			);
+
+			let mut lenv = LayeredEnvironment::default();
+			lenv.push("test", env);
+
+			println!("{:#?}", lenv.as_str_map());
+
+			let hook = Hook::Inline(r#"echo "Hello World""#.to_string());
+			hook.run(Path::new("/tmp"), lenv).unwrap();
+		}
 	}
 }
 
