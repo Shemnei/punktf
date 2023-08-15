@@ -143,7 +143,7 @@ impl Hook {
 
 #[cfg(test)]
 mod tests {
-	use crate::env::Environment;
+	use crate::{env::Environment, value::Value};
 
 	use super::*;
 
@@ -151,8 +151,8 @@ mod tests {
 	fn echo_hello_world() {
 		let env = Environment(
 			[
-				("TEST", serde_yaml::Value::Bool(true)),
-				("FOO", serde_yaml::Value::String(" BAR Test".into())),
+				("TEST", Value::Bool(true)),
+				("FOO", Value::String(" BAR Test".into())),
 			]
 			.into_iter()
 			.map(|(k, v)| (k.to_string(), v))

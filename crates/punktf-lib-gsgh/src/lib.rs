@@ -4,7 +4,9 @@ pub mod item;
 pub mod merge;
 pub mod prio;
 pub mod profile;
+pub mod template;
 pub mod transform;
+pub mod value;
 pub mod version;
 
 #[test]
@@ -27,9 +29,9 @@ fn prnp() {
 	use crate::{item::Item, prio::Priority};
 	use env::Environment;
 	use profile::{Profile, ProfileVersion};
-	use serde_yaml::Value;
 	use std::path::PathBuf;
 	use transform::Transformer;
+	use value::Value;
 
 	use crate::profile::Shared;
 
@@ -86,9 +88,9 @@ fn prni() {
 	use crate::hook::Hook;
 	use crate::{item::Item, prio::Priority};
 	use env::Environment;
-	use serde_yaml::Value;
 	use std::path::PathBuf;
 	use transform::Transformer;
+	use value::Value;
 
 	use crate::profile::Shared;
 

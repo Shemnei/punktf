@@ -11,10 +11,6 @@ env:
   Foo: Bar
   Bool: true
   Number: 2.4
-  Map:
-    This: Should
-    Not: be
-    Allowed: null
 
 transformers:
   - type: line_terminator

@@ -5,8 +5,10 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Environment(pub BTreeMap<String, serde_yaml::Value>);
+use crate::value::Value;
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Environment(pub BTreeMap<String, Value>);
 
 impl Environment {
 	pub fn is_empty(&self) -> bool {
@@ -14,7 +16,7 @@ impl Environment {
 	}
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct LayeredEnvironment(Vec<(&'static str, Environment)>);
 
 impl LayeredEnvironment {
@@ -34,7 +36,7 @@ impl LayeredEnvironment {
 			.collect()
 	}
 
-	pub fn get(&self, key: &str) -> Option<&serde_yaml::Value> {
+	pub fn get(&self, key: &str) -> Option<&Value> {
 		for (_, layer) in self.0.iter() {
 			if let Some(value) = layer.0.get(key) {
 				return Some(value);
@@ -70,7 +72,7 @@ impl<'a> LayeredIter<'a> {
 }
 
 impl<'a> Iterator for LayeredIter<'a> {
-	type Item = (&'a str, &'a serde_yaml::Value);
+	type Item = (&'a str, &'a Value);
 
 	fn next(&mut self) -> Option<Self::Item> {
 		let key = self.keys.next()?;

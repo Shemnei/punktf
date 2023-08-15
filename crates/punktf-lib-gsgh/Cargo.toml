@@ -11,6 +11,7 @@ keywords.workspace = true
 [dependencies]
 cfg-if = "1.0.0"
 log.workspace = true
+minijinja = { version = "1.0.6", default-features = false, features = ["builtins", "adjacent_loop_items", "debug", "deserialization"] }
 semver = { version = "1.0.18", features = ["serde"] }
 serde = { workspace = true, features = ["derive"] }
 serde_yaml = "0.9.25"
