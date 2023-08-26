@@ -1,6 +1,7 @@
 [workspace]
 members = ["crates/*"]
 exclude = ["guide/linkchecker"]
+resolver =  "2"
 
 [workspace.package]
 authors = ["Michael Lohr <michael@lohr.dev>", "Shemnei"]
@@ -34,10 +35,6 @@ opt-level = 0
 # Only retain line level debug information; This will speed up the build process
 # and is only used when debugging.
 debug = 1
-
-[profile.dev.package.backtrace]
-# color-eyre: Improves performance for debug builds
-opt-level = 3
 
 [profile.release]
 lto = "thin"
