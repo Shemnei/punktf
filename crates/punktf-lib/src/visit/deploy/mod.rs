@@ -687,9 +687,9 @@ where
 		};
 
 		let Ok(content) = self.transform_content(profile, file, content) else {
-				// Error is already recorded
-				return Ok(());
-			};
+			// Error is already recorded
+			return Ok(());
+		};
 
 		if !self.options.dry_run {
 			if let Err(err) = std::fs::write(&file.target_path, content.as_bytes()) {

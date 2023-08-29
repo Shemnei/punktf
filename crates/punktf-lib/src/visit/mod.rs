@@ -641,7 +641,10 @@ impl<'a> Walker<'a> {
 	/// and [`Walker::resolve_target_path`].
 	fn resolve_path(&self, path: &Path) -> io::Result<PathBuf> {
 		let Some(path_str) = path.to_str() else {
-			return Err(io::Error::new(io::ErrorKind::InvalidInput, "File path includes non UTF-8 characters"));
+			return Err(io::Error::new(
+				io::ErrorKind::InvalidInput,
+				"File path includes non UTF-8 characters",
+			));
 		};
 
 		shellexpand::full(path_str)
