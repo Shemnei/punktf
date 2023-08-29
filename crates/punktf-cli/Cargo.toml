@@ -1,6 +1,6 @@
 [package]
 name = "punktf"
-version = "3.0.0"
+version = "3.1.0"
 description = "A cross-platform multi-target dotfiles manager"
 documentation = "https://github.com/Shemnei/punktf"
 homepage = "https://github.com/Shemnei/punktf"
@@ -10,6 +10,13 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 keywords.workspace = true
+
+[features]
+# Reference: <https://users.rust-lang.org/t/windows-binaries-vcruntime140-dll-not-found-unless-crt-static/94517/4>
+# Enabling `windows-static` bundles `VCRUNTIME140.DLL` such that it's
+# not necessary to install "Microsoft Visual C++ Redistributable".
+# Use `cargo build --features=windows-static` to enable.
+windows-static = ["dep:static_vcruntime"]
 
 [[bin]]
 path = "src/main.rs"
@@ -29,3 +36,6 @@ serde.workspace = true
 # Optional dependencies can not be in the workspace dependencies
 serde_json = "1.0.91"
 serde_yaml = "0.9.16"
+
+[target.'cfg(windows)'.build-dependencies]
+static_vcruntime = { version = "2.0.0", optional = true }
