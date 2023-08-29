@@ -107,7 +107,7 @@ jobs:
           echo "target dir: ${{ env.TARGET_DIR }}"
 
       - name: Build release binary without features
-        if: matrix.build == 'linux'
+        if: ${{ matrix.features == '' }}
         run: |
           ${{ env.CARGO }} build --release ${{ env.TARGET_FLAGS }}
 
