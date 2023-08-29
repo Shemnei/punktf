@@ -1,3 +1,5 @@
+#![allow(clippy::needless_raw_string_hashes)]
+
 pub const TEMPLATE: &str = r#"{{!-- This a test for `init.vim` --}}
 {{@if {{OS}} == "windows"}}
 set fileformat=dos
