@@ -71,6 +71,7 @@ jobs:
             rust: stable
             target: x86_64-pc-windows-msvc
             features: windows-static
+            name: x86_64-pc-windows-msvc-static
           - build: win32-msvc
             os: windows-latest
             rust: stable
@@ -123,7 +124,8 @@ jobs:
       - name: Build archive
         shell: bash
         run: |
-          staging="punktf-${{ matrix.target }}"
+          suffix="${{ matrix.name }}"
+          staging="punktf-${suffix:?${{ matrix.target }}}"
           mkdir -p "$staging"
 
           if [[ "${{ matrix.os }}" = "windows-latest" ]]; then
