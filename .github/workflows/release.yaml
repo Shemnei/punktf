@@ -125,7 +125,7 @@ jobs:
         shell: bash
         run: |
           suffix="${{ matrix.name }}"
-          staging="punktf-${suffix:?${{ matrix.target }}}"
+          staging="punktf-${suffix:-${{ matrix.target }}}"
           mkdir -p "$staging"
 
           if [[ "${{ matrix.os }}" = "windows-latest" ]]; then
