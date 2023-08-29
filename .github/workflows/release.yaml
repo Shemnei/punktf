@@ -66,6 +66,12 @@ jobs:
             os: windows-latest
             rust: stable
             target: x86_64-pc-windows-msvc
+          - build: win-msvc-static
+            os: windows-latest
+            rust: stable
+            target: x86_64-pc-windows-msvc
+            features: windows-static
+            name: x86_64-pc-windows-msvc-static
           - build: win32-msvc
             os: windows-latest
             rust: stable
@@ -101,9 +107,15 @@ jobs:
           echo "target flags: ${{ env.TARGET_FLAGS }}"
           echo "target dir: ${{ env.TARGET_DIR }}"
 
-      - name: Build release binary
+      - name: Build release binary without features
+        if: ${{ matrix.features == '' }}
         run: |
           ${{ env.CARGO }} build --release ${{ env.TARGET_FLAGS }}
+
+      - name: Build release binary with features
+        if: ${{ matrix.features != '' }}
+        run: |
+          ${{ env.CARGO }} build --release ${{ env.TARGET_FLAGS }} --features ${{ matrix.features }}
 
       - name: Strip release binary (linux)
         if: matrix.build == 'linux'
@@ -112,7 +124,8 @@ jobs:
       - name: Build archive
         shell: bash
         run: |
-          staging="punktf-${{ matrix.target }}"
+          suffix="${{ matrix.name }}"
+          staging="punktf-${suffix:-${{ matrix.target }}}"
           mkdir -p "$staging"
 
           if [[ "${{ matrix.os }}" = "windows-latest" ]]; then
