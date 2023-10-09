@@ -174,7 +174,7 @@ Please refer to the [wiki](https://shemnei.github.io/punktf/chapter/reference_gu
 
 ## Dotfile Repositories using punktf
 
-- [michidk/dotfiles](https://gitlab.com/michidk/dotfiles)
+- [michidk/dotfiles](https://github.com/michidk/dotfiles)
 
 ## License
 
