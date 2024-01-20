@@ -1,0 +1,47 @@
+version: 1.0.0
+
+aliases:
+  - Foo
+  - Bar
+
+extends:
+  - Parent
+
+env:
+  Foo: Bar
+  Bool: true
+  Number: 2.4
+
+transformers:
+  - type: line_terminator
+    with: LF
+
+target: /tmp
+
+pre_hooks:
+  type: inline
+  with: |
+    set -eoux pipefail
+    echo 'Foo'
+
+items:
+  - priority: 5
+    env:
+      Foo: Bar
+      Bool: true
+    pre_hook:
+      type: inline
+      with: |-
+        set -eoux pipefail
+        echo 'Foo'
+    path: /dev/null
+    merge:
+      type: hook
+      with:
+        type: inline
+        with: |
+          #!/usr/bin/env bash
+
+          set -eoux pipefail
+
+          echo "test"

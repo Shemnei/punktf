@@ -38,10 +38,6 @@ opt-level = 0
 # and is only used when debugging.
 debug = 1
 
-[profile.dev.package.backtrace]
-# color-eyre: Improves performance for debug builds
-opt-level = 3
-
 [profile.release]
 lto = "thin"
 # Optimize for binary size. In this case also turns out to be the fastest to
