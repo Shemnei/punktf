@@ -65,7 +65,6 @@ jobs:
         with:
           reporter: github-check
           level: info
-          fail_on_error: false
 
   actionlint:
     name: runner / actionlint
