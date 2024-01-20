@@ -22,7 +22,7 @@ on:
       - 'crates/**'
       - 'examples/**'
 
-default:
+defaults:
   run:
     shell: bash
 

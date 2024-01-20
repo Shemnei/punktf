@@ -8,7 +8,7 @@ on:
         required: true
         type: string
 
-default:
+defaults:
   run:
     shell: bash
 

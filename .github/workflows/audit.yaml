@@ -21,8 +21,10 @@ on:
       - '.rustfmt.toml'
       - 'crates/**'
       - 'deny.toml'
+  schedule:
+    - cron: '35 16 * * 1'
 
-default:
+defaults:
   run:
     shell: bash
 
@@ -67,3 +69,50 @@ jobs:
         with:
           command: check ${{ matrix.checks }}
           rust-version: stable
+
+  rust-clippy-analyze:
+    name: Run rust-clippy analyzing
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: clippy
+          override: true
+
+      - name: Install clippy-sarif
+        uses: baptiste0928/cargo-install@v2
+        with:
+          crate: clippy-sarif
+
+      - name: Install sarif-fmt
+        uses: baptiste0928/cargo-install@v2
+        with:
+          crate: sarif-fmt
+
+      - name: Run rust-clippy
+        continue-on-error: true
+        run: |
+          cargo clippy \
+            --all-features \
+            --all-targets \
+            --message-format=json \
+            -- '--allow deprecated' \
+          | clippy-sarif \
+          | tee rust-clippy-results.sarif \
+          | sarif-fmt
+
+      - name: Upload analysis results to GitHub
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: rust-clippy-results.sarif
+          wait-for-processing: true
