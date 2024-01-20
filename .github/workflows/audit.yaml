@@ -1,3 +1,5 @@
+name: Audit
+
 on:
   pull_request:
     paths:
@@ -18,7 +20,9 @@ on:
       - '.rustfmt.toml'
       - 'crates/**'
 
-name: Audit
+default:
+  run:
+    shell: bash
 
 env:
   CARGO_INCREMENTAL: 0

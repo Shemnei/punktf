@@ -1,3 +1,5 @@
+name: CI
+
 on:
   pull_request:
     paths:
@@ -6,6 +8,7 @@ on:
       - 'rust-toolchain.toml'
       - '.rustfmt.toml'
       - 'crates/**'
+      - 'examples/**'
   push:
     branches:
       - main
@@ -17,8 +20,11 @@ on:
       - 'rust-toolchain.toml'
       - '.rustfmt.toml'
       - 'crates/**'
+      - 'examples/**'
 
-name: CI
+default:
+  run:
+    shell: bash
 
 env:
   CARGO_INCREMENTAL: 0
@@ -30,7 +36,6 @@ env:
 
 jobs:
   test:
-    name: Test Suite
     strategy:
       matrix:
         os: ["ubuntu-latest", "windows-latest", "macos-latest"]
@@ -64,6 +69,39 @@ jobs:
       - name: Test
         run: cargo hack test --workspace --feature-powerset
 
+  examples:
+    strategy:
+      matrix:
+        os: ["ubuntu-latest", "windows-latest", "macos-latest"]
+        rust: ["stable", "beta"]
+        include:
+        - os: ubuntu-latest
+          rust: "nightly"
+    continue-on-error: ${{ matrix.rust != 'stable' }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          override: true
+
+      # This plugin should be loaded after toolchain setup
+      - name: Setup rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install punktf
+        run: cargo install --path crates/punktf-cli
+
+      - name: Run examples
+        run: |
+          cd examples
+          ./ci.sh
+
   docs:
     runs-on: ubuntu-latest
     steps:
@@ -76,7 +114,7 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-          components: rustfmt
+          components: rust-docs
 
       # This plugin should be loaded after toolchain setup
       - name: Cache
@@ -112,7 +150,6 @@ jobs:
           args: --all -- --check
 
   clippy:
-    name: Lints
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
