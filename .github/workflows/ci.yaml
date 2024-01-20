@@ -181,7 +181,7 @@ jobs:
       uses: actions-rs/toolchain@v1
       with:
         profile: minimal
-        toolchain: stabl
+        toolchain: stable
         override: true
 
     # This plugin should be loaded after toolchain setup

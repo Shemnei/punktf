@@ -63,7 +63,8 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          # The lint function needs nightly
+          toolchain: nightly
           override: true
           components: rust-docs
 
