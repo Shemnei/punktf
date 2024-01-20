@@ -1,6 +1,2 @@
-format_strings = true
 hard_tabs = true
-imports_granularity = "Module"
 newline_style = "Unix"
-reorder_impl_items = true
-group_imports = "StdExternalCrate"

@@ -172,10 +172,6 @@ All properties are explained [in the wiki](https://shemnei.github.io/punktf/chap
 
 Please refer to the [wiki](https://shemnei.github.io/punktf/chapter/reference_guide/concepts/dotfile/template.html) for the templating syntax.
 
-## Dotfile Repositories using punktf
-
-- [michidk/dotfiles](https://gitlab.com/michidk/dotfiles)
-
 ## License
 
 Licensed under either of

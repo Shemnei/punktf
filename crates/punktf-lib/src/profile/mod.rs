@@ -438,16 +438,16 @@ pub fn collect_profile_names(source: &PunktfSource) -> Result<HashMap<String, Pa
 	fn get_aliases(path: &Path, extension: &str) -> Option<Aliases> {
 		let Ok(file) = File::open(path) else {
 			log::debug!("[{}] Failed to read content", path.display());
-				return None;
-			};
+			return None;
+		};
 
 		#[cfg(feature = "profile-json")]
 		{
 			if extension.eq_ignore_ascii_case("json") {
 				let Ok(aliases) = serde_json::from_reader(file) else {
-						log::debug!("[{}] Failed to read aliases", path.display());
-						return None;
-					};
+					log::debug!("[{}] Failed to read aliases", path.display());
+					return None;
+				};
 
 				return Some(aliases);
 			}
@@ -457,9 +457,9 @@ pub fn collect_profile_names(source: &PunktfSource) -> Result<HashMap<String, Pa
 		{
 			if extension.eq_ignore_ascii_case("yaml") || extension.eq_ignore_ascii_case("yml") {
 				let Ok(aliases) = serde_yaml::from_reader(file) else {
-						log::debug!("[{}] Failed to read aliases", path.display());
-						return None;
-					};
+					log::debug!("[{}] Failed to read aliases", path.display());
+					return None;
+				};
 
 				return Some(aliases);
 			}

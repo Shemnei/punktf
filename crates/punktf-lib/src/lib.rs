@@ -13,7 +13,6 @@
 	missing_docs,
 	clippy::missing_docs_in_private_items,
 	missing_debug_implementations,
-	private_in_public,
 	rust_2018_compatibility,
 	rust_2018_idioms,
 	trivial_casts,
@@ -50,9 +49,9 @@ mod tests {
 			)
 			.is_test(true)
 			.try_init()
-			.unwrap();
+			.expect("Test logger setup to not fail");
 
-			color_eyre::install().unwrap();
+			color_eyre::install().expect("color_eyre setup to not fail");
 		})
 	}
 }

@@ -1,0 +1,118 @@
+name: Audit
+
+on:
+  pull_request:
+    paths:
+      - 'Cargo.lock'
+      - 'Cargo.toml'
+      - 'rust-toolchain.toml'
+      - '.rustfmt.toml'
+      - 'crates/**'
+      - 'deny.toml'
+      - '.github/workflows/**'
+  push:
+    branches:
+      - main
+      - staging
+      - trying
+    paths:
+      - 'Cargo.lock'
+      - 'Cargo.toml'
+      - 'rust-toolchain.toml'
+      - '.rustfmt.toml'
+      - 'crates/**'
+      - 'deny.toml'
+      - '.github/workflows/**'
+  schedule:
+    - cron: '35 16 * * 1'
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  RUST_BACKTRACE: 1
+  RUSTUP_MAX_RETRIES: 10
+  CARGO_TERM_COLOR: always
+  CLICOLOR: 1
+
+jobs:
+  security_audit:
+    permissions:
+      issues: write # to create issues (actions-rs/audit-check)
+      checks: write # to create check (actions-rs/audit-check)
+    runs-on: ubuntu-latest
+    # Prevent sudden announcement of a new advisory from failing ci:
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - uses: actions-rs/audit-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  cargo_deny:
+    permissions:
+      issues: write # to create issues (actions-rs/audit-check)
+      checks: write # to create check (actions-rs/audit-check)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        checks:
+          - bans licenses sources
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - uses: EmbarkStudios/cargo-deny-action@v1
+        with:
+          command: check ${{ matrix.checks }}
+          rust-version: stable
+
+  rust-clippy-analyze:
+    name: Run rust-clippy analyzing
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          components: clippy
+
+      - name: Install clippy-sarif
+        uses: baptiste0928/cargo-install@v2
+        with:
+          crate: clippy-sarif
+
+      - name: Install sarif-fmt
+        uses: baptiste0928/cargo-install@v2
+        with:
+          crate: sarif-fmt
+
+      - name: Run rust-clippy
+        continue-on-error: true
+        run: |
+          cargo clippy \
+            --all-features \
+            --all-targets \
+            --message-format=json \
+            -- '--allow deprecated' \
+          | clippy-sarif \
+          | tee rust-clippy-results.sarif \
+          | sarif-fmt
+
+      - name: Upload analysis results to GitHub
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: rust-clippy-results.sarif
+          wait-for-processing: true

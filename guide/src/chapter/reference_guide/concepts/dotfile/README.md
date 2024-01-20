@@ -19,7 +19,7 @@ The options for both are the same (look at [[Profiles|Profiles]] for more detail
 
 	This behaviour can be influenced in two different ways:
 
-	1) Set `dotfile.overwrite_target`: This will used instead of `profile.target`. All files will still land in the root.
+	1) Set `dotfile.overwrite_target`: This will be used instead of `profile.target`. All files will still land in the root.
 	2) Set `dotfile.rename`: With this option a name for the directory can be set
 
 		For example:

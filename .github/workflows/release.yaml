@@ -2,17 +2,21 @@
 # - https://eugene-babichenko.github.io/blog/2020/05/09/github-actions-cross-platform-auto-releases/
 # - https://github.com/BurntSushi/ripgrep/blob/master/.github/workflows/release.yml
 
+name: Release
+
 on:
   push:
     tags:
       - 'v[0-9]+.*'
 
-name: Release punktf
-
 # Allow one concurrent check
 concurrency:
   group: "punktf-release"
   cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
 
 permissions:
   contents: write
@@ -30,8 +34,9 @@ jobs:
         run: |
           # Get the version from github tag
           # See: https://github.community/t5/GitHub-Actions/How-to-get-just-the-tag-name/m-p/32167/highlight/true#M1027
-          echo "PUNKTF_VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+          echo "PUNKTF_VERSION=${GITHUB_REF#refs/tags/v}" >> "${GITHUB_ENV}"
           echo "Version: ${{ env.PUNKTF_VERSION }}"
+
       - name: Create release
         id: release
         uses: softprops/action-gh-release@v1
@@ -39,7 +44,6 @@ jobs:
         with:
           name: ${{ env.PUNKTF_VERSION }}
           generate_release_notes: true
-          draft: true
 
   build-release:
     name: Build release
@@ -66,13 +70,19 @@ jobs:
             os: windows-latest
             rust: stable
             target: x86_64-pc-windows-msvc
+          - build: win-msvc-static
+            os: windows-latest
+            rust: stable
+            target: x86_64-pc-windows-msvc
+            features: windows-static
+            name: x86_64-pc-windows-msvc-static
           - build: win32-msvc
             os: windows-latest
             rust: stable
             target: i686-pc-windows-msvc
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Update packages (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
@@ -80,20 +90,20 @@ jobs:
           sudo apt-get update -y
 
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: ${{ matrix.rust }}
-          override: true
           target: ${{ matrix.target }}
 
       - name: Setup Cross
         shell: bash
         run: |
           cargo install cross
-          echo "CARGO=cross" >> $GITHUB_ENV
-          echo "TARGET_FLAGS=--target ${{ matrix.target }}" >> $GITHUB_ENV
-          echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
+          {
+            echo "CARGO=cross"
+            echo "TARGET_FLAGS=--target ${{ matrix.target }}"
+            echo "TARGET_DIR=./target/${{ matrix.target }}"
+          } >> "${GITHUB_ENV}"
 
       - name: Log env
         run: |
@@ -101,9 +111,15 @@ jobs:
           echo "target flags: ${{ env.TARGET_FLAGS }}"
           echo "target dir: ${{ env.TARGET_DIR }}"
 
-      - name: Build release binary
+      - name: Build release binary without features
+        if: ${{ matrix.features == '' }}
         run: |
           ${{ env.CARGO }} build --release ${{ env.TARGET_FLAGS }}
+
+      - name: Build release binary with features
+        if: ${{ matrix.features != '' }}
+        run: |
+          ${{ env.CARGO }} build --release ${{ env.TARGET_FLAGS }} --features ${{ matrix.features }}
 
       - name: Strip release binary (linux)
         if: matrix.build == 'linux'
@@ -112,19 +128,20 @@ jobs:
       - name: Build archive
         shell: bash
         run: |
-          staging="punktf-${{ matrix.target }}"
-          mkdir -p "$staging"
+          suffix="${{ matrix.name }}"
+          staging="punktf-${suffix:-${{ matrix.target }}}"
+          mkdir -p "${staging}"
 
           if [[ "${{ matrix.os }}" = "windows-latest" ]]; then
             echo "Archiving windows build"
-            cp "${{ env.TARGET_DIR }}/release/punktf.exe" "$staging/"
-            7z a "$staging.zip" "$staging"
-            echo "ASSET=$staging.zip" >> $GITHUB_ENV
+            cp "${{ env.TARGET_DIR }}/release/punktf.exe" "${staging}/"
+            7z a "${staging}.zip" "${staging}"
+            echo "ASSET=${staging}.zip" >> "${GITHUB_ENV}"
           else
             echo "Archiving unix build"
-            cp "${{ env.TARGET_DIR }}/release/punktf" "$staging/"
-            tar czf "$staging.tar.gz" "$staging"
-            echo "ASSET=$staging.tar.gz" >> $GITHUB_ENV
+            cp "${{ env.TARGET_DIR }}/release/punktf" "${staging}/"
+            tar czf "${staging}.tar.gz" "${staging}"
+            echo "ASSET=${staging}.tar.gz" >> "${GITHUB_ENV}"
           fi
 
       - name: Calculate hashes (linux)

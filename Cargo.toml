@@ -1,7 +1,7 @@
 [workspace]
 members = ["crates/*"]
 exclude = ["guide/linkchecker"]
-resolver =  "2"
+resolver = "2"
 
 [workspace.package]
 authors = ["Michael Lohr <michael@lohr.dev>", "Shemnei"]
@@ -20,15 +20,17 @@ thiserror = "1.0.38"
 walkdir = "2.3.2"
 unicode-width = "0.1.10"
 cfg-if = "1.0.0"
-shellexpand = "2.1.2"
+shellexpand = "3.1.0"
 # Cli
 clap = { version = "4.1.2", features = ["derive", "env"] }
 clap_mangen = "0.2.5"
 clap_complete = "4.1.1"
-env_logger = { version = "0.9.3", default-features = false, features = ["termcolor", "atty"] }
+env_logger = "0.11.0"
 similar = { version = "2.2.1", features = ["text", "unicode", "inline"] }
 console = "0.15.5"
-punktf-lib = { version = "2.0.0", path = "crates/punktf-lib", features = ["profile-all"] }
+punktf-lib = { version = "2.0.1", path = "crates/punktf-lib", features = [
+  "profile-all",
+] }
 
 [profile.dev]
 opt-level = 0
