@@ -48,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- Removed current directory as fallback for the `punktf` source directory when neither `-s/--source` or `PUNKTF_SOURCE` were supplied. This mainly caused confusion and was a undocumented feature.
+- Removed current directory as fallback for the `punktf` source directory when neither `-s/--source` or `PUNKTF_SOURCE` were supplied. This mainly caused confusion and was an undocumented feature.
 
 ### Fixed
 

@@ -65,6 +65,8 @@ jobs:
         with:
           reporter: github-check
           level: info
+          patterns: |
+            !guide/ci/dictionary.txt
 
   actionlint:
     name: runner / actionlint

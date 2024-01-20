@@ -4,7 +4,7 @@
 
 `punktf` injects some default system environment variables if they are not present. These variable are set during compilation of `punktf` so you get the values of the compiling system. In most cases the values should be the same when running a compiled executable on another system.
 
-The following are implemented (can be overwritten by defining a environment variable with the same name):
+The following are implemented (can be overwritten by defining an environment variable with the same name):
 
 - `PUNKTF_TARGET_ARCH`: Architecture of the system which compiled `punktf`
 - `PUNKTF_TARGET_OS`: Operating system of the system which compiled `punktf`
@@ -70,7 +70,7 @@ Supported are `if`, `elif`, `else` and `fi`. Each `if` block must have a `fi` bl
 In between the `if` and `fi` block can be zero or multiple `elif` blocks with a final optional `else` block.
 Each if related block must be prefixed with `{{@` and end with `}}`.
 
-Currently the only supported if syntax is:
+Currently, the only supported if syntax is:
 
 - Check if the value of a variable is (not) equal to the literal given: `{{VAR}} (==|!=) "LITERAL"`
 - Check if a value for a variable (not) exists: `(!){{VAR}}`

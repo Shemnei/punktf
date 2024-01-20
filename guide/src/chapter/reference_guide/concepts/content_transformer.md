@@ -1,8 +1,8 @@
 # Content Transformer
 
-Transforms run once for each defined dotfile during the deploy process.
+Transforms run once for each defined dotfile during the deployment process.
 
-They can either be specified for a whole profile, in which case each dotfile is transformed by them or they can be attached to a specific dotfile.
+They can either be specified for a whole profile, in which case each dotfile is transformed by them, or they can be attached to a specific dotfile.
 
 A transform takes the contents of a dotfile, processes it and returns a new version of the content.
 
@@ -17,7 +17,7 @@ The contents are either a resolved template or a non-template dotfile.
 
 ### LineTerminator
 
-The `LineTerminator` transformer replaces all occurrences of one kind of line terminator with a other one.
+The `LineTerminator` transformer replaces all occurrences of one kind of line terminator with another one.
 
 #### Options
 
