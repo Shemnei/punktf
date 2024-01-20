@@ -15,7 +15,7 @@ jobs:
     environment: "publish-crates.io"
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.tag-name }}
 
@@ -67,7 +67,7 @@ jobs:
     environment: "publish-homebrew"
     steps:
       - name: Bump Homebrew formula
-        uses: mislav/bump-homebrew-formula-action@v2
+        uses: mislav/bump-homebrew-formula-action@v3
         with:
           formula-name: punktf
           homebrew-tap: michidk/homebrew-tools
