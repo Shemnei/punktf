@@ -31,7 +31,10 @@ fn print_udiff(target: &Path, old: &str, new: &str) {
 	let diff = TextDiff::from_lines(old, new);
 
 	println!("--- {path}\r\n+++ {path}", path = target.display());
-	diff.unified_diff().to_writer(std::io::stdout()).unwrap();
+
+	diff.unified_diff()
+		.to_writer(std::io::stdout())
+		.expect("Writing to stdout to never fail");
 }
 
 /// Used to pretty print diff line numbers.

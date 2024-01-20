@@ -49,9 +49,9 @@ mod tests {
 			)
 			.is_test(true)
 			.try_init()
-			.unwrap();
+			.expect("Test logger setup to not fail");
 
-			color_eyre::install().unwrap();
+			color_eyre::install().expect("color_eyre setup to not fail");
 		})
 	}
 }
