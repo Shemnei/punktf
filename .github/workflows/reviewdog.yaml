@@ -1,17 +1,81 @@
 name: Reviewdog
+
 on:
   push:
     branches:
       - main
   pull_request:
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   typos:
     name: runner / typos
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Run typos with reviewdog
-        uses: Shemnei/reviewdog-action-typos@v0.2.2
+        uses: Shemnei/reviewdog-action-typos@v0
         with:
           reporter: github-check
+          level: error
+          fail_on_error: true
+
+  shellcheck:
+    name: runner / shellcheck
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run shellcheck with reviewdog
+        uses: reviewdog/action-shellcheck@v1
+        with:
+          reporter: github-check
+          level: error
+          fail_on_error: true
+
+  shfmt:
+    name: runner / shfmt
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run shfmt with reviewdog
+        uses: reviewdog/action-shfmt@v1
+        with:
+          reporter: github-check
+          level: error
+          fail_on_error: true
+
+  languagetool:
+    name: runner / languagetool
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run languagetool with reviewdog
+        uses: reviewdog/action-languagetool@v1
+        with:
+          reporter: github-check
+          level: info
+
+  actionlint:
+    name: runner / actionlint
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run actionlint with reviewdog
+        uses: reviewdog/action-actionlint@v1
+        with:
+          reporter: github-check
+          level: error
+          fail_on_error: true
