@@ -6,11 +6,12 @@ use crate::{
 	profile::{source::PunktfSource, transform::Transform},
 	visit::*,
 };
+use color_eyre::Result;
 use std::path::Path;
 
 /// Applies any relevant [`Transform`](`crate::profile::transform::Transform`)
 /// for the given file.
-fn transform_content(profile: &LayeredProfile, file: &File<'_>, content: String) -> String {
+fn transform_content(profile: &LayeredProfile, file: &File<'_>, content: String) -> Result<String> {
 	let mut content = content;
 
 	// Copy so we exec_dotfile is not referenced by this in case an error occurs.
@@ -21,10 +22,10 @@ fn transform_content(profile: &LayeredProfile, file: &File<'_>, content: String)
 	//   - Transformers which are specified in the profile root
 	//   - Transformers which are specified on a specific dotfile of a profile
 	for transformer in profile.transformers().chain(exec_transformers.iter()) {
-		content = transformer.transform(content).unwrap();
+		content = transformer.transform(content)?;
 	}
 
-	content
+	Ok(content)
 }
 
 /// An event which is emitted for every differing item.
@@ -83,13 +84,32 @@ where
 	pub fn diff(self, source: &PunktfSource, profile: &mut LayeredProfile) {
 		let mut resolver = ResolvingVisitor(self);
 		let walker = Walker::new(profile);
-		walker.walk(source, &mut resolver).unwrap();
+
+		if let Err(err) = walker.walk(source, &mut resolver) {
+			log::error!("Failed to execute diff: {err}");
+		}
 	}
 
 	/// Emits the given event.
 	fn dispatch(&self, event: Event<'_>) {
 		(self.0)(event)
 	}
+}
+
+macro_rules! safe_read_file_content {
+	($path:expr, $display_path:expr) => {{
+		match std::fs::read_to_string($path) {
+			Ok(old) => old,
+			Err(err) if err.kind() == std::io::ErrorKind::InvalidData => {
+				log::info!("[{}] Ignored - Binary data", $display_path);
+				return Ok(());
+			}
+			Err(err) => {
+				log::error!("[{}] Error - Failed to read file: {err}", $display_path);
+				return Ok(());
+			}
+		}
+	}};
 }
 
 impl<F> Visitor for Diff<F>
@@ -107,12 +127,22 @@ where
 		file: &File<'a>,
 	) -> Result {
 		if file.target_path.exists() {
-			let new = transform_content(
-				profile,
-				file,
-				std::fs::read_to_string(&file.source_path).unwrap(),
-			);
-			let old = std::fs::read_to_string(&file.target_path).unwrap();
+			let old =
+				safe_read_file_content!(&file.target_path, file.relative_source_path.display());
+
+			let new =
+				safe_read_file_content!(&file.source_path, file.relative_source_path.display());
+
+			let new = match transform_content(profile, file, new) {
+				Ok(new) => new,
+				Err(err) => {
+					log::error!(
+						"[{}] Error - Failed to apply transformer: {err}",
+						file.relative_source_path.display(),
+					);
+					return Ok(());
+				}
+			};
 
 			if new != old {
 				self.dispatch(Event::Diff {
@@ -150,7 +180,7 @@ where
 	/// Links are currently not supported for diffing.
 	fn accept_link(&mut self, _: &PunktfSource, _: &LayeredProfile, link: &Symlink) -> Result {
 		log::info!(
-			"[{}] Symlinks are not supported for diffs",
+			"[{}] Ignoring - Symlinks are not supported for diffs",
 			link.source_path.display()
 		);
 
@@ -200,7 +230,7 @@ where
 	/// If so, a change [`Event::NewFile`]/[`Event::Diff`] is emitted.
 	fn accept_template<'a>(
 		&mut self,
-		_: &PunktfSource,
+		source: &PunktfSource,
 		profile: &LayeredProfile,
 		file: &File<'a>,
 		// Returns a function to resolve the content to make the resolving lazy
@@ -208,12 +238,34 @@ where
 		resolve_content: impl FnOnce(&str) -> color_eyre::Result<String>,
 	) -> Result {
 		if file.target_path.exists() {
-			let new = transform_content(
-				profile,
-				file,
-				resolve_content(&std::fs::read_to_string(&file.source_path).unwrap()).unwrap(),
-			);
-			let old = std::fs::read_to_string(&file.target_path).unwrap();
+			let old =
+				safe_read_file_content!(&file.target_path, file.relative_source_path.display());
+
+			let new =
+				safe_read_file_content!(&file.source_path, file.relative_source_path.display());
+
+			let content = match resolve_content(&new) {
+				Ok(content) => content,
+				Err(err) => {
+					log::error!(
+						"[{}] Error - Failed to resolve template: {err}",
+						file.source_path.display()
+					);
+
+					return Ok(());
+				}
+			};
+
+			let new = match transform_content(profile, file, new) {
+				Ok(new) => new,
+				Err(err) => {
+					log::error!(
+						"[{}] Error - Failed to apply transformer: {err}",
+						file.relative_source_path.display(),
+					);
+					return Ok(());
+				}
+			};
 
 			if new != old {
 				self.dispatch(Event::Diff {
