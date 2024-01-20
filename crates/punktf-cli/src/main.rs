@@ -111,7 +111,6 @@
 	missing_docs,
 	clippy::missing_docs_in_private_items,
 	missing_debug_implementations,
-	private_in_public,
 	rust_2018_compatibility,
 	rust_2018_idioms,
 	trivial_casts,
