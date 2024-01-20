@@ -10,9 +10,30 @@ use std::{fmt, path::Path};
 /// Processes diff [`Event`s](`punktf_lib::visit::diff::Event`) from the visitor.
 pub fn diff(format: DiffFormat, event: Event<'_>) {
 	match event {
-		Event::NewFile(path) => println!("[{}] New file", path.display()),
-		Event::NewDirectory(path) => println!("[{}] New directory", path.display()),
+		Event::NewFile {
+			relative_source_path,
+			target_path,
+		} => println!(
+			"[{} => {}] New file",
+			style(relative_source_path.display())
+				.bold()
+				.black()
+				.bright(),
+			style(target_path.display()).bold().bright()
+		),
+		Event::NewDirectory {
+			relative_source_path,
+			target_path,
+		} => println!(
+			"[{} => {}] New directory",
+			style(relative_source_path.display())
+				.bold()
+				.black()
+				.bright(),
+			style(target_path.display()).bold().bright()
+		),
 		Event::Diff {
+			relative_source_path,
 			target_path,
 			old_content,
 			new_content,
@@ -20,7 +41,12 @@ pub fn diff(format: DiffFormat, event: Event<'_>) {
 			if format == DiffFormat::Unified {
 				print_udiff(target_path, &old_content, &new_content);
 			} else {
-				print_pretty(target_path, &old_content, &new_content);
+				print_pretty(
+					relative_source_path,
+					target_path,
+					&old_content,
+					&new_content,
+				);
 			}
 		}
 	}
@@ -50,12 +76,16 @@ impl fmt::Display for Line {
 }
 
 /// Prints a file diff with ansii escape codes.
-fn print_pretty(target: &Path, old: &str, new: &str) {
+fn print_pretty(source: &Path, target: &Path, old: &str, new: &str) {
 	let diff = TextDiff::from_lines(old, new);
 
 	for (idx, group) in diff.grouped_ops(3).iter().enumerate() {
 		if idx == 0 {
-			println!(">> {}", style(target.display()).bold().bright());
+			println!(
+				">> {} => {}",
+				style(source.display()).bold().black().bright(),
+				style(target.display()).bold().bright()
+			);
 		}
 
 		if idx > 0 {

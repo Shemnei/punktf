@@ -35,13 +35,28 @@ fn transform_content(
 #[derive(Debug)]
 pub enum Event<'a> {
 	/// File does currently not exist but would be created.
-	NewFile(&'a Path),
+	NewFile {
+		/// Relative path to the punktf source.
+		relative_source_path: &'a Path,
+
+		/// Absolute path to the target location.
+		target_path: &'a Path,
+	},
 
 	/// Directory does currently not exist but would be created.
-	NewDirectory(&'a Path),
+	NewDirectory {
+		/// Relative path to the punktf source.
+		relative_source_path: &'a Path,
+
+		/// Absolute path to the target location.
+		target_path: &'a Path,
+	},
 
 	/// File does exist but the contents would changed.
 	Diff {
+		/// Relative path to the punktf source.
+		relative_source_path: &'a Path,
+
 		/// Absolute path to the target location.
 		target_path: &'a Path,
 
@@ -61,8 +76,8 @@ impl Event<'_> {
 	/// Returns the absolute target path for the diff.
 	pub const fn target_path(&self) -> &Path {
 		match self {
-			Self::NewFile(p) => p,
-			Self::NewDirectory(p) => p,
+			Self::NewFile { target_path, .. } => target_path,
+			Self::NewDirectory { target_path, .. } => target_path,
 			Self::Diff { target_path, .. } => target_path,
 		}
 	}
@@ -155,13 +170,17 @@ where
 
 			if new != old {
 				self.dispatch(Event::Diff {
+					relative_source_path: &file.relative_source_path,
 					target_path: &file.target_path,
 					old_content: old,
 					new_content: new,
 				});
 			}
 		} else {
-			self.dispatch(Event::NewFile(&file.target_path))
+			self.dispatch(Event::NewFile {
+				relative_source_path: &file.relative_source_path,
+				target_path: &file.target_path,
+			})
 		}
 
 		Ok(())
@@ -177,7 +196,10 @@ where
 		directory: &Directory<'a>,
 	) -> Result {
 		if !directory.target_path.exists() {
-			self.dispatch(Event::NewDirectory(&directory.target_path))
+			self.dispatch(Event::NewDirectory {
+				relative_source_path: &directory.relative_source_path,
+				target_path: &directory.target_path,
+			})
 		}
 
 		Ok(())
@@ -278,13 +300,17 @@ where
 
 			if new != old {
 				self.dispatch(Event::Diff {
+					relative_source_path: &file.relative_source_path,
 					target_path: &file.target_path,
 					old_content: old,
 					new_content: new,
 				});
 			}
 		} else {
-			self.dispatch(Event::NewFile(&file.target_path))
+			self.dispatch(Event::NewFile {
+				relative_source_path: &file.relative_source_path,
+				target_path: &file.target_path,
+			})
 		}
 
 		Ok(())
