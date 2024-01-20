@@ -3,6 +3,7 @@ members = ["crates/*"]
 exclude = ["guide/linkchecker"]
 resolver = "2"
 
+
 [workspace.package]
 authors = ["Michael Lohr <michael@lohr.dev>", "Shemnei"]
 edition = "2021"
