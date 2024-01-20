@@ -7,7 +7,7 @@
 # More details at https://github.com/rust-lang/rust-clippy
 # and https://rust-lang.github.io/rust-clippy/
 
-name: rust-clippy analyze
+name: Clippy security reports
 
 on:
   push:
@@ -54,11 +54,16 @@ jobs:
         run: cargo install clippy-sarif sarif-fmt
 
       - name: Run rust-clippy
-        run:
-          cargo clippy
-          --all-features
-          --message-format=json | clippy-sarif | tee rust-clippy-results.sarif | sarif-fmt
         continue-on-error: true
+        run: |
+          cargo clippy \
+            --all-features \
+            --all-targets \
+            --message-format=json \ 
+            -- --allow deprecated \
+          | clippy-sarif \
+          | tee rust-clippy-results.sarif \
+          | sarif-fmt
 
       - name: Upload analysis results to GitHub
         uses: github/codeql-action/upload-sarif@v2

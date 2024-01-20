@@ -18,21 +18,56 @@ on:
       - '.rustfmt.toml'
       - 'crates/**'
 
-name: punktf CI
+name: CI
 
 env:
   CARGO_INCREMENTAL: 0
   CARGO_NET_RETRY: 10
-  RUST_BACKTRACE: short
-  RUSTFLAGS: "-D warnings -W rust-2021-compatibility"
+  RUST_BACKTRACE: 1
   RUSTUP_MAX_RETRIES: 10
+  CARGO_TERM_COLOR: always
+  CLICOLOR: 1
 
 jobs:
   test:
     name: Test Suite
+    strategy:
+      matrix:
+        os: ["ubuntu-latest", "windows-latest", "macos-latest"]
+        rust: ["stable", "beta"]
+        include:
+        - os: ubuntu-latest
+          rust: "nightly"
+    continue-on-error: ${{ matrix.rust != 'stable' }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          override: true
+
+      # This plugin should be loaded after toolchain setup
+      - name: Setup rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo hack
+        uses: taiki-e/install-action@cargo-hack
+
+      - name: Build
+        run: cargo test --no-run --workspace --all-features
+
+      - name: Test
+        run: cargo hack test --workspace --feature-powerset
+
+  docs:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout sources
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Install toolchain
@@ -41,30 +76,21 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+          components: rustfmt
 
       # This plugin should be loaded after toolchain setup
       - name: Cache
         uses: Swatinem/rust-cache@v2
 
-      # `test` is used instead of `build` to also include the test modules in
-      # the compilation check.
-      - name: Compile
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --no-run
+      - name: Check documentation
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --workspace --all-features --no-deps --document-private-items
 
-      - name: Test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: -- --nocapture --quiet
-
-  lints:
-    name: Lints
+  rustfmt:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout sources
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Install toolchain
@@ -73,9 +99,9 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-          components: rustfmt, clippy
+          components: rustfmt
 
-      # This pluging should be loaded after toolchain setup
+      # This plugin should be loaded after toolchain setup
       - name: Cache
         uses: Swatinem/rust-cache@v2
 
@@ -85,17 +111,45 @@ jobs:
           command: fmt
           args: --all -- --check
 
-      - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -- -D warnings
-
-  typos:
-    name: Typos
+  clippy:
+    name: Lints
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout sources
+      - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Check for typos
-        uses: crate-ci/typos@master
+
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: clippy
+
+      # This plugin should be loaded after toolchain setup
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run cargo clippy
+        run: |
+          cargo clippy --all-features --all-targets --message-format=json -- --allow deprecated
+
+  lockfile:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stabl
+        override: true
+
+    # This plugin should be loaded after toolchain setup
+    - name: Setup rust cache
+      uses: Swatinem/rust-cache@v2
+
+    - name: Lockfile up to date
+      run: cargo update --locked
