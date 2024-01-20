@@ -9,6 +9,7 @@ on:
       - '.rustfmt.toml'
       - 'crates/**'
       - 'deny.toml'
+      - '.github/workflows/**'
   push:
     branches:
       - main
@@ -21,6 +22,7 @@ on:
       - '.rustfmt.toml'
       - 'crates/**'
       - 'deny.toml'
+      - '.github/workflows/**'
   schedule:
     - cron: '35 16 * * 1'
 
