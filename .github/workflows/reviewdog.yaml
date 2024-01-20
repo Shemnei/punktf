@@ -1,0 +1,17 @@
+name: Reviewdog
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  typos:
+    name: runner / typos
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run typos with reviewdog
+        uses: Shemnei/reviewdog-action-typos@v0.2.2
+        with:
+          reporter: github-check
