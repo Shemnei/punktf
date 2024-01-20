@@ -8,6 +8,7 @@ on:
       - 'rust-toolchain.toml'
       - '.rustfmt.toml'
       - 'crates/**'
+      - 'deny.toml'
   push:
     branches:
       - main
@@ -19,6 +20,7 @@ on:
       - 'rust-toolchain.toml'
       - '.rustfmt.toml'
       - 'crates/**'
+      - 'deny.toml'
 
 default:
   run:
