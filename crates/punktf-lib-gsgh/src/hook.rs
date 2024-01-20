@@ -124,8 +124,11 @@ impl Hook {
 		}
 
 		let Some(mut cmd) = cmd else {
-				return Err(HookError::IoError(std::io::Error::new(std::io::ErrorKind::Other, "Hooks are only supported on Windows and Unix-based systems")));
-			};
+			return Err(HookError::IoError(std::io::Error::new(
+				std::io::ErrorKind::Other,
+				"Hooks are only supported on Windows and Unix-based systems",
+			)));
+		};
 
 		match self {
 			Self::Inline(s) => {

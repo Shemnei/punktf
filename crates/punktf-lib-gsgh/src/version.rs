@@ -119,26 +119,33 @@ impl FromStr for Version {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		let Some((s, major)) = parse_u8(s)? else {
-				return Err(ParseVersionError::Empty);
-			};
+			return Err(ParseVersionError::Empty);
+		};
 
 		let Some(s) = parse_dot(s)? else {
-				return Ok(Version { major, ..Default::default() });
-			};
+			return Ok(Version {
+				major,
+				..Default::default()
+			});
+		};
 
 		let Some((s, minor)) = parse_u8(s)? else {
-				// The parse `.` is trailing
-				return Err(ParseVersionError::TrailingCharacters);
-			};
+			// The parse `.` is trailing
+			return Err(ParseVersionError::TrailingCharacters);
+		};
 
 		let Some(s) = parse_dot(s)? else {
-				return Ok(Version { major, minor, ..Default::default() });
-			};
+			return Ok(Version {
+				major,
+				minor,
+				..Default::default()
+			});
+		};
 
 		let Some((s, patch)) = parse_u8(s)? else {
-				// The parse `.` is trailing
-				return Err(ParseVersionError::TrailingCharacters);
-			};
+			// The parse `.` is trailing
+			return Err(ParseVersionError::TrailingCharacters);
+		};
 
 		if s.is_empty() {
 			Ok(Version {
