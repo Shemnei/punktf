@@ -23,10 +23,9 @@ jobs:
         with:
           ref: ${{ github.event.inputs.tag-name }}
 
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: stable
 
       - name: Upload punktf-lib to crates.io

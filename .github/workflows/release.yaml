@@ -44,7 +44,6 @@ jobs:
         with:
           name: ${{ env.PUNKTF_VERSION }}
           generate_release_notes: true
-          draft: true
 
   build-release:
     name: Build release
@@ -91,11 +90,9 @@ jobs:
           sudo apt-get update -y
 
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: ${{ matrix.rust }}
-          override: true
           target: ${{ matrix.target }}
 
       - name: Setup Cross

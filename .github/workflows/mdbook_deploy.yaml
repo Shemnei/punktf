@@ -8,14 +8,6 @@ on:
       - main
     paths:
       - 'guide/**'
-  # On merged pr
-  pull_request:
-    types:
-      - closed
-    branches:
-      - main
-    paths:
-      - 'guide/**'
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
