@@ -1,6 +1,5 @@
 use std::{
-	collections::{btree_set, BTreeMap, BTreeSet, HashSet},
-	ops::Deref,
+	collections::{btree_set, BTreeMap, BTreeSet},
 };
 
 use serde::{Deserialize, Serialize};
@@ -43,7 +42,7 @@ impl LayeredEnvironment {
 			}
 		}
 
-		return None;
+		None
 	}
 
 	pub fn iter(&self) -> LayeredIter<'_> {

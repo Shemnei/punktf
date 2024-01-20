@@ -110,7 +110,7 @@ pub mod de {
 				where
 					E: de::Error,
 				{
-					Ok(Value::Int(v as i64))
+					Ok(Value::Int(v))
 				}
 
 				fn visit_u8<E>(self, v: u8) -> Result<Self::Value, E>
@@ -152,7 +152,7 @@ pub mod de {
 				where
 					E: de::Error,
 				{
-					Ok(Value::Float(v as f64))
+					Ok(Value::Float(v))
 				}
 
 				fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
