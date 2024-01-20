@@ -49,7 +49,7 @@ pub enum Event<'a> {
 		/// #NOTE
 		/// If the contents come from a template item, it will be already
 		/// fully resolved.
-		new_contnet: String,
+		new_content: String,
 	},
 }
 
@@ -118,7 +118,7 @@ where
 				self.dispatch(Event::Diff {
 					target_path: &file.target_path,
 					old_content: old,
-					new_contnet: new,
+					new_content: new,
 				});
 			}
 		} else {
@@ -219,7 +219,7 @@ where
 				self.dispatch(Event::Diff {
 					target_path: &file.target_path,
 					old_content: old,
-					new_contnet: new,
+					new_content: new,
 				});
 			}
 		} else {

@@ -15,12 +15,12 @@ pub fn diff(format: DiffFormat, event: Event<'_>) {
 		Event::Diff {
 			target_path,
 			old_content,
-			new_contnet,
+			new_content,
 		} => {
 			if format == DiffFormat::Unified {
-				print_udiff(target_path, &old_content, &new_contnet);
+				print_udiff(target_path, &old_content, &new_content);
 			} else {
-				print_pretty(target_path, &old_content, &new_contnet);
+				print_pretty(target_path, &old_content, &new_content);
 			}
 		}
 	}
