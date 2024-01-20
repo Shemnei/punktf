@@ -6,12 +6,15 @@ use crate::{
 	profile::{source::PunktfSource, transform::Transform},
 	visit::*,
 };
-use color_eyre::Result;
 use std::path::Path;
 
 /// Applies any relevant [`Transform`](`crate::profile::transform::Transform`)
 /// for the given file.
-fn transform_content(profile: &LayeredProfile, file: &File<'_>, content: String) -> Result<String> {
+fn transform_content(
+	profile: &LayeredProfile,
+	file: &File<'_>,
+	content: String,
+) -> color_eyre::Result<String> {
 	let mut content = content;
 
 	// Copy so we exec_dotfile is not referenced by this in case an error occurs.
@@ -96,6 +99,12 @@ where
 	}
 }
 
+/// Reads the contents of the given file at `path`.
+///
+/// Handles common errors by logging them using `display_path` as identifier.
+///
+/// Will either return the files contents or directly exit the outer function
+/// with `Ok(())`.
 macro_rules! safe_read_file_content {
 	($path:expr, $display_path:expr) => {{
 		match std::fs::read_to_string($path) {
@@ -230,7 +239,7 @@ where
 	/// If so, a change [`Event::NewFile`]/[`Event::Diff`] is emitted.
 	fn accept_template<'a>(
 		&mut self,
-		source: &PunktfSource,
+		_: &PunktfSource,
 		profile: &LayeredProfile,
 		file: &File<'a>,
 		// Returns a function to resolve the content to make the resolving lazy
@@ -244,7 +253,7 @@ where
 			let new =
 				safe_read_file_content!(&file.source_path, file.relative_source_path.display());
 
-			let content = match resolve_content(&new) {
+			let new = match resolve_content(&new) {
 				Ok(content) => content,
 				Err(err) => {
 					log::error!(
