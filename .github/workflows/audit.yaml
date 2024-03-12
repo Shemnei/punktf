@@ -90,12 +90,12 @@ jobs:
           components: clippy
 
       - name: Install clippy-sarif
-        uses: baptiste0928/cargo-install@v2
+        uses: baptiste0928/cargo-install@v3
         with:
           crate: clippy-sarif
 
       - name: Install sarif-fmt
-        uses: baptiste0928/cargo-install@v2
+        uses: baptiste0928/cargo-install@v3
         with:
           crate: sarif-fmt
 
