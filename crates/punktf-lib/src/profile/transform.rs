@@ -30,6 +30,7 @@ pub trait Transform {
 /// These can be added to a [`Profile`](`crate::profile::Profile`) or a
 /// [`Dotfile`](`crate::profile::dotfile::Dotfile`) to modify the text content.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub enum ContentTransformer {
 	/// Transformer which replaces line termination characters with either unix
 	/// style (`\n`) or windows style (`\r\b`).

@@ -51,6 +51,7 @@ impl ExitOk for std::process::ExitStatus {
 
 /// Implements the `Hook` trait, which is used to run a command after or before a build.
 #[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Hook(String);
 
 impl Hook {
