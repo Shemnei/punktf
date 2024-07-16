@@ -26,6 +26,7 @@ use crate::profile::{dotfile::Dotfile, source::PunktfSource};
 /// mode is important when a file already exists at the target location of a
 /// [`Dotfile`](`crate::profile::dotfile::Dotfile`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub enum MergeMode {
 	/// Overwrites the existing file.
 	Overwrite,
@@ -50,6 +51,7 @@ impl Default for MergeMode {
 #[derive(
 	Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
 )]
+#[serde(deny_unknown_fields)]
 pub struct Priority(pub u32);
 
 impl Priority {

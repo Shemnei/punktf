@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 /// A symlink to be created during the deployment.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Symlink {
 	/// Absolute path of the link source.
 	pub source_path: PathBuf,

@@ -11,6 +11,7 @@ use std::path::PathBuf;
 /// either be a single file or a directory. This struct holds attributes to
 /// control how the item will be deployed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Dotfile {
 	/// Relative path inside the
 	/// [`PunktfSource::dotfiles`](`crate::profile::source::PunktfSource::dotfiles`)
