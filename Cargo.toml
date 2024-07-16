@@ -11,23 +11,23 @@ keywords = ["dotfiles", "cli", "dotfile", "dotfiles-manager", "templating"]
 
 [workspace.dependencies]
 # Shared
-color-eyre = { version = "0.6.2", default-features = false }
-log = "0.4.17"
-serde = { version = "1.0.152", features = ["derive"] }
-pretty_assertions = "1.3.0"
+color-eyre = { version = "0.6.3", default-features = false }
+log = "0.4.22"
+serde = { version = "1.0.204", features = ["derive"] }
+pretty_assertions = "1.4.0"
 # Lib
-thiserror = "1.0.38"
-walkdir = "2.3.2"
-unicode-width = "0.1.10"
+thiserror = "1.0.62"
+walkdir = "2.5.0"
+unicode-width = "0.1.13"
 cfg-if = "1.0.0"
 shellexpand = "3.1.0"
 # Cli
-clap = { version = "4.1.2", features = ["derive", "env"] }
-clap_mangen = "0.2.5"
-clap_complete = "4.1.1"
-env_logger = "0.11.0"
-similar = { version = "2.2.1", features = ["text", "unicode", "inline"] }
-console = "0.15.5"
+clap = { version = "4.5.9", features = ["derive", "env"] }
+clap_mangen = "0.2.22"
+clap_complete = "4.5.8"
+env_logger = "0.11.3"
+similar = { version = "2.5.0", features = ["text", "unicode", "inline"] }
+console = "0.15.8"
 punktf-lib = { version = "2.0.1", path = "crates/punktf-lib", features = [
   "profile-all",
 ] }
