@@ -18,20 +18,16 @@ pub struct Dotfile {
 	/// directory.
 	pub path: PathBuf,
 
-	/// Alternative relative name/path for the dotfile. This name will be used
-	/// instead of [`Dotfile::path`](`crate::profile::dotfile::Dotfile::path`)
-	/// when deploying. If this is set and the
-	/// dotfile is a directory, it will be deployed under the given name and
-	/// not in the
-	/// [`PunktfSource::root`](`crate::profile::source::PunktfSource::root`)
-	/// directory.
+	/// Used to overwrite the default target location of a dotfile.
+	/// The resolved/actual output path of the [`Dotfile`] depends on the given path:
+	///
+	/// - If the given path is absolute, [`Profile::target`] will be completely ignored and this path will be used instead
+	/// - If the given path is relative, it will be appended to [`Profile::target`]
+	///
+	/// NOTE: Additionally, setting this option, will completely ignore the relative path of the dotfile within the
+	/// `dotfiles` folder for target path resolution.
 	#[serde(skip_serializing_if = "Option::is_none", default)]
-	pub rename: Option<PathBuf>,
-
-	/// Alternative absolute deploy target path. This will be used instead of
-	/// [`Profile::target`](`crate::profile::Profile::target`) when deploying.
-	#[serde(alias = "target", skip_serializing_if = "Option::is_none", default)]
-	pub overwrite_target: Option<PathBuf>,
+	pub target: Option<PathBuf>,
 
 	/// Priority of the dotfile. Dotfiles with higher priority as others are
 	/// allowed to overwrite an already deployed dotfile if the

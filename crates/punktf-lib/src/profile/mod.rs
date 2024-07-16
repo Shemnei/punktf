@@ -7,7 +7,7 @@ pub mod source;
 pub mod transform;
 pub mod variables;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs::File;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -377,7 +377,6 @@ impl LayeredProfileBuilder {
 			})
 			.collect();
 
-		let mut added_dotfile_paths = HashSet::new();
 		let mut dotfiles = Vec::new();
 
 		for (idx, dfiles) in self
@@ -387,10 +386,7 @@ impl LayeredProfileBuilder {
 			.map(|(idx, profile)| (idx, &profile.dotfiles))
 		{
 			for dotfile in dfiles.iter() {
-				if !added_dotfile_paths.contains(&dotfile.path) {
-					dotfiles.push((idx, dotfile.clone()));
-					added_dotfile_paths.insert(dotfile.path.clone());
-				}
+				dotfiles.push((idx, dotfile.clone()));
 			}
 		}
 
@@ -636,8 +632,7 @@ mod tests {
 			dotfiles: vec![
 				Dotfile {
 					path: PathBuf::from("init.vim.ubuntu"),
-					rename: Some(PathBuf::from("init.vim")),
-					overwrite_target: None,
+					target: Some(PathBuf::from("init.vim")),
 					priority: Some(Priority::new(2)),
 					variables: None,
 					transformers: Vec::new(),
@@ -646,8 +641,7 @@ mod tests {
 				},
 				Dotfile {
 					path: PathBuf::from(".bashrc"),
-					rename: None,
-					overwrite_target: Some(PathBuf::from("/home/demo")),
+					target: Some(PathBuf::from("/home/demo")),
 					priority: None,
 					variables: Some(Variables {
 						inner: dotfile_vars,
@@ -660,9 +654,9 @@ mod tests {
 			symlinks: vec![],
 		};
 
-		let json = serde_json::to_string(&profile).expect("Profile to be serializeable");
+		let json = serde_yaml::to_string(&profile).expect("Profile to be serializeable");
 
-		let parsed: Profile = serde_json::from_str(&json).expect("Profile to be deserializable");
+		let parsed: Profile = serde_yaml::from_str(&json).expect("Profile to be deserializable");
 
 		assert_eq!(parsed, profile);
 	}
