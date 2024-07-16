@@ -464,6 +464,7 @@ impl<'a> Walker<'a> {
 				visitor,
 				paths,
 				dotfile,
+				#[allow(unused_qualifications)]
 				None::<std::io::Error>,
 				Some(context),
 			);

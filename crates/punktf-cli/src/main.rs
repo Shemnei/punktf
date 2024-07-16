@@ -189,12 +189,12 @@ fn main() -> Result<()> {
 /// Gets the parsed command line arguments and evaluates them.
 fn handle_command(command: Command) -> Result<()> {
 	match command {
-		opt::Command::Deploy(c) => handle_command_deploy(c),
-		opt::Command::Render(c) => handle_command_render(c),
-		opt::Command::Verify(c) => handle_command_verify(c),
-		opt::Command::Diff(c) => handle_command_diff(c),
-		opt::Command::Man(c) => handle_command_man(c),
-		opt::Command::Completions(c) => handle_command_completions(c),
+		Command::Deploy(c) => handle_command_deploy(c),
+		Command::Render(c) => handle_command_render(c),
+		Command::Verify(c) => handle_command_verify(c),
+		Command::Diff(c) => handle_command_diff(c),
+		Command::Man(c) => handle_command_man(c),
+		Command::Completions(c) => handle_command_completions(c),
 	}
 }
 
