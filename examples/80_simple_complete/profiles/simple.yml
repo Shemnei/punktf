@@ -8,6 +8,14 @@ post_hooks:
 
 dotfiles:
   - path: "config"
+    # Obsolete, replaced with `target`
+    overwrite_target: "/custom_other/target"
+    template: false
+  - path: "config"
+    # New version of `overwrite_target`
+    target: "/custom_other/target"
+    template: false
+  - path: "config"
     rename: ".config"
     template: false
   - path: "zsh/zshrc"
