@@ -30,7 +30,7 @@ pub struct Dotfile {
 
 	/// Alternative absolute deploy target path. This will be used instead of
 	/// [`Profile::target`](`crate::profile::Profile::target`) when deploying.
-	#[serde(skip_serializing_if = "Option::is_none", default)]
+	#[serde(alias = "target", skip_serializing_if = "Option::is_none", default)]
 	pub overwrite_target: Option<PathBuf>,
 
 	/// Priority of the dotfile. Dotfiles with higher priority as others are
