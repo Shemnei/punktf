@@ -608,7 +608,62 @@ mod tests {
 
 	#[test]
 	#[cfg(feature = "profile-json")]
-	fn profile_serde() {
+	fn profile_serde_json() {
+		crate::tests::setup_test_env();
+
+		let mut profile_vars = HashMap::new();
+		profile_vars.insert(String::from("RUSTC_VERSION"), String::from("XX.YY"));
+		profile_vars.insert(String::from("RUSTC_PATH"), String::from("/usr/bin/rustc"));
+
+		let mut dotfile_vars = HashMap::new();
+		dotfile_vars.insert(String::from("RUSTC_VERSION"), String::from("55.22"));
+		dotfile_vars.insert(String::from("USERNAME"), String::from("demo"));
+
+		let profile = Profile {
+			extends: Vec::new(),
+			aliases: vec![],
+			variables: Some(Variables {
+				inner: profile_vars,
+			}),
+			transformers: Vec::new(),
+			target: Some(PathBuf::from("/home/demo/.config")),
+			pre_hooks: vec![Hook::new("echo \"Foo\"")],
+			post_hooks: vec![Hook::new("profiles/test.sh")],
+			dotfiles: vec![
+				Dotfile {
+					path: PathBuf::from("init.vim.ubuntu"),
+					target: Some(PathBuf::from("init.vim")),
+					priority: Some(Priority::new(2)),
+					variables: None,
+					transformers: Vec::new(),
+					merge: Some(MergeMode::Overwrite),
+					template: None,
+				},
+				Dotfile {
+					path: PathBuf::from(".bashrc"),
+					target: Some(PathBuf::from("/home/demo")),
+					priority: None,
+					variables: Some(Variables {
+						inner: dotfile_vars,
+					}),
+					transformers: Vec::new(),
+					merge: Some(MergeMode::Overwrite),
+					template: Some(false),
+				},
+			],
+			symlinks: vec![],
+		};
+
+		let json = serde_json::to_string(&profile).expect("Profile to be serializeable");
+
+		let parsed: Profile = serde_json::from_str(&json).expect("Profile to be deserializable");
+
+		assert_eq!(parsed, profile);
+	}
+
+	#[test]
+	#[cfg(feature = "profile-yaml")]
+	fn profile_serde_yaml() {
 		crate::tests::setup_test_env();
 
 		let mut profile_vars = HashMap::new();
