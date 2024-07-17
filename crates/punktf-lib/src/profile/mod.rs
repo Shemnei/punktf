@@ -84,8 +84,7 @@ pub struct Profile {
 	pub transformers: Vec<ContentTransformer>,
 
 	/// Target root path of the deployment. Will be used as file stem for the dotfiles
-	/// when not overwritten by
-	/// [`Dotfile::overwrite_target`](`crate::profile::dotfile::Dotfile::overwrite_target`).
+	/// when not overwritten by [`dotfile::Dotfile::target`].
 	#[serde(skip_serializing_if = "Option::is_none", default)]
 	pub target: Option<PathBuf>,
 
