@@ -7,23 +7,17 @@ post_hooks:
   - echo "Finished deployment of simple complete example"
 
 dotfiles:
-  - path: "config"
-    # Obsolete, replaced with `target`
-    overwrite_target: "/custom_other/target"
+  - path: "home"
+    target: "."
     template: false
   - path: "config"
-    # New version of `overwrite_target`
-    target: "/custom_other/target"
-    template: false
-  - path: "config"
-    rename: ".config"
+    target: ".config"
     template: false
   - path: "zsh/zshrc"
-    rename: ".config/zsh/.zshrc"
+    target: ".config/zsh/.zshrc"
     template: false
   - path: "shellcheckrc"
-    overwrite_target: "~"
-    rename: ".shellcheckrc"
+    target: "~/.shellcheckrc"
     variables:
       SHELLCHECK_DISABLE: "SC1090,SC1091"
     template: true
