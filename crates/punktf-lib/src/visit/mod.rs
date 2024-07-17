@@ -435,7 +435,7 @@ impl<'a> Walker<'a> {
 			}
 		};
 
-		let target_path = match self.resolve_target_path(dotfile, source_path.is_dir()) {
+		let target_path = match self.resolve_target_path(dotfile) {
 			Ok(p) => p,
 			Err(err) => {
 				let paths = Paths::new(dotfile.path.clone(), dotfile.path.clone());
@@ -659,20 +659,23 @@ impl<'a> Walker<'a> {
 	}
 
 	/// Resolves the dotfile to a absolute target path.
-	///
-	/// Some special logic is applied for directories.
-	fn resolve_target_path(&self, dotfile: &Dotfile, is_dir: bool) -> io::Result<PathBuf> {
-		let path = if is_dir && dotfile.rename.is_none() && dotfile.overwrite_target.is_none() {
+	fn resolve_target_path(&self, dotfile: &Dotfile) -> io::Result<PathBuf> {
+		let path = if let Some(alt_target) = &dotfile.target {
+			if alt_target.is_absolute() {
+				alt_target.to_path_buf()
+			} else {
+				self.profile
+					.target_path()
+					.expect("No target path set")
+					.to_path_buf()
+					.join(alt_target)
+			}
+		} else {
 			self.profile
 				.target_path()
 				.expect("No target path set")
 				.to_path_buf()
-		} else {
-			dotfile
-				.overwrite_target
-				.as_deref()
-				.unwrap_or_else(|| self.profile.target_path().expect("No target path set"))
-				.join(dotfile.rename.as_ref().unwrap_or(&dotfile.path))
+				.join(&dotfile.path)
 		};
 
 		self.resolve_path(&path)

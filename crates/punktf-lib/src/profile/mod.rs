@@ -7,7 +7,7 @@ pub mod source;
 pub mod transform;
 pub mod variables;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs::File;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -84,8 +84,7 @@ pub struct Profile {
 	pub transformers: Vec<ContentTransformer>,
 
 	/// Target root path of the deployment. Will be used as file stem for the dotfiles
-	/// when not overwritten by
-	/// [`Dotfile::overwrite_target`](`crate::profile::dotfile::Dotfile::overwrite_target`).
+	/// when not overwritten by [`dotfile::Dotfile::target`].
 	#[serde(skip_serializing_if = "Option::is_none", default)]
 	pub target: Option<PathBuf>,
 
@@ -377,7 +376,6 @@ impl LayeredProfileBuilder {
 			})
 			.collect();
 
-		let mut added_dotfile_paths = HashSet::new();
 		let mut dotfiles = Vec::new();
 
 		for (idx, dfiles) in self
@@ -387,10 +385,7 @@ impl LayeredProfileBuilder {
 			.map(|(idx, profile)| (idx, &profile.dotfiles))
 		{
 			for dotfile in dfiles.iter() {
-				if !added_dotfile_paths.contains(&dotfile.path) {
-					dotfiles.push((idx, dotfile.clone()));
-					added_dotfile_paths.insert(dotfile.path.clone());
-				}
+				dotfiles.push((idx, dotfile.clone()));
 			}
 		}
 
@@ -612,7 +607,7 @@ mod tests {
 
 	#[test]
 	#[cfg(feature = "profile-json")]
-	fn profile_serde() {
+	fn profile_serde_json() {
 		crate::tests::setup_test_env();
 
 		let mut profile_vars = HashMap::new();
@@ -636,8 +631,7 @@ mod tests {
 			dotfiles: vec![
 				Dotfile {
 					path: PathBuf::from("init.vim.ubuntu"),
-					rename: Some(PathBuf::from("init.vim")),
-					overwrite_target: None,
+					target: Some(PathBuf::from("init.vim")),
 					priority: Some(Priority::new(2)),
 					variables: None,
 					transformers: Vec::new(),
@@ -646,8 +640,7 @@ mod tests {
 				},
 				Dotfile {
 					path: PathBuf::from(".bashrc"),
-					rename: None,
-					overwrite_target: Some(PathBuf::from("/home/demo")),
+					target: Some(PathBuf::from("/home/demo")),
 					priority: None,
 					variables: Some(Variables {
 						inner: dotfile_vars,
@@ -663,6 +656,61 @@ mod tests {
 		let json = serde_json::to_string(&profile).expect("Profile to be serializeable");
 
 		let parsed: Profile = serde_json::from_str(&json).expect("Profile to be deserializable");
+
+		assert_eq!(parsed, profile);
+	}
+
+	#[test]
+	#[cfg(feature = "profile-yaml")]
+	fn profile_serde_yaml() {
+		crate::tests::setup_test_env();
+
+		let mut profile_vars = HashMap::new();
+		profile_vars.insert(String::from("RUSTC_VERSION"), String::from("XX.YY"));
+		profile_vars.insert(String::from("RUSTC_PATH"), String::from("/usr/bin/rustc"));
+
+		let mut dotfile_vars = HashMap::new();
+		dotfile_vars.insert(String::from("RUSTC_VERSION"), String::from("55.22"));
+		dotfile_vars.insert(String::from("USERNAME"), String::from("demo"));
+
+		let profile = Profile {
+			extends: Vec::new(),
+			aliases: vec![],
+			variables: Some(Variables {
+				inner: profile_vars,
+			}),
+			transformers: Vec::new(),
+			target: Some(PathBuf::from("/home/demo/.config")),
+			pre_hooks: vec![Hook::new("echo \"Foo\"")],
+			post_hooks: vec![Hook::new("profiles/test.sh")],
+			dotfiles: vec![
+				Dotfile {
+					path: PathBuf::from("init.vim.ubuntu"),
+					target: Some(PathBuf::from("init.vim")),
+					priority: Some(Priority::new(2)),
+					variables: None,
+					transformers: Vec::new(),
+					merge: Some(MergeMode::Overwrite),
+					template: None,
+				},
+				Dotfile {
+					path: PathBuf::from(".bashrc"),
+					target: Some(PathBuf::from("/home/demo")),
+					priority: None,
+					variables: Some(Variables {
+						inner: dotfile_vars,
+					}),
+					transformers: Vec::new(),
+					merge: Some(MergeMode::Overwrite),
+					template: Some(false),
+				},
+			],
+			symlinks: vec![],
+		};
+
+		let json = serde_yaml::to_string(&profile).expect("Profile to be serializeable");
+
+		let parsed: Profile = serde_yaml::from_str(&json).expect("Profile to be deserializable");
 
 		assert_eq!(parsed, profile);
 	}
