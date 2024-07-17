@@ -21,8 +21,8 @@ pub struct Dotfile {
 	/// Used to overwrite the default target location of a dotfile.
 	/// The resolved/actual output path of the [`Dotfile`] depends on the given path:
 	///
-	/// - If the given path is absolute, [`Profile::target`] will be completely ignored and this path will be used instead
-	/// - If the given path is relative, it will be appended to [`Profile::target`]
+	/// - If the given path is absolute, [`super::Profile::target`] will be completely ignored and this path will be used instead
+	/// - If the given path is relative, it will be appended to [`super::Profile::target`]
 	///
 	/// NOTE: Additionally, setting this option, will completely ignore the relative path of the dotfile within the
 	/// `dotfiles` folder for target path resolution.
