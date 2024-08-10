@@ -16,23 +16,29 @@ use std::path::Path;
 
 use crate::visit::{ResolvingVisitor, TemplateVisitor};
 
+/// Represents the contents of a file as returned by [`safe_read`].
 enum SafeRead {
-	Binary(Vec<u8>),
+	/// File was a normal text file.
 	String(String),
+
+	/// File was unable to be interpreted as a text file.
+	Binary(Vec<u8>),
 }
 
+/// Reads the contents of a file, first trying to interpret them as a string and if that fails
+/// returning the raw bytes.
 fn safe_read<P: AsRef<Path>>(path: P) -> io::Result<SafeRead> {
+	/// Inner function to reduce size of monomorphization.
 	fn inner(path: &Path) -> io::Result<SafeRead> {
 		match std::fs::read_to_string(path) {
-			Ok(s) => return Ok(SafeRead::String(s)),
+			Ok(s) => Ok(SafeRead::String(s)),
 			Err(err) if err.kind() == io::ErrorKind::InvalidData => {
-				std::fs::read(path).map(|b| SafeRead::Binary(b))
+				std::fs::read(path).map(SafeRead::Binary)
 			}
-			Err(err) => {
-				return Err(err);
-			}
+			Err(err) => Err(err),
 		}
 	}
+
 	inner(path.as_ref())
 }
 
