@@ -16,6 +16,26 @@ use std::path::Path;
 
 use crate::visit::{ResolvingVisitor, TemplateVisitor};
 
+enum SafeRead {
+	Binary(Vec<u8>),
+	String(String),
+}
+
+fn safe_read<P: AsRef<Path>>(path: P) -> io::Result<SafeRead> {
+	fn inner(path: &Path) -> io::Result<SafeRead> {
+		match std::fs::read_to_string(path) {
+			Ok(s) => return Ok(SafeRead::String(s)),
+			Err(err) if err.kind() == io::ErrorKind::InvalidData => {
+				std::fs::read(path).map(|b| SafeRead::Binary(b))
+			}
+			Err(err) => {
+				return Err(err);
+			}
+		}
+	}
+	inner(path.as_ref())
+}
+
 impl<'a> Item<'a> {
 	/// Adds this item to the given
 	/// [`DeploymentBuilder`](`crate::visit::deploy::deployment::DeploymentBuilder`).
@@ -373,8 +393,23 @@ where
 				}
 			}
 		} else {
-			let content = match std::fs::read_to_string(&file.source_path) {
-				Ok(content) => content,
+			let content = match safe_read(&file.source_path) {
+				Ok(SafeRead::Binary(b)) => {
+					log::info!(
+						"[{}] Not evaluated as template - Binary data",
+						file.relative_source_path.display()
+					);
+
+					b
+				}
+				Ok(SafeRead::String(s)) => {
+					let Ok(content) = self.transform_content(profile, file, s) else {
+						// Error is already recorded
+						return Ok(());
+					};
+
+					content.into_bytes()
+				}
 				Err(err) => {
 					log::info!(
 						"{}: Failed to read file",
@@ -385,13 +420,8 @@ where
 				}
 			};
 
-			let Ok(content) = self.transform_content(profile, file, content) else {
-				// Error is already recorded
-				return Ok(());
-			};
-
 			if !self.options.dry_run {
-				if let Err(err) = std::fs::write(&file.target_path, content.as_bytes()) {
+				if let Err(err) = std::fs::write(&file.target_path, content) {
 					log::info!(
 						"{}: Failed to write content",
 						file.relative_source_path.display()
@@ -661,38 +691,51 @@ where
 			return Ok(());
 		}
 
-		let content = match std::fs::read_to_string(&file.source_path) {
-			Ok(content) => content,
+		let content = match safe_read(&file.source_path) {
+			Ok(SafeRead::Binary(b)) => {
+				log::info!(
+					"[{}] Not evaluated as template - Binary data",
+					file.relative_source_path.display()
+				);
+
+				b
+			}
+			Ok(SafeRead::String(s)) => {
+				let content = match resolve_content(&s) {
+					Ok(content) => content,
+					Err(err) => {
+						log::info!(
+							"{}: Failed to resolve template",
+							file.relative_source_path.display()
+						);
+
+						failed!(
+							&mut self.builder,
+							file,
+							format!("Failed to resolve template: {err}")
+						);
+					}
+				};
+
+				let Ok(content) = self.transform_content(profile, file, content) else {
+					// Error is already recorded
+					return Ok(());
+				};
+
+				content.into_bytes()
+			}
 			Err(err) => {
-				log::info!("{}: Failed read file", file.relative_source_path.display());
+				log::info!(
+					"{}: Failed to read file",
+					file.relative_source_path.display()
+				);
 
 				failed!(&mut self.builder, file, format!("Failed to read: {err}"));
 			}
 		};
 
-		let content = match resolve_content(&content) {
-			Ok(content) => content,
-			Err(err) => {
-				log::info!(
-					"{}: Failed to resolve template",
-					file.relative_source_path.display()
-				);
-
-				failed!(
-					&mut self.builder,
-					file,
-					format!("Failed to resolve template: {err}")
-				);
-			}
-		};
-
-		let Ok(content) = self.transform_content(profile, file, content) else {
-			// Error is already recorded
-			return Ok(());
-		};
-
 		if !self.options.dry_run {
-			if let Err(err) = std::fs::write(&file.target_path, content.as_bytes()) {
+			if let Err(err) = std::fs::write(&file.target_path, content) {
 				log::info!(
 					"{}: Failed to write content",
 					file.relative_source_path.display()
