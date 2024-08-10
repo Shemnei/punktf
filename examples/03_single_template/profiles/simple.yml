@@ -2,4 +2,8 @@ dotfiles:
   - path: "hello.template"
     # Instead of using the name from the source file (`hello.template`)
     # this option can be used to overwrite it.
-    rename: "hello.txt"
+    # This can either be a relative path, then it will be appended to the profile target:
+    target: "hello.txt"
+  - path: "hello.template"
+    # ... or it can be a absolute path, which will completely ignore the profile target:
+    target: "/hello.txt"

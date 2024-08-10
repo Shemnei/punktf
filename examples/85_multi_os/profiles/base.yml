@@ -1,2 +1,4 @@
 dotfiles:
   - path: "shared/root"
+    # Put the files directly into the profile target dir instead the "shared/root" subfolder
+    target: "."

@@ -6,6 +6,7 @@ target: "$HOMEPATH"
 dotfiles:
   # `shared/root` will be deployed by `base`
   - path: "shared\\nvim"
-    rename: "AppData\\Local\\nvim"
+    target: "AppData\\Local\\nvim"
     template: true
   - path: "windows"
+    target: "."
