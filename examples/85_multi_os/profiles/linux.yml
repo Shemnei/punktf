@@ -6,6 +6,7 @@ target: "$HOME"
 dotfiles:
   # `shared/root` will be deployed by `base`
   - path: "shared/nvim"
-    rename: ".config/nvim"
+    target: ".config/nvim"
     template: true
   - path: "linux"
+    target: "."
