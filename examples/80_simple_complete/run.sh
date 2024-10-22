@@ -16,5 +16,4 @@ punktf_binary="${EXAMPLES_BINARY:-punktf}"
 	--verbose \
 	diff \
 	--source . \
-	--profile simple \
-	--target "${EXAMPLES_TARGET:-/tmp}"
+	--profile simple
