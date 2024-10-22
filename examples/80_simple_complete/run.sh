@@ -11,9 +11,3 @@ punktf_binary="${EXAMPLES_BINARY:-punktf}"
 	--profile simple \
 	--target "${EXAMPLES_TARGET:-/tmp}" \
 	--dry-run
-
-"${punktf_binary}" \
-	--verbose \
-	diff \
-	--source . \
-	--profile simple
