@@ -254,21 +254,23 @@ where
 				MergeMode::Ask => {
 					log::info!("{}: Asking for action", file.relative_source_path.display());
 
-					let should_deploy =
-						match (self.merge_ask_fn)(&file.source_path, file.target_path.borrow())
-							.wrap_err("Error evaluating user response")
-						{
-							Ok(should_deploy) => should_deploy,
-							Err(err) => {
-								log::error!(
-									"{}: Failed to execute ask function ({})",
-									file.relative_source_path.display(),
-									err
-								);
+					let should_deploy = match (self.merge_ask_fn)(
+						&file.source_path,
+						file.target_path.borrow(),
+					)
+					.wrap_err("Error evaluating user response")
+					{
+						Ok(should_deploy) => should_deploy,
+						Err(err) => {
+							log::error!(
+								"{}: Failed to execute ask function ({})",
+								file.relative_source_path.display(),
+								err
+							);
 
-								failed!(&mut self.builder, file, format!("Failed to execute merge ask function: {err}") => false);
-							}
-						};
+							failed!(&mut self.builder, file, format!("Failed to execute merge ask function: {err}") => false);
+						}
+					};
 
 					if !should_deploy {
 						log::info!("{}: Merge was denied", file.relative_source_path.display());
