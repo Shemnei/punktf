@@ -316,7 +316,7 @@ where
 					Ok(_) => {}
 					Err(err) => {
 						log::error!(
-							"{}: Failed to create directory ({})",
+							"[{}] Failed to create directory ({})",
 							file.relative_source_path.display(),
 							err
 						);
@@ -352,7 +352,7 @@ where
 				Ok(content) => content,
 				Err(err) => {
 					log::info!(
-						"{}: Failed to apply content transformer `{}`: `{}`",
+						"[{}] Failed to apply content transformer `{}`: `{}`",
 						file.relative_source_path.display(),
 						transformer,
 						err
@@ -378,7 +378,7 @@ where
 		profile: &LayeredProfile,
 		file: &File<'a>,
 	) -> Result {
-		log::info!("{}: Deploying file", file.relative_source_path.display());
+		log::info!("[{}] Deploying file", file.relative_source_path.display());
 
 		let cont = self.pre_deploy_checks(file)?;
 
@@ -396,7 +396,7 @@ where
 			if !self.options.dry_run {
 				if let Err(err) = std::fs::copy(&file.source_path, &file.target_path) {
 					log::info!(
-						"{}: Failed to copy file",
+						"[{}] Failed to copy file",
 						file.relative_source_path.display()
 					);
 
@@ -465,7 +465,7 @@ where
 		directory: &Directory<'a>,
 	) -> Result {
 		log::info!(
-			"{}: Deploying directory",
+			"[{}] Deploying directory",
 			directory.relative_source_path.display()
 		);
 
