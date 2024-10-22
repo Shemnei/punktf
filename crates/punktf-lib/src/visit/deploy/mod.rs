@@ -16,6 +16,32 @@ use std::path::Path;
 
 use crate::visit::{ResolvingVisitor, TemplateVisitor};
 
+/// Represents the contents of a file as returned by [`safe_read`].
+enum SafeRead {
+	/// File was a normal text file.
+	String(String),
+
+	/// File was unable to be interpreted as a text file.
+	Binary(Vec<u8>),
+}
+
+/// Reads the contents of a file, first trying to interpret them as a string and if that fails
+/// returning the raw bytes.
+fn safe_read<P: AsRef<Path>>(path: P) -> io::Result<SafeRead> {
+	/// Inner function to reduce size of monomorphization.
+	fn inner(path: &Path) -> io::Result<SafeRead> {
+		match std::fs::read_to_string(path) {
+			Ok(s) => Ok(SafeRead::String(s)),
+			Err(err) if err.kind() == io::ErrorKind::InvalidData => {
+				std::fs::read(path).map(SafeRead::Binary)
+			}
+			Err(err) => Err(err),
+		}
+	}
+
+	inner(path.as_ref())
+}
+
 impl<'a> Item<'a> {
 	/// Adds this item to the given
 	/// [`DeploymentBuilder`](`crate::visit::deploy::deployment::DeploymentBuilder`).
@@ -217,7 +243,7 @@ where
 		match (file.dotfile().priority.as_ref(), other_priority) {
 			(Some(a), Some(b)) if b > a => {
 				log::info!(
-					"{}: Dotfile with higher priority is already deployed at {}",
+					"[{}] Dotfile with higher priority is already deployed at {}",
 					file.relative_source_path.display(),
 					file.target_path.display()
 				);
@@ -231,7 +257,7 @@ where
 			// No previously deployed dotfile at `deploy_path`. Check for merge.
 
 			log::debug!(
-				"{}: Dotfile already exists at {}",
+				"[{}] Dotfile already exists at {}",
 				file.relative_source_path.display(),
 				file.target_path.display()
 			);
@@ -239,20 +265,23 @@ where
 			match file.dotfile().merge.unwrap_or_default() {
 				MergeMode::Overwrite => {
 					log::info!(
-						"{}: Overwriting existing dotfile",
+						"[{}] Overwriting existing dotfile",
 						file.relative_source_path.display()
 					)
 				}
 				MergeMode::Keep => {
 					log::info!(
-						"{}: Skipping existing dotfile",
+						"[{}] Skipping existing dotfile",
 						file.relative_source_path.display()
 					);
 
 					skipped!(&mut self.builder, file, format!("Dotfile already exists and merge mode is {:?}", MergeMode::Keep) => false);
 				}
 				MergeMode::Ask => {
-					log::info!("{}: Asking for action", file.relative_source_path.display());
+					log::info!(
+						"[{}] Asking for action",
+						file.relative_source_path.display()
+					);
 
 					let should_deploy = match (self.merge_ask_fn)(
 						&file.source_path,
@@ -263,7 +292,7 @@ where
 						Ok(should_deploy) => should_deploy,
 						Err(err) => {
 							log::error!(
-								"{}: Failed to execute ask function ({})",
+								"[{}] Failed to execute ask function ({})",
 								file.relative_source_path.display(),
 								err
 							);
@@ -273,7 +302,7 @@ where
 					};
 
 					if !should_deploy {
-						log::info!("{}: Merge was denied", file.relative_source_path.display());
+						log::info!("{} Merge was denied", file.relative_source_path.display());
 
 						skipped!(&mut self.builder, file, "Dotfile already exists and merge ask was denied" => false);
 					}
@@ -287,7 +316,7 @@ where
 					Ok(_) => {}
 					Err(err) => {
 						log::error!(
-							"{}: Failed to create directory ({})",
+							"[{}] Failed to create directory ({})",
 							file.relative_source_path.display(),
 							err
 						);
@@ -323,7 +352,7 @@ where
 				Ok(content) => content,
 				Err(err) => {
 					log::info!(
-						"{}: Failed to apply content transformer `{}`: `{}`",
+						"[{}] Failed to apply content transformer `{}`: `{}`",
 						file.relative_source_path.display(),
 						transformer,
 						err
@@ -349,7 +378,7 @@ where
 		profile: &LayeredProfile,
 		file: &File<'a>,
 	) -> Result {
-		log::info!("{}: Deploying file", file.relative_source_path.display());
+		log::info!("[{}] Deploying file", file.relative_source_path.display());
 
 		let cont = self.pre_deploy_checks(file)?;
 
@@ -367,7 +396,7 @@ where
 			if !self.options.dry_run {
 				if let Err(err) = std::fs::copy(&file.source_path, &file.target_path) {
 					log::info!(
-						"{}: Failed to copy file",
+						"[{}] Failed to copy file",
 						file.relative_source_path.display()
 					);
 
@@ -375,11 +404,26 @@ where
 				}
 			}
 		} else {
-			let content = match std::fs::read_to_string(&file.source_path) {
-				Ok(content) => content,
+			let content = match safe_read(&file.source_path) {
+				Ok(SafeRead::Binary(b)) => {
+					log::info!(
+						"[{}] Not evaluated as template - Binary data",
+						file.relative_source_path.display()
+					);
+
+					b
+				}
+				Ok(SafeRead::String(s)) => {
+					let Ok(content) = self.transform_content(profile, file, s) else {
+						// Error is already recorded
+						return Ok(());
+					};
+
+					content.into_bytes()
+				}
 				Err(err) => {
 					log::info!(
-						"{}: Failed to read file",
+						"[{}] Failed to read file",
 						file.relative_source_path.display()
 					);
 
@@ -387,15 +431,10 @@ where
 				}
 			};
 
-			let Ok(content) = self.transform_content(profile, file, content) else {
-				// Error is already recorded
-				return Ok(());
-			};
-
 			if !self.options.dry_run {
-				if let Err(err) = std::fs::write(&file.target_path, content.as_bytes()) {
+				if let Err(err) = std::fs::write(&file.target_path, content) {
 					log::info!(
-						"{}: Failed to write content",
+						"[{}] Failed to write content",
 						file.relative_source_path.display()
 					);
 
@@ -409,7 +448,7 @@ where
 		}
 
 		log::info!(
-			"{}: File successfully deployed",
+			"[{}] File successfully deployed",
 			file.relative_source_path.display()
 		);
 
@@ -426,14 +465,14 @@ where
 		directory: &Directory<'a>,
 	) -> Result {
 		log::info!(
-			"{}: Deploying directory",
+			"[{}] Deploying directory",
 			directory.relative_source_path.display()
 		);
 
 		if !self.options.dry_run {
 			if let Err(err) = std::fs::create_dir_all(&directory.target_path) {
 				log::error!(
-					"{}: Failed to create directory ({})",
+					"[{}] Failed to create directory ({})",
 					directory.relative_source_path.display(),
 					err
 				);
@@ -451,7 +490,7 @@ where
 		}
 
 		log::info!(
-			"{}: Directory successfully deployed",
+			"[{}] Directory successfully deployed",
 			directory.relative_source_path.display()
 		);
 
@@ -460,14 +499,14 @@ where
 
 	/// Accepts a link item and tries to deploy it.
 	fn accept_link(&mut self, _: &PunktfSource, _: &LayeredProfile, link: &Symlink) -> Result {
-		log::info!("{}: Deploying symlink", link.source_path.display());
+		log::info!("[{}] Deploying symlink", link.source_path.display());
 
 		// Log an warning if deploying of links is not supported for the
 		// operating system.
 		#[cfg(all(not(unix), not(windows)))]
 		{
 			log::warn!(
-				"[{}]: Symlink operations are only supported for unix and windows systems",
+				"[{}] Symlink operations are only supported for unix and windows systems",
 				source_path.display()
 			);
 			skipped!(
@@ -482,7 +521,7 @@ where
 
 		// Check that the source exists
 		if !source_path.exists() {
-			log::error!("[{}]: Links source does not exist", source_path.display());
+			log::error!("[{}] Links source does not exist", source_path.display());
 
 			failed!(&mut self.builder, link, "Link source does not exist");
 		}
@@ -495,7 +534,7 @@ where
 					let target_metadata = match target_path.symlink_metadata() {
 						Ok(m) => m,
 						Err(err) => {
-							log::error!("[{}]: Failed to read metadata", source_path.display());
+							log::error!("[{}] Failed to read metadata", source_path.display());
 
 							failed!(
 								&mut self.builder,
@@ -520,7 +559,7 @@ where
 
 						if let Err(err) = res {
 							log::error!(
-								"[{}]: Failed to remove old link at target",
+								"[{}] Failed to remove old link at target",
 								source_path.display()
 							);
 
@@ -531,14 +570,14 @@ where
 							);
 						} else {
 							log::info!(
-								"[{}]: Removed old link target at {}",
+								"[{}] Removed old link target at {}",
 								source_path.display(),
 								target_path.display()
 							);
 						}
 					} else {
 						log::error!(
-							"[{}]: Target already exists and is no link",
+							"[{}] Target already exists and is no link",
 							source_path.display()
 						);
 
@@ -547,7 +586,7 @@ where
 				}
 			} else {
 				log::error!(
-					"[{}]: Target already exists and is not allowed to be replaced",
+					"[{}] Target already exists and is not allowed to be replaced",
 					source_path.display()
 				);
 
@@ -559,7 +598,7 @@ where
 			cfg_if! {
 				if #[cfg(unix)] {
 					if let Err(err) = std::os::unix::fs::symlink(source_path, target_path) {
-						log::error!("[{}]: Failed to create link", source_path.display());
+						log::error!("[{}] Failed to create link", source_path.display());
 
 						failed!(&mut self.builder, link, format!("Failed create link: {err}"));
 					};
@@ -567,7 +606,7 @@ where
 					let metadata = match source_path.symlink_metadata() {
 						Ok(m) => m,
 						Err(err) => {
-							log::error!("[{}]: Failed to read metadata", source_path.display());
+							log::error!("[{}] Failed to read metadata", source_path.display());
 
 							failed!(&mut self.builder, link, format!("Failed get link source metadata: {err}"));
 						}
@@ -575,23 +614,23 @@ where
 
 					if metadata.is_dir() {
 						if let Err(err) = std::os::windows::fs::symlink_dir(source_path, target_path) {
-							log::error!("[{}]: Failed to create directory link", source_path.display());
+							log::error!("[{}] Failed to create directory link", source_path.display());
 
 							failed!(&mut self.builder, link, format!("Failed create directory link: {err}"));
 						};
 					} else if metadata.is_file() {
 						if let Err(err) = std::os::windows::fs::symlink_file(source_path, target_path) {
-							log::error!("[{}]: Failed to create file link", source_path.display());
+							log::error!("[{}] Failed to create file link", source_path.display());
 
 							failed!(&mut self.builder, link, format!("Failed create file link: {err}"));
 						};
 					} else {
-						log::error!("[{}]: Invalid link source type", source_path.display());
+						log::error!("[{}] Invalid link source type", source_path.display());
 
 						failed!(&mut self.builder, link, "Invalid type of link source");
 					}
 				} else {
-					log::warn!("[{}]: Link operations are only supported for unix and windows systems", source_path.display());
+					log::warn!("[{}] Link operations are only supported for unix and windows systems", source_path.display());
 
 					skipped!(&mut self.builder, link, "Link operations are only supported on unix and windows systems");
 				}
@@ -611,7 +650,7 @@ where
 		rejected: &Rejected<'a>,
 	) -> Result {
 		log::info!(
-			"[{}]: Rejected - {}",
+			"[{}] Rejected - {}",
 			rejected.relative_source_path.display(),
 			rejected.reason
 		);
@@ -627,7 +666,7 @@ where
 		errored: &Errored<'a>,
 	) -> Result {
 		log::error!(
-			"[{}]: Failed - {}",
+			"[{}] Failed - {}",
 			errored.relative_source_path.display(),
 			errored
 		);
@@ -653,7 +692,7 @@ where
 		resolve_content: impl FnOnce(&str) -> color_eyre::Result<String>,
 	) -> Result {
 		log::info!(
-			"{}: Deploying template",
+			"[{}] Deploying template",
 			file.relative_source_path.display()
 		);
 
@@ -663,40 +702,53 @@ where
 			return Ok(());
 		}
 
-		let content = match std::fs::read_to_string(&file.source_path) {
-			Ok(content) => content,
+		let content = match safe_read(&file.source_path) {
+			Ok(SafeRead::Binary(b)) => {
+				log::info!(
+					"[{}] Not evaluated as template - Binary data",
+					file.relative_source_path.display()
+				);
+
+				b
+			}
+			Ok(SafeRead::String(s)) => {
+				let content = match resolve_content(&s) {
+					Ok(content) => content,
+					Err(err) => {
+						log::info!(
+							"[{}] Failed to resolve template",
+							file.relative_source_path.display()
+						);
+
+						failed!(
+							&mut self.builder,
+							file,
+							format!("Failed to resolve template: {err}")
+						);
+					}
+				};
+
+				let Ok(content) = self.transform_content(profile, file, content) else {
+					// Error is already recorded
+					return Ok(());
+				};
+
+				content.into_bytes()
+			}
 			Err(err) => {
-				log::info!("{}: Failed read file", file.relative_source_path.display());
+				log::info!(
+					"[{}] Failed to read file",
+					file.relative_source_path.display()
+				);
 
 				failed!(&mut self.builder, file, format!("Failed to read: {err}"));
 			}
 		};
 
-		let content = match resolve_content(&content) {
-			Ok(content) => content,
-			Err(err) => {
-				log::info!(
-					"{}: Failed to resolve template",
-					file.relative_source_path.display()
-				);
-
-				failed!(
-					&mut self.builder,
-					file,
-					format!("Failed to resolve template: {err}")
-				);
-			}
-		};
-
-		let Ok(content) = self.transform_content(profile, file, content) else {
-			// Error is already recorded
-			return Ok(());
-		};
-
 		if !self.options.dry_run {
-			if let Err(err) = std::fs::write(&file.target_path, content.as_bytes()) {
+			if let Err(err) = std::fs::write(&file.target_path, content) {
 				log::info!(
-					"{}: Failed to write content",
+					"[{}] Failed to write content",
 					file.relative_source_path.display()
 				);
 
@@ -709,7 +761,7 @@ where
 		}
 
 		log::info!(
-			"{}: Template successfully deployed",
+			"[{}] Template successfully deployed",
 			file.relative_source_path.display()
 		);
 

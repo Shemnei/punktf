@@ -21,6 +21,9 @@ dotfiles:
   - path: "zsh/zshrc"
     rename: ".config/zsh/.zshrc"
     template: false
+  - path: "wallpaper.png"
+    # Binary data will not be interpreted as template even if explicitly set
+    template: true
   - path: "shellcheckrc"
     overwrite_target: "~"
     rename: ".shellcheckrc"
