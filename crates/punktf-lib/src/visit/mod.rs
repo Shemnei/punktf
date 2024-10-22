@@ -465,7 +465,7 @@ impl<'a> Walker<'a> {
 				paths,
 				dotfile,
 				#[allow(unused_qualifications)]
-				None::<std::io::Error>,
+				None::<io::Error>,
 				Some(context),
 			);
 		};

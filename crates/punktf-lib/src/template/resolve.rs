@@ -81,7 +81,7 @@ macro_rules! family {
 				"unix"
 			} else if #[cfg(target_os = "windows")] {
 				"windows"
-			} else if #[cfg(target_os = "wasm")] {
+			} else if #[cfg(target_family = "wasm")] {
 				"wasm"
 			} else {
 				"unknown"
